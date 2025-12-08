@@ -1,6 +1,39 @@
-import { Play, Lock, Unlock, Search, Wrench, Shield, AlertTriangle } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Wrench, Monitor } from 'lucide-react';
 
 export function BobbyDevPanel() {
+  const [browserInfo, setBrowserInfo] = useState({
+    name: '',
+    version: '',
+    platform: ''
+  });
+
+  useEffect(() => {
+    const userAgent = navigator.userAgent;
+    let browserName = 'Unknown';
+    let browserVersion = '';
+
+    if (userAgent.indexOf('Firefox') > -1) {
+      browserName = 'Firefox';
+      browserVersion = userAgent.match(/Firefox\/([0-9.]+)/)?.[1] || '';
+    } else if (userAgent.indexOf('Chrome') > -1) {
+      browserName = 'Chrome';
+      browserVersion = userAgent.match(/Chrome\/([0-9.]+)/)?.[1] || '';
+    } else if (userAgent.indexOf('Safari') > -1) {
+      browserName = 'Safari';
+      browserVersion = userAgent.match(/Version\/([0-9.]+)/)?.[1] || '';
+    } else if (userAgent.indexOf('Edge') > -1) {
+      browserName = 'Edge';
+      browserVersion = userAgent.match(/Edg\/([0-9.]+)/)?.[1] || '';
+    }
+
+    setBrowserInfo({
+      name: browserName,
+      version: browserVersion,
+      platform: navigator.platform
+    });
+  }, []);
+
   return (
     <div className="w-full max-w-4xl mx-auto p-6 rounded-2xl border border-slate-700 bg-slate-900/70 shadow-lg">
       <div className="flex items-center justify-between mb-6">
@@ -18,45 +51,12 @@ export function BobbyDevPanel() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="rounded-xl border border-slate-700 bg-slate-800/50 p-4">
           <div className="flex items-center gap-2 mb-3">
-            <Play className="w-4 h-4 text-emerald-400" />
-            <h3 className="font-semibold text-slate-100">Quick Actions</h3>
+            <Monitor className="w-4 h-4 text-blue-400" />
+            <h3 className="font-semibold text-slate-100">Browser Environment</h3>
           </div>
           <div className="space-y-2 text-sm text-slate-300">
-            <p>• Development server ready</p>
-            <p>• Arsenal tools detected</p>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-slate-700 bg-slate-800/50 p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <Shield className="w-4 h-4 text-blue-400" />
-            <h3 className="font-semibold text-slate-100">Security Status</h3>
-          </div>
-          <div className="space-y-2 text-sm text-slate-300">
-            <p>• Environment isolated</p>
-            <p>• Tools initialized</p>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-slate-700 bg-slate-800/50 p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <Search className="w-4 h-4 text-purple-400" />
-            <h3 className="font-semibold text-slate-100">Analysis Tools</h3>
-          </div>
-          <div className="space-y-2 text-sm text-slate-300">
-            <p>• Code scanning ready</p>
-            <p>• Diagnostics available</p>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-slate-700 bg-slate-800/50 p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <AlertTriangle className="w-4 h-4 text-amber-400" />
-            <h3 className="font-semibold text-slate-100">System Alerts</h3>
-          </div>
-          <div className="space-y-2 text-sm text-slate-300">
-            <p>• No critical issues</p>
-            <p>• All systems nominal</p>
+            {browserInfo.name && <p>• Browser: {browserInfo.name} {browserInfo.version}</p>}
+            {browserInfo.platform && <p>• Platform: {browserInfo.platform}</p>}
           </div>
         </div>
       </div>

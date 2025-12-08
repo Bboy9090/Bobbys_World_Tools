@@ -19,42 +19,62 @@ interface ArsenalStatus {
 }
 
 const initialStatus: ArsenalStatus = {
-  env: "codespaces",
+  env: "unknown",
   tools: {
-    rust: { installed: true, version: "1.75.0" },
-    node: { installed: true, version: "20.11.0" },
-    python: { installed: true, version: "3.11.7" },
-    adb: { installed: true, version: "1.0.41" },
-    fastboot: { installed: true, version: "34.0.5" }
+    rust: { installed: false, version: null },
+    node: { installed: false, version: null },
+    python: { installed: false, version: null },
+    adb: { installed: false, version: null },
+    fastboot: { installed: false, version: null }
   }
 };
 
 export function BobbyDevArsenalDashboard() {
   const [status, setStatus] = useState<ArsenalStatus>(initialStatus);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function fetchStatus() {
+    async function detectTools() {
       try {
         setLoading(true);
         setError(null);
 
-        const res = await fetch("/api/dev-arsenal/status");
-        if (!res.ok) {
-          throw new Error(`HTTP ${res.status}`);
-        }
+        const userAgent = navigator.userAgent;
+        const detectedStatus: ArsenalStatus = {
+          env: detectEnvironment(),
+          tools: {
+            rust: { installed: false, version: null },
+            node: { installed: false, version: null },
+            python: { installed: false, version: null },
+            adb: { installed: false, version: null },
+            fastboot: { installed: false, version: null }
+          }
+        };
 
-        const json = (await res.json()) as ArsenalStatus;
-        setStatus(json);
+        setStatus(detectedStatus);
       } catch (err: any) {
-        setError("Unable to reach dev-arsenal API. Wire the backend when ready.");
+        setError("Unable to detect tools in browser environment.");
       } finally {
         setLoading(false);
       }
     }
 
+    detectTools();
   }, []);
+
+  function detectEnvironment(): string {
+    if (typeof window !== 'undefined') {
+      const hostname = window.location.hostname;
+      if (hostname.includes('github.dev') || hostname.includes('codespaces')) {
+        return 'codespaces';
+      }
+      if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        return 'local';
+      }
+    }
+    return 'browser';
+  }
 
   const tools = [
     { key: "rust", label: "Rust Toolchain", icon: <Wrench className="w-4 h-4" /> },
@@ -83,17 +103,16 @@ export function BobbyDevArsenalDashboard() {
         </button>
       </div>
 
+      <div className="mb-3 flex items-center gap-2 rounded-lg border border-blue-500/60 bg-blue-900/30 px-3 py-2 text-xs text-blue-100">
+        <AlertTriangle className="w-4 h-4" />
+        <span>Browser environment detected. System tools (Rust, Node, Python, ADB, Fastboot) require backend API access to detect. Tools shown as MISSING until backend is connected.</span>
+      </div>
+
       {error && (
         <div className="mb-3 flex items-center gap-2 rounded-lg border border-amber-500/60 bg-amber-900/30 px-3 py-2 text-xs text-amber-100">
           <AlertTriangle className="w-4 h-4" />
           <span>{error}</span>
         </div>
-      )}
-
-      {loading && (
-        <p className="text-xs text-slate-400 mb-3">
-          Scanning your dev arsenal inside Codespaces...
-        </p>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
