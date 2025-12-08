@@ -9,7 +9,14 @@
         "build": "tsc -b --noCheck && vite build",
         "lint": "eslint .",
         "optimize": "vite optimize",
-        "preview": "vite preview"
+        "preview": "vite preview",
+        "check:rust": "node scripts/check-rust.js",
+        "check:android-tools": "node scripts/check-android-tools.js",
+        "arsenal:status": "node scripts/dev-arsenal-status.js",
+        "phoenix:dev": "cd phoenix-key && python3 main.py",
+        "phoenix:build": "cd phoenix-key && python3 -m build",
+        "bootforge:build": "cd backend/bootforge_usb && cargo build --release",
+        "bootforge:test": "cd backend/bootforge_usb && cargo test"
     },
     "dependencies": {
         "@github/spark": ">=0.43.1 <1",
