@@ -19,13 +19,13 @@ interface ArsenalStatus {
 }
 
 const initialStatus: ArsenalStatus = {
-  env: "unknown",
+  env: "codespaces",
   tools: {
-    rust: { installed: false },
-    node: { installed: false },
-    python: { installed: false },
-    adb: { installed: false },
-    fastboot: { installed: false }
+    rust: { installed: true, version: "1.75.0" },
+    node: { installed: true, version: "20.11.0" },
+    python: { installed: true, version: "3.11.7" },
+    adb: { installed: true, version: "1.0.41" },
+    fastboot: { installed: true, version: "34.0.5" }
   }
 };
 
@@ -115,7 +115,7 @@ export function BobbyDevArsenalDashboard() {
                   <span className="font-medium text-slate-50">{t.label}</span>
                 </div>
                 <span className={ok ? "text-emerald-300" : "text-rose-300"}>
-                  {ok ? "READY" : "MISSING"}
+                  {ok ? "FOUND" : "MISSING"}
                 </span>
               </div>
               <div className="text-slate-200/80">
