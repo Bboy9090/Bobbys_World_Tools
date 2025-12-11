@@ -1,14 +1,29 @@
 import { BobbyDevPanel } from "./components/BobbyDevPanel";
-import { BobbyDevArsenalDashboard } from "./components/BobbyDevArsenalDashboard";
+import { SystemToolsDetector } from "./components/SystemToolsDetector";
+import { USBDeviceDetector } from "./components/USBDeviceDetector";
+import { NetworkDeviceScanner } from "./components/NetworkDeviceScanner";
+import { BackendAPIGuide } from "./components/BackendAPIGuide";
+import { Toaster } from "@/components/ui/sonner";
 
 function App() {
     return (
-        <div className="min-h-screen bg-slate-950 text-slate-50 p-4">
-            <div className="space-y-6">
-                <BobbyDevPanel />
-                <BobbyDevArsenalDashboard />
+        <>
+            <div className="min-h-screen bg-background p-4 md:p-6">
+                <div className="max-w-7xl mx-auto space-y-6">
+                    <BobbyDevPanel />
+                    
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <SystemToolsDetector />
+                        <USBDeviceDetector />
+                    </div>
+                    
+                    <NetworkDeviceScanner />
+                    
+                    <BackendAPIGuide />
+                </div>
             </div>
-        </div>
+            <Toaster />
+        </>
     );
 }
 
