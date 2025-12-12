@@ -17,6 +17,9 @@ import { BackendAPIGuide } from "./components/BackendAPIGuide";
 import { ADBFastbootDetector } from "./components/ADBFastbootDetector";
 import { FastbootFlashingPanel } from "./components/FastbootFlashingPanel";
 import { FastbootFlashingGuide } from "./components/FastbootFlashingGuide";
+import { BatchFlashingPanel } from "./components/BatchFlashingPanel";
+import { BatchFlashingGuide } from "./components/BatchFlashingGuide";
+import { BatchFlashProfiles } from "./components/BatchFlashProfiles";
 import { Toaster } from "@/components/ui/sonner";
 
 function App() {
@@ -35,6 +38,12 @@ function App() {
                     <FastbootFlashingGuide />
                     
                     <FastbootFlashingPanel />
+                    
+                    <BatchFlashingGuide />
+                    
+                    <BatchFlashingPanel />
+                    
+                    <BatchFlashProfiles />
                     
                     <DeviceAnalyticsDashboard />
                     
