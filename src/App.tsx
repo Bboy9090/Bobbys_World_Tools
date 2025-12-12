@@ -1,3 +1,4 @@
+import React from 'react';
 import { BobbyDevPanel } from "./components/BobbyDevPanel";
 import { SystemToolsDetector } from "./components/SystemToolsDetector";
 import { USBDeviceDetector } from "./components/USBDeviceDetector";

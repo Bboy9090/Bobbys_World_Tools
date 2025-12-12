@@ -51,7 +51,7 @@ export function useUSBDevices() {
   const [supported, setSupported] = useState(true);
   const [isMonitoring, setIsMonitoring] = useState(false);
   const previousDevicesRef = useRef<Map<string, USBDeviceInfo>>(new Map());
-  const [settings] = useKV<NotificationSettings>('usb-monitoring-settings', DEFAULT_SETTINGS);
+  const [settings, setSettings] = useKV<NotificationSettings>('usb-monitoring-settings', DEFAULT_SETTINGS);
 
   const refresh = useCallback(async () => {
     const nav = navigator as any;
