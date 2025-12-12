@@ -2,6 +2,7 @@ import React from 'react';
 import { BobbyDevPanel } from "./components/BobbyDevPanel";
 import { SystemToolsDetector } from "./components/SystemToolsDetector";
 import { USBDeviceDetector } from "./components/USBDeviceDetector";
+import { USBDeviceClassDetector } from "./components/USBDeviceClassDetector";
 import { USBConnectionMonitor } from "./components/USBConnectionMonitor";
 import { USBMonitoringStats } from "./components/USBMonitoringStats";
 import { USBMonitoringSettings } from "./components/USBMonitoringSettings";
@@ -20,6 +21,8 @@ function App() {
                         <SystemToolsDetector />
                         <USBDeviceDetector />
                     </div>
+                    
+                    <USBDeviceClassDetector />
                     
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <USBMonitoringStats />

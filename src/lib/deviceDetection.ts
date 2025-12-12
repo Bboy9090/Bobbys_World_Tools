@@ -1,4 +1,5 @@
 import { API_CONFIG, getAPIUrl } from './apiConfig';
+import { detectUSBDevicesWithClasses, analyzeUSBDevice, type EnhancedUSBDeviceInfo } from './usbClassDetection';
 
 export interface SystemTool {
   name: string;
@@ -16,6 +17,8 @@ export interface USBDeviceInfo {
   productName?: string;
   serialNumber?: string;
 }
+
+export type { EnhancedUSBDeviceInfo } from './usbClassDetection';
 
 export interface NetworkDevice {
   ip: string;
@@ -104,6 +107,10 @@ export async function detectUSBDevices(): Promise<USBDeviceInfo[]> {
     console.error('Failed to get USB devices:', error);
     return [];
   }
+}
+
+export async function detectUSBDevicesEnhanced(): Promise<EnhancedUSBDeviceInfo[]> {
+  return await detectUSBDevicesWithClasses();
 }
 
 export async function requestUSBDevice(): Promise<USBDeviceInfo | null> {

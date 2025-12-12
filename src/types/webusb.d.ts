@@ -1,3 +1,32 @@
+interface USBConfiguration {
+  configurationValue: number;
+  configurationName?: string;
+  interfaces: USBInterface[];
+}
+
+interface USBInterface {
+  interfaceNumber: number;
+  alternate: USBAlternateInterface;
+  alternates: USBAlternateInterface[];
+  claimed: boolean;
+}
+
+interface USBAlternateInterface {
+  alternateSetting: number;
+  interfaceClass: number;
+  interfaceSubclass: number;
+  interfaceProtocol: number;
+  interfaceName?: string;
+  endpoints: USBEndpoint[];
+}
+
+interface USBEndpoint {
+  endpointNumber: number;
+  direction: 'in' | 'out';
+  type: 'bulk' | 'interrupt' | 'isochronous' | 'control';
+  packetSize: number;
+}
+
 interface USBDevice {
   vendorId: number;
   productId: number;
@@ -5,6 +34,17 @@ interface USBDevice {
   productName?: string;
   serialNumber?: string;
   opened: boolean;
+  deviceClass: number;
+  deviceSubclass: number;
+  deviceProtocol: number;
+  deviceVersionMajor: number;
+  deviceVersionMinor: number;
+  deviceVersionSubminor: number;
+  usbVersionMajor: number;
+  usbVersionMinor: number;
+  usbVersionSubminor: number;
+  configuration?: USBConfiguration;
+  configurations: USBConfiguration[];
   open(): Promise<void>;
   close(): Promise<void>;
   selectConfiguration(configurationValue: number): Promise<void>;
