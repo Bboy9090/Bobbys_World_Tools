@@ -157,13 +157,24 @@ app.get('/api/system-info', (req, res) => {
   const memInfo = safeExec("free -h | grep 'Mem:' | awk '{print $2}'");
   const diskInfo = safeExec("df -h / | tail -1 | awk '{print $2}'");
   const uptime = safeExec("uptime -p");
+  const hostname = safeExec("hostname");
+  const kernel = safeExec("uname -r");
+  
+  const usbDevicesCount = safeExec("lsusb 2>/dev/null | wc -l");
+  const pciDevicesCount = safeExec("lspci 2>/dev/null | wc -l");
   
   res.json({
     os: osInfo,
+    hostname: hostname,
+    kernel: kernel,
     cpu: cpuInfo?.trim(),
     memory: memInfo?.trim(),
     disk: diskInfo?.trim(),
-    uptime: uptime
+    uptime: uptime,
+    hardware: {
+      usbDevices: usbDevicesCount ? parseInt(usbDevicesCount) : 0,
+      pciDevices: pciDevicesCount ? parseInt(pciDevicesCount) : 0
+    }
   });
 });
 
@@ -209,6 +220,64 @@ app.post('/api/adb/command', (req, res) => {
   
   const output = safeExec(`adb ${command}`);
   res.json({ output });
+});
+
+app.post('/api/network/scan', async (req, res) => {
+  try {
+    const devices = [];
+    
+    if (commandExists('arp')) {
+      const arpOutput = safeExec('arp -a');
+      if (arpOutput) {
+        const lines = arpOutput.split('\n');
+        for (const line of lines) {
+          const match = line.match(/\(([\d.]+)\)\s+at\s+([\w:]+)/);
+          if (match) {
+            devices.push({
+              ip: match[1],
+              mac: match[2],
+              hostname: null,
+              vendor: null,
+              ports: [],
+              services: []
+            });
+          }
+        }
+      }
+    }
+    
+    if (commandExists('ip')) {
+      const neighbors = safeExec('ip neigh show');
+      if (neighbors) {
+        const lines = neighbors.split('\n');
+        for (const line of lines) {
+          const parts = line.trim().split(/\s+/);
+          if (parts.length >= 5 && parts[0].match(/\d+\.\d+\.\d+\.\d+/)) {
+            const existing = devices.find(d => d.ip === parts[0]);
+            if (!existing) {
+              devices.push({
+                ip: parts[0],
+                mac: parts[4],
+                hostname: null,
+                vendor: null,
+                ports: [],
+                services: []
+              });
+            }
+          }
+        }
+      }
+    }
+    
+    res.json({
+      devices,
+      count: devices.length,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Network scan error:', error);
+    res.status(500).json({ error: 'Network scan failed' });
+  }
 });
 
 app.use((err, req, res, next) => {

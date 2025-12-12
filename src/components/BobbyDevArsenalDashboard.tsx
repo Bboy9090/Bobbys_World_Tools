@@ -1,153 +1,125 @@
-import { useEffect, useState } from "react";
-import { Play, AlertTriangle, Shield, Wrench, Search } from "lucide-react";
-import { API_CONFIG, getAPIUrl } from "@/lib/apiConfig";
-
-interface ToolStatus {
-  installed: boolean;
-  version?: string | null;
-  devices_raw?: string | null;
-}
-
-interface ArsenalStatus {
-  env: string;
-  tools: {
-    rust: ToolStatus;
-    node: ToolStatus;
-    python: ToolStatus;
-    adb: ToolStatus;
-    fastboot: ToolStatus;
-  };
-}
-
-const initialStatus: ArsenalStatus = {
-  env: "unknown",
-  tools: {
-    rust: { installed: false, version: null },
-    node: { installed: false, version: null },
-    python: { installed: false, version: null },
-    adb: { installed: false, version: null },
-    fastboot: { installed: false, version: null }
-  }
-};
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { useAllDevices } from '@/hooks/use-device-detection';
+import { ArrowClockwise, CheckCircle, XCircle, Usb, Broadcast, Wrench } from '@phosphor-icons/react';
 
 export function BobbyDevArsenalDashboard() {
-  const [status, setStatus] = useState<ArsenalStatus>(initialStatus);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { systemTools, usbDevices, networkDevices, isLoading, refreshAll } = useAllDevices();
 
-  async function fetchStatus() {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const response = await fetch(getAPIUrl(API_CONFIG.ENDPOINTS.SYSTEM_TOOLS), {
-        signal: AbortSignal.timeout(API_CONFIG.TIMEOUT),
-      });
-
-      if (!response.ok) {
-        throw new Error(`API returned ${response.status}`);
-      }
-
-      const data = await response.json();
-      
-      setStatus({
-        env: data.environment || 'unknown',
-        tools: {
-          rust: data.tools.rust || { installed: false, version: null },
-          node: data.tools.node || { installed: false, version: null },
-          python: data.tools.python || { installed: false, version: null },
-          adb: data.tools.adb || { installed: false, version: null },
-          fastboot: data.tools.fastboot || { installed: false, version: null },
-        }
-      });
-    } catch (err: any) {
-      setError("Backend API not available. Start with: npm run server:dev");
-      setStatus(initialStatus);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    fetchStatus();
-  }, []);
-
-  const tools = [
-    { key: "rust", label: "Rust Toolchain", icon: <Wrench className="w-4 h-4" /> },
-    { key: "node", label: "Node.js", icon: <Play className="w-4 h-4" /> },
-    { key: "python", label: "Python 3", icon: <Search className="w-4 h-4" /> },
-    { key: "adb", label: "ADB", icon: <Shield className="w-4 h-4" /> },
-    { key: "fastboot", label: "Fastboot", icon: <Shield className="w-4 h-4" /> }
-  ] as const;
+  const totalDevices = systemTools.tools.filter(t => t.installed).length + 
+                       usbDevices.devices.length + 
+                       networkDevices.devices.length;
 
   return (
-    <div className="w-full max-w-3xl mx-auto rounded-2xl border border-slate-700 bg-slate-900/70 p-4 md:p-6 shadow-lg">
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h2 className="text-xl font-semibold text-slate-50">Bobby Dev Arsenal</h2>
-          <p className="text-xs text-slate-400">
-            Real system tool detection via backend API
-          </p>
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <Wrench size={24} className="text-primary" />
+              <CardTitle className="text-2xl">Arsenal Status</CardTitle>
+            </div>
+            <CardDescription className="mt-1">
+              Complete device detection overview
+            </CardDescription>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={refreshAll}
+            disabled={isLoading}
+          >
+            <ArrowClockwise size={16} className={isLoading ? 'animate-spin' : ''} />
+            Refresh All
+          </Button>
         </div>
-        <button
-          type="button"
-          className="inline-flex items-center gap-1 rounded-full border border-slate-600 px-3 py-1 text-xs text-slate-100 hover:bg-slate-800 disabled:opacity-50"
-          onClick={fetchStatus}
-          disabled={loading}
-        >
-          <Play className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
-        </button>
-      </div>
-
-      {error && (
-        <div className="mb-3 flex items-center gap-2 rounded-lg border border-amber-500/60 bg-amber-900/30 px-3 py-2 text-xs text-amber-100">
-          <AlertTriangle className="w-4 h-4" />
-          <span>{error}</span>
-        </div>
-      )}
-
-      {loading && status.env === "unknown" ? (
-        <div className="flex items-center justify-center py-8 text-slate-400">
-          <Play className="w-5 h-5 animate-spin mr-2" />
-          Connecting to backend API...
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {tools.map((t) => {
-            const tool = (status.tools as any)[t.key] as ToolStatus;
-            const ok = tool?.installed;
-            return (
-              <div
-                key={t.key}
-                className={`rounded-xl border px-3 py-3 text-xs ${
-                  ok
-                    ? "border-emerald-600/70 bg-emerald-900/20"
-                    : "border-rose-700/70 bg-rose-900/20"
-                }`}
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <div className="flex items-center gap-2">
-                    {t.icon}
-                    <span className="font-medium text-slate-50">{t.label}</span>
-                  </div>
-                  <span className={ok ? "text-emerald-300" : "text-rose-300"}>
-                    {ok ? "INSTALLED" : "NOT FOUND"}
-                  </span>
-                </div>
-                <div className="text-slate-200/80">
-                  {tool?.version && <p>Version: {tool.version}</p>}
-                  {t.key === "adb" && tool?.devices_raw && (
-                    <pre className="mt-1 max-h-20 overflow-auto rounded bg-black/30 p-1 text-[10px] text-slate-200 whitespace-pre-wrap">
-                      {tool.devices_raw}
-                    </pre>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="rounded-lg border p-4 bg-primary/5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Wrench size={20} className="text-primary" />
+                <h3 className="font-semibold">System Tools</h3>
+              </div>
+              <Badge variant="secondary">
+                {systemTools.tools.filter(t => t.installed).length}/{systemTools.tools.length}
+              </Badge>
+            </div>
+            <div className="space-y-2">
+              {systemTools.tools.slice(0, 5).map((tool) => (
+                <div key={tool.name} className="flex items-center justify-between text-sm">
+                  <span className="capitalize">{tool.name}</span>
+                  {tool.installed ? (
+                    <CheckCircle size={16} className="text-green-500" weight="fill" />
+                  ) : (
+                    <XCircle size={16} className="text-red-500" weight="fill" />
                   )}
                 </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-lg border p-4 bg-primary/5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Usb size={20} className="text-primary" />
+                <h3 className="font-semibold">USB Devices</h3>
               </div>
-            );
-          })}
+              <Badge variant="secondary">{usbDevices.devices.length}</Badge>
+            </div>
+            {usbDevices.supported ? (
+              <div className="space-y-2">
+                {usbDevices.devices.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No devices detected</p>
+                ) : (
+                  usbDevices.devices.slice(0, 3).map((device) => (
+                    <div key={device.id} className="text-sm truncate">
+                      {device.productName || 'Unknown Device'}
+                    </div>
+                  ))
+                )}
+                {usbDevices.isMonitoring && (
+                  <Badge variant="outline" className="text-xs">Live Monitoring</Badge>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">WebUSB not supported</p>
+            )}
+          </div>
+
+          <div className="rounded-lg border p-4 bg-primary/5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Broadcast size={20} className="text-primary" />
+                <h3 className="font-semibold">Network</h3>
+              </div>
+              <Badge variant="secondary">{networkDevices.devices.length}</Badge>
+            </div>
+            <div className="space-y-2">
+              {networkDevices.devices.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Click scan to discover</p>
+              ) : (
+                networkDevices.devices.slice(0, 3).map((device) => (
+                  <div key={device.ip} className="text-sm font-mono truncate">
+                    {device.ip}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         </div>
-      )}
-    </div>
+
+        <div className="mt-4 pt-4 border-t flex items-center justify-between">
+          <div className="text-sm text-muted-foreground">
+            Total devices detected: <span className="font-semibold text-foreground">{totalDevices}</span>
+          </div>
+          {usbDevices.isMonitoring && (
+            <Badge variant="default" className="text-xs">Real-time monitoring active</Badge>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 }

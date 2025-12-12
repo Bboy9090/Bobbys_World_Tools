@@ -1,5 +1,6 @@
 import React from 'react';
 import { BobbyDevPanel } from "./components/BobbyDevPanel";
+import { BobbyDevArsenalDashboard } from "./components/BobbyDevArsenalDashboard";
 import { SystemToolsDetector } from "./components/SystemToolsDetector";
 import { USBDeviceDetector } from "./components/USBDeviceDetector";
 import { USBDeviceClassDetector } from "./components/USBDeviceClassDetector";
@@ -16,6 +17,8 @@ function App() {
             <div className="min-h-screen bg-background p-4 md:p-6">
                 <div className="max-w-7xl mx-auto space-y-6">
                     <BobbyDevPanel />
+                    
+                    <BobbyDevArsenalDashboard />
                     
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <SystemToolsDetector />
