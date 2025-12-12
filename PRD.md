@@ -61,6 +61,13 @@ This is a sophisticated monitoring system that tracks multiple real-time metrics
 - **Progression**: Session completes → Metrics aggregated → Score calculated → Profile generated → Trends identified → User views insights
 - **Success criteria**: Score accurately reflects performance (validated against benchmarks), profiles reduce time-to-optimization by 70%
 
+### Automated Testing & Validation
+- **Functionality**: Comprehensive test suite that validates device detection, performance metrics, bottleneck identification, and optimization effectiveness with measurable pass/fail criteria
+- **Purpose**: Ensure all optimization improvements are validated with real metrics and provide confidence that changes deliver actual performance benefits
+- **Trigger**: User-initiated from dedicated testing dashboard, or automated after major optimization changes
+- **Progression**: User clicks "Run Tests" → Test suite executes (device detection, metrics validation, bottleneck detection, performance improvement, real-time streaming, historical comparison, alerts, recommendations) → Results displayed with pass/fail status → Export available → Historical trends tracked
+- **Success criteria**: Complete test suite executes in <30 seconds, >90% pass rate for stable system, clear error reporting for failures, exportable results for documentation, persistent history tracking
+
 ## Edge Case Handling
 
 - **No Historical Data**: Display real-time metrics only, disable comparison features gracefully
@@ -72,6 +79,9 @@ This is a sophisticated monitoring system that tracks multiple real-time metrics
 - **Conflicting Recommendations**: Prioritize by impact and confidence, show trade-offs when optimizations conflict
 - **Applied Optimization Doesn't Improve Performance**: Track results, adjust confidence scores, suggest alternative approaches
 - **User Dismisses Critical Recommendation**: Respect choice but show gentle reminders if issue persists
+- **Test Failures**: Provide detailed error messages, suggest fixes, allow re-running individual tests
+- **WebUSB Unavailable**: Gracefully degrade testing, show compatibility warnings, offer alternative validation methods
+- **Test History Full**: Auto-prune oldest sessions, maintain last 10 runs, offer bulk export before clearing
 
 ## Design Direction
 
