@@ -1,3 +1,5 @@
+import { API_CONFIG, getAPIUrl } from './apiConfig';
+
 export interface SystemTool {
   name: string;
   installed: boolean;
@@ -32,69 +34,53 @@ export interface DetectionResult {
 }
 
 export async function detectSystemTools(): Promise<SystemTool[]> {
-  const tools = [
-    { name: 'rust', command: 'rustc --version' },
-    { name: 'node', command: 'node --version' },
-    { name: 'python', command: 'python3 --version' },
-    { name: 'adb', command: 'adb --version' },
-    { name: 'fastboot', command: 'fastboot --version' },
-    { name: 'docker', command: 'docker --version' },
-    { name: 'git', command: 'git --version' },
-  ];
+  try {
+    const response = await fetch(getAPIUrl(API_CONFIG.ENDPOINTS.SYSTEM_TOOLS), {
+      signal: AbortSignal.timeout(API_CONFIG.TIMEOUT),
+    });
+    
+    if (!response.ok) {
+      throw new Error(`API returned ${response.status}: ${response.statusText}`);
+    }
 
-  const results: SystemTool[] = [];
+    const data = await response.json();
+    const results: SystemTool[] = [];
 
-  for (const tool of tools) {
-    try {
-      const response = await fetch('/api/system/detect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tool: tool.name, command: tool.command })
-      });
+    const toolMapping = [
+      { key: 'rust', name: 'rust' },
+      { key: 'node', name: 'node' },
+      { key: 'python', name: 'python' },
+      { key: 'git', name: 'git' },
+      { key: 'docker', name: 'docker' },
+      { key: 'adb', name: 'adb' },
+      { key: 'fastboot', name: 'fastboot' },
+    ];
 
-      if (response.ok) {
-        const data = await response.json();
+    for (const { key, name } of toolMapping) {
+      const toolData = data.tools[key];
+      if (toolData) {
         results.push({
-          name: tool.name,
-          installed: data.installed,
-          version: data.version,
-          path: data.path,
-          devices_raw: data.devices_raw
+          name,
+          installed: toolData.installed || false,
+          version: toolData.version || null,
+          path: null,
+          devices_raw: toolData.devices_raw || null
         });
       } else {
         results.push({
-          name: tool.name,
+          name,
           installed: false,
           version: null,
           path: null
         });
       }
-    } catch (error) {
-      results.push({
-        name: tool.name,
-        installed: false,
-        version: null,
-        path: null
-      });
     }
-  }
 
-  if (results.find(t => t.name === 'adb' && t.installed)) {
-    try {
-      const adbDevices = await fetch('/api/system/adb-devices');
-      if (adbDevices.ok) {
-        const data = await adbDevices.json();
-        const adbTool = results.find(t => t.name === 'adb');
-        if (adbTool) {
-          adbTool.devices_raw = data.devices_raw;
-        }
-      }
-    } catch (error) {
-      console.error('Failed to get ADB devices:', error);
-    }
+    return results;
+  } catch (error) {
+    console.error('Failed to detect system tools:', error);
+    throw new Error(`Backend API not available. Start the server with: npm run server:dev`);
   }
-
-  return results;
 }
 
 export async function detectUSBDevices(): Promise<USBDeviceInfo[]> {
