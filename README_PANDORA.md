@@ -16,6 +16,9 @@ A comprehensive device detection and monitoring system built with React, TypeScr
 - **Device State Monitoring**: Track Android OS, Recovery, Sideload, and Bootloader modes
 - **Real-time Properties**: Access manufacturer, model, Android version, and security state
 - **Dual-Source Detection**: Unified view from both ADB and Fastboot sources
+- **Firmware Flashing**: Complete fastboot flashing operations for firmware deployment
+- **Partition Management**: Flash, erase, and manage device partitions safely
+- **Bootloader Unlock**: OEM unlock operations with safety confirmations
 
 ### Real-time Monitoring
 - **Live Connection Events**: Instant notifications for device connect/disconnect
@@ -108,11 +111,31 @@ npm run dev
 ## 📚 Documentation
 
 - [ADB/Fastboot Detection Guide](./ADB_FASTBOOT_DETECTION.md) - Complete guide for Android device detection
+- [Fastboot Flashing Operations](./FASTBOOT_FLASHING.md) - Firmware deployment and partition management
 - [Backend API Implementation](./BACKEND_API_IMPLEMENTATION.md) - API endpoints and usage
 - [WebUSB Monitoring](./WEBUSB_MONITORING.md) - WebUSB integration details
 - [Backend Setup](./BACKEND_SETUP.md) - Server configuration guide
 
 ## 🎯 Key Components
+
+### Fastboot Flashing Panel
+Complete firmware deployment system with safety features.
+
+```tsx
+import { FastbootFlashingPanel } from '@/components/FastbootFlashingPanel';
+
+<FastbootFlashingPanel />
+```
+
+**Features:**
+- Flash firmware images to device partitions
+- Unlock/lock bootloader operations
+- Partition management (erase non-critical partitions)
+- Device information extraction
+- Reboot operations (system, bootloader, recovery)
+- Flash operation history and tracking
+- Critical partition protection
+- Multi-level safety confirmations
 
 ### ADB/Fastboot Detector
 Comprehensive Android device detection with bootloader recognition.

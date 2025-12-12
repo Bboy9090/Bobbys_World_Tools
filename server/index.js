@@ -522,6 +522,211 @@ app.post('/api/network/scan', async (req, res) => {
   }
 });
 
+app.get('/api/fastboot/device-info', (req, res) => {
+  if (!commandExists("fastboot")) {
+    return res.status(404).json({ error: "Fastboot not installed" });
+  }
+
+  const { serial } = req.query;
+  if (!serial) {
+    return res.status(400).json({ error: "Serial number required" });
+  }
+
+  try {
+    const extractValue = (output) => {
+      if (!output) return null;
+      const match = output.match(/:\s*(.+)/);
+      return match ? match[1].trim() : null;
+    };
+
+    const product = extractValue(safeExec(`fastboot -s ${serial} getvar product 2>&1`));
+    const variant = extractValue(safeExec(`fastboot -s ${serial} getvar variant 2>&1`));
+    const bootloaderVersion = extractValue(safeExec(`fastboot -s ${serial} getvar version-bootloader 2>&1`));
+    const basebandVersion = extractValue(safeExec(`fastboot -s ${serial} getvar version-baseband 2>&1`));
+    const serialNumber = extractValue(safeExec(`fastboot -s ${serial} getvar serialno 2>&1`));
+    const secure = extractValue(safeExec(`fastboot -s ${serial} getvar secure 2>&1`));
+    const unlocked = extractValue(safeExec(`fastboot -s ${serial} getvar unlocked 2>&1`));
+    const maxDownloadSize = extractValue(safeExec(`fastboot -s ${serial} getvar max-download-size 2>&1`));
+    const currentSlot = extractValue(safeExec(`fastboot -s ${serial} getvar current-slot 2>&1`));
+    const slotCount = extractValue(safeExec(`fastboot -s ${serial} getvar slot-count 2>&1`));
+
+    const bootloaderUnlocked = unlocked === 'yes' || unlocked === 'true';
+    const isSecure = secure === 'yes' || secure === 'true';
+
+    res.json({
+      product,
+      variant,
+      bootloaderVersion,
+      basebandVersion,
+      serialNumber,
+      secure: isSecure,
+      bootloaderUnlocked,
+      maxDownloadSize,
+      currentSlot,
+      slotCount,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Failed to get device info:', error);
+    res.status(500).json({ error: 'Failed to retrieve device information' });
+  }
+});
+
+app.post('/api/fastboot/flash', async (req, res) => {
+  if (!commandExists("fastboot")) {
+    return res.status(404).json({ error: "Fastboot not installed" });
+  }
+
+  try {
+    const multer = await import('multer');
+    const upload = multer.default({ dest: '/tmp/fastboot-uploads/' });
+    
+    upload.single('file')(req, res, (err) => {
+      if (err) {
+        return res.status(500).json({ error: 'File upload failed', details: err.message });
+      }
+
+      const { serial, partition } = req.body;
+      const file = req.file;
+
+      if (!serial || !partition || !file) {
+        return res.status(400).json({ error: "Serial, partition, and file are required" });
+      }
+
+      try {
+        const output = execSync(
+          `fastboot -s ${serial} flash ${partition} ${file.path}`,
+          { encoding: 'utf-8', timeout: 120000 }
+        );
+
+        const fs = require('fs');
+        fs.unlinkSync(file.path);
+
+        res.json({
+          success: true,
+          output: output.trim(),
+          message: `Successfully flashed ${partition}`,
+          timestamp: new Date().toISOString()
+        });
+      } catch (flashError) {
+        const fs = require('fs');
+        if (file.path) {
+          try { fs.unlinkSync(file.path); } catch {}
+        }
+        res.status(500).json({
+          success: false,
+          error: 'Flash operation failed',
+          details: flashError.message
+        });
+      }
+    });
+  } catch (error) {
+    console.error('Flash setup error:', error);
+    res.status(500).json({ error: 'Flash operation setup failed', details: error.message });
+  }
+});
+
+app.post('/api/fastboot/unlock', (req, res) => {
+  if (!commandExists("fastboot")) {
+    return res.status(404).json({ error: "Fastboot not installed" });
+  }
+
+  const { serial } = req.body;
+  if (!serial) {
+    return res.status(400).json({ error: "Serial number required" });
+  }
+
+  try {
+    const output = safeExec(`fastboot -s ${serial} oem unlock`);
+    res.json({
+      success: true,
+      output: output,
+      message: 'Bootloader unlock initiated. Follow device prompts.',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Unlock operation failed',
+      details: error.message
+    });
+  }
+});
+
+app.post('/api/fastboot/reboot', (req, res) => {
+  if (!commandExists("fastboot")) {
+    return res.status(404).json({ error: "Fastboot not installed" });
+  }
+
+  const { serial, mode } = req.body;
+  if (!serial) {
+    return res.status(400).json({ error: "Serial number required" });
+  }
+
+  const validModes = ['system', 'bootloader', 'recovery'];
+  if (!validModes.includes(mode)) {
+    return res.status(400).json({ error: "Invalid reboot mode" });
+  }
+
+  try {
+    let command;
+    if (mode === 'system') {
+      command = `fastboot -s ${serial} reboot`;
+    } else if (mode === 'bootloader') {
+      command = `fastboot -s ${serial} reboot-bootloader`;
+    } else if (mode === 'recovery') {
+      command = `fastboot -s ${serial} reboot recovery`;
+    }
+
+    const output = safeExec(command);
+    res.json({
+      success: true,
+      output: output,
+      message: `Rebooting to ${mode}`,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Reboot operation failed',
+      details: error.message
+    });
+  }
+});
+
+app.post('/api/fastboot/erase', (req, res) => {
+  if (!commandExists("fastboot")) {
+    return res.status(404).json({ error: "Fastboot not installed" });
+  }
+
+  const { serial, partition } = req.body;
+  if (!serial || !partition) {
+    return res.status(400).json({ error: "Serial and partition required" });
+  }
+
+  const criticalPartitions = ['boot', 'system', 'vendor', 'bootloader', 'radio', 'aboot', 'vbmeta'];
+  if (criticalPartitions.includes(partition)) {
+    return res.status(403).json({ error: "Cannot erase critical system partitions for safety" });
+  }
+
+  try {
+    const output = safeExec(`fastboot -s ${serial} erase ${partition}`);
+    res.json({
+      success: true,
+      output: output,
+      message: `Partition ${partition} erased`,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Erase operation failed',
+      details: error.message
+    });
+  }
+});
+
+
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ error: 'Internal server error' });

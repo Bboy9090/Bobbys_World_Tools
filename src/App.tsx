@@ -15,6 +15,8 @@ import { USBMonitoringSettings } from "./components/USBMonitoringSettings";
 import { NetworkDeviceScanner } from "./components/NetworkDeviceScanner";
 import { BackendAPIGuide } from "./components/BackendAPIGuide";
 import { ADBFastbootDetector } from "./components/ADBFastbootDetector";
+import { FastbootFlashingPanel } from "./components/FastbootFlashingPanel";
+import { FastbootFlashingGuide } from "./components/FastbootFlashingGuide";
 import { Toaster } from "@/components/ui/sonner";
 
 function App() {
@@ -29,6 +31,10 @@ function App() {
                     <BobbyDevArsenalDashboard />
                     
                     <ADBFastbootDetector />
+                    
+                    <FastbootFlashingGuide />
+                    
+                    <FastbootFlashingPanel />
                     
                     <DeviceAnalyticsDashboard />
                     
