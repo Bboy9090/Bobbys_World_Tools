@@ -1,5 +1,6 @@
 import React from 'react';
 import { BobbyDevPanel } from "./components/BobbyDevPanel";
+import { PandoraCodexIntegrationGuide } from "./components/PandoraCodexIntegrationGuide";
 import { BobbyDevArsenalDashboard } from "./components/BobbyDevArsenalDashboard";
 import { DeviceAnalyticsDashboard } from "./components/DeviceAnalyticsDashboard";
 import { DeviceInsightsPanel } from "./components/DeviceInsightsPanel";
@@ -21,6 +22,8 @@ function App() {
             <div className="min-h-screen bg-background p-4 md:p-6">
                 <div className="max-w-7xl mx-auto space-y-6">
                     <BobbyDevPanel />
+                    
+                    <PandoraCodexIntegrationGuide />
                     
                     <BobbyDevArsenalDashboard />
                     
