@@ -1,5 +1,23 @@
-import { useState, useEffect, useCallback } from 'react';
-import { detectSystemTools, detectUSBDevices, scanLocalNetwork, requestUSBDevice, type SystemTool, type USBDeviceInfo, type NetworkDevice } from '@/lib/deviceDetection';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { detectSystemTools, detectUSBDevices, scanLocalNetwork, requestUSBDevice, getUSBVendorName, type SystemTool, type USBDeviceInfo, type NetworkDevice } from '@/lib/deviceDetection';
+import { toast } from 'sonner';
+import { useKV } from '@github/spark/hooks';
+
+interface NotificationSettings {
+  enableConnectionNotifications: boolean;
+  enableDisconnectionNotifications: boolean;
+  notificationDuration: number;
+  enableSound: boolean;
+  enableVibration: boolean;
+}
+
+const DEFAULT_SETTINGS: NotificationSettings = {
+  enableConnectionNotifications: true,
+  enableDisconnectionNotifications: true,
+  notificationDuration: 4000,
+  enableSound: false,
+  enableVibration: false,
+};
 
 export function useSystemTools() {
   const [tools, setTools] = useState<SystemTool[]>([]);
@@ -31,6 +49,9 @@ export function useUSBDevices() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [supported, setSupported] = useState(true);
+  const [isMonitoring, setIsMonitoring] = useState(false);
+  const previousDevicesRef = useRef<Map<string, USBDeviceInfo>>(new Map());
+  const [settings] = useKV<NotificationSettings>('usb-monitoring-settings', DEFAULT_SETTINGS);
 
   const refresh = useCallback(async () => {
     const nav = navigator as any;
@@ -40,7 +61,6 @@ export function useUSBDevices() {
       return;
     }
 
-    setLoading(true);
     setError(null);
     try {
       const detected = await detectUSBDevices();
@@ -76,20 +96,105 @@ export function useUSBDevices() {
 
     const nav = navigator as any;
     if (nav.usb) {
-      const handleConnect = () => refresh();
-      const handleDisconnect = () => refresh();
+      setIsMonitoring(true);
+
+      const handleConnect = async (event: any) => {
+        const device = event.device;
+        const deviceInfo: USBDeviceInfo = {
+          id: `${device.vendorId}-${device.productId}-${device.serialNumber || 'unknown'}`,
+          vendorId: device.vendorId,
+          productId: device.productId,
+          manufacturerName: device.manufacturerName,
+          productName: device.productName,
+          serialNumber: device.serialNumber
+        };
+
+        const deviceName = deviceInfo.productName || `Device (VID: 0x${deviceInfo.vendorId.toString(16).padStart(4, '0')})`;
+        const vendorName = getUSBVendorName(deviceInfo.vendorId);
+
+        const currentSettings = settings || DEFAULT_SETTINGS;
+
+        if (currentSettings.enableConnectionNotifications) {
+          toast.success('USB Device Connected', {
+            description: `${deviceName} - ${vendorName}`,
+            duration: currentSettings.notificationDuration,
+          });
+        }
+
+        if (currentSettings.enableVibration && navigator.vibrate) {
+          navigator.vibrate([200, 100, 200]);
+        }
+
+        await refresh();
+      };
+
+      const handleDisconnect = async (event: any) => {
+        const device = event.device;
+        const deviceInfo: USBDeviceInfo = {
+          id: `${device.vendorId}-${device.productId}-${device.serialNumber || 'unknown'}`,
+          vendorId: device.vendorId,
+          productId: device.productId,
+          manufacturerName: device.manufacturerName,
+          productName: device.productName,
+          serialNumber: device.serialNumber
+        };
+
+        const deviceName = deviceInfo.productName || `Device (VID: 0x${deviceInfo.vendorId.toString(16).padStart(4, '0')})`;
+        const vendorName = getUSBVendorName(deviceInfo.vendorId);
+
+        const currentSettings = settings || DEFAULT_SETTINGS;
+
+        if (currentSettings.enableDisconnectionNotifications) {
+          toast.error('USB Device Disconnected', {
+            description: `${deviceName} - ${vendorName}`,
+            duration: currentSettings.notificationDuration,
+          });
+        }
+
+        if (currentSettings.enableVibration && navigator.vibrate) {
+          navigator.vibrate([100]);
+        }
+
+        await refresh();
+      };
 
       nav.usb.addEventListener('connect', handleConnect);
       nav.usb.addEventListener('disconnect', handleDisconnect);
 
       return () => {
+        setIsMonitoring(false);
         nav.usb?.removeEventListener('connect', handleConnect);
         nav.usb?.removeEventListener('disconnect', handleDisconnect);
       };
     }
   }, [refresh]);
 
-  return { devices, loading, error, supported, refresh, requestDevice };
+  useEffect(() => {
+    const currentDeviceMap = new Map(devices.map(d => [d.id, d]));
+    const previousDeviceMap = previousDevicesRef.current;
+
+    if (previousDeviceMap.size > 0 && !loading) {
+      currentDeviceMap.forEach((device, id) => {
+        if (!previousDeviceMap.has(id)) {
+          const deviceName = device.productName || `Device (VID: 0x${device.vendorId.toString(16).padStart(4, '0')})`;
+          const vendorName = getUSBVendorName(device.vendorId);
+          console.log(`New device detected: ${deviceName} - ${vendorName}`);
+        }
+      });
+
+      previousDeviceMap.forEach((device, id) => {
+        if (!currentDeviceMap.has(id)) {
+          const deviceName = device.productName || `Device (VID: 0x${device.vendorId.toString(16).padStart(4, '0')})`;
+          const vendorName = getUSBVendorName(device.vendorId);
+          console.log(`Device removed: ${deviceName} - ${vendorName}`);
+        }
+      });
+    }
+
+    previousDevicesRef.current = currentDeviceMap;
+  }, [devices, loading]);
+
+  return { devices, loading, error, supported, isMonitoring, refresh, requestDevice };
 }
 
 export function useNetworkDevices() {

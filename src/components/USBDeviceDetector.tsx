@@ -4,11 +4,11 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useUSBDevices } from '@/hooks/use-device-detection';
 import { getUSBVendorName } from '@/lib/deviceDetection';
-import { Usb, Plus, ArrowClockwise, Info } from '@phosphor-icons/react';
+import { Usb, Plus, ArrowClockwise, Info, Circle } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 
 export function USBDeviceDetector() {
-  const { devices, loading, error, supported, refresh, requestDevice } = useUSBDevices();
+  const { devices, loading, error, supported, isMonitoring, refresh, requestDevice } = useUSBDevices();
 
   const handleRequestDevice = async () => {
     const device = await requestDevice();
@@ -24,6 +24,12 @@ export function USBDeviceDetector() {
           <div className="flex items-center gap-2">
             <Usb size={20} className="text-primary" />
             <CardTitle>USB Devices</CardTitle>
+            {isMonitoring && (
+              <div className="flex items-center gap-1.5 text-xs text-green-600">
+                <Circle size={8} weight="fill" className="animate-pulse" />
+                <span className="hidden sm:inline">Live Monitoring</span>
+              </div>
+            )}
           </div>
           <div className="flex gap-2">
             <Button
@@ -46,7 +52,7 @@ export function USBDeviceDetector() {
           </div>
         </div>
         <CardDescription>
-          WebUSB API for real-time hardware detection
+          WebUSB API for real-time hardware detection {isMonitoring && '• Live notifications enabled'}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -83,10 +89,17 @@ export function USBDeviceDetector() {
                 {devices.map((device) => (
                   <div
                     key={device.id}
-                    className="flex items-start justify-between rounded-lg border p-3"
+                    className="flex items-start justify-between rounded-lg border p-3 transition-colors hover:bg-muted/50"
                   >
                     <div className="flex items-start gap-3">
-                      <Usb size={20} className="text-primary mt-0.5" />
+                      <div className="relative">
+                        <Usb size={20} className="text-primary mt-0.5" />
+                        <Circle 
+                          size={8} 
+                          weight="fill" 
+                          className="absolute -top-1 -right-1 text-green-500 animate-pulse" 
+                        />
+                      </div>
                       <div>
                         <div className="font-medium">
                           {device.productName || 'Unknown Device'}
@@ -107,9 +120,14 @@ export function USBDeviceDetector() {
                         )}
                       </div>
                     </div>
-                    <Badge variant="outline">
-                      {getUSBVendorName(device.vendorId)}
-                    </Badge>
+                    <div className="flex flex-col items-end gap-2">
+                      <Badge variant="outline">
+                        {getUSBVendorName(device.vendorId)}
+                      </Badge>
+                      <Badge variant="secondary" className="text-xs">
+                        Connected
+                      </Badge>
+                    </div>
                   </div>
                 ))}
               </div>
