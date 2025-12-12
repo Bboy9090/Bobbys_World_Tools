@@ -226,3 +226,5 @@ export function getUSBVendorName(vendorId: number): string {
 
   return vendors[vendorId] || `Unknown (0x${vendorId.toString(16).padStart(4, '0')})`;
 }
+
+export { getUSBClassName } from './usbClassDetection';
