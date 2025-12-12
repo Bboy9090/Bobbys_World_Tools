@@ -20,6 +20,7 @@ import { FastbootFlashingGuide } from "./components/FastbootFlashingGuide";
 import { BatchFlashingPanel } from "./components/BatchFlashingPanel";
 import { BatchFlashingGuide } from "./components/BatchFlashingGuide";
 import { BatchFlashProfiles } from "./components/BatchFlashProfiles";
+import { ExportPandoraCodexFiles } from "./components/ExportPandoraCodexFiles";
 import { Toaster } from "@/components/ui/sonner";
 
 function App() {
@@ -44,6 +45,8 @@ function App() {
                     <BatchFlashingPanel />
                     
                     <BatchFlashProfiles />
+                    
+                    <ExportPandoraCodexFiles />
                     
                     <DeviceAnalyticsDashboard />
                     

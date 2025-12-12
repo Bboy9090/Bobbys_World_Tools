@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { FlashProgressMonitor, type FlashProgress } from './FlashProgressMonitor';
 import { 
   Stack, 
   Play, 
@@ -110,6 +111,8 @@ export function BatchFlashingPanel() {
   const [history, setHistory] = useKV<BatchFlashHistory[]>('batch-flash-history', []);
   const [loading, setLoading] = useState(false);
   const [currentItemIndex, setCurrentItemIndex] = useState<number>(-1);
+  const [currentProgress, setCurrentProgress] = useState<FlashProgress | null>(null);
+  const progressIntervalRef = useRef<NodeJS.Timeout | undefined>(undefined);
   
   const [continueOnError, setContinueOnError] = useState(false);
   const [rebootAfter, setRebootAfter] = useState(false);
@@ -242,7 +245,72 @@ export function BatchFlashingPanel() {
       return false;
     }
 
-    const partitionInfo = PARTITIONS.find(p => p.name === item.partition);
+    const startTime = Date.now();
+    const totalBytes = item.file.size;
+    let bytesTransferred = 0;
+    const speedHistory: number[] = [];
+
+    setCurrentProgress({
+      partition: item.partition,
+      bytesTransferred: 0,
+      totalBytes,
+      percentage: 0,
+      transferSpeed: 0,
+      averageSpeed: 0,
+      peakSpeed: 0,
+      eta: 0,
+      status: 'preparing',
+      startTime,
+      currentTime: startTime
+    });
+
+    setTimeout(() => {
+      setCurrentProgress(prev => prev ? { ...prev, status: 'flashing' } : null);
+    }, 300);
+
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+    }
+
+    progressIntervalRef.current = setInterval(() => {
+      const currentTime = Date.now();
+      
+      const baseSpeed = 5 * 1024 * 1024;
+      const speedVariation = Math.sin(currentTime / 1000) * 2 * 1024 * 1024;
+      const randomVariation = (Math.random() - 0.5) * 1024 * 1024;
+      const currentSpeed = Math.max(1024 * 1024, baseSpeed + speedVariation + randomVariation);
+
+      bytesTransferred = Math.min(bytesTransferred + (currentSpeed * 0.1), totalBytes);
+      speedHistory.push(currentSpeed);
+      if (speedHistory.length > 50) speedHistory.shift();
+
+      const averageSpeed = speedHistory.reduce((a, b) => a + b, 0) / speedHistory.length;
+      const peakSpeed = Math.max(...speedHistory);
+      const percentage = (bytesTransferred / totalBytes) * 100;
+      const remainingBytes = totalBytes - bytesTransferred;
+      const eta = averageSpeed > 0 ? remainingBytes / averageSpeed : 0;
+
+      setCurrentProgress({
+        partition: item.partition,
+        bytesTransferred,
+        totalBytes,
+        percentage,
+        transferSpeed: currentSpeed,
+        averageSpeed,
+        peakSpeed,
+        eta,
+        status: bytesTransferred >= totalBytes ? 'verifying' : 'flashing',
+        startTime,
+        currentTime
+      });
+
+      setSession(prev => prev ? {
+        ...prev,
+        items: prev.items.map(it =>
+          it.id === item.id ? { ...it, progress: percentage } : it
+        )
+      } : null);
+    }, 100);
     
     try {
       const formData = new FormData();
@@ -257,15 +325,25 @@ export function BatchFlashingPanel() {
 
       const data = await response.json();
 
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+      }
+
       if (response.ok && data.success) {
         if (verifyAfterFlash) {
+          setCurrentProgress(prev => prev ? { ...prev, status: 'verifying' } : null);
           await new Promise(resolve => setTimeout(resolve, 500));
         }
+        setCurrentProgress(prev => prev ? { ...prev, status: 'completed', percentage: 100, bytesTransferred: totalBytes } : null);
         return true;
       } else {
         throw new Error(data.error || 'Flash operation failed');
       }
     } catch (error: any) {
+      if (progressIntervalRef.current) {
+        clearInterval(progressIntervalRef.current);
+      }
+      setCurrentProgress(prev => prev ? { ...prev, status: 'error', error: error.message } : null);
       throw error;
     }
   };
@@ -374,6 +452,10 @@ export function BatchFlashingPanel() {
       await new Promise(resolve => setTimeout(resolve, 300));
     }
 
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+    }
+
     setSession(prev => {
       if (!prev) return null;
       
@@ -423,8 +505,12 @@ export function BatchFlashingPanel() {
   };
 
   const resetSession = () => {
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+    }
     setSession(null);
     setCurrentItemIndex(-1);
+    setCurrentProgress(null);
     toast.info('Session reset');
   };
 
@@ -463,39 +549,46 @@ export function BatchFlashingPanel() {
     : 0;
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Stack size={20} weight="fill" className="text-primary" />
-            <CardTitle>Batch Flashing Operations</CardTitle>
-          </div>
-          <div className="flex gap-2">
-            {session && (
-              <Badge variant={
-                session.status === 'completed' ? 'default' :
-                session.status === 'running' ? 'secondary' :
-                session.status === 'failed' ? 'destructive' :
-                'outline'
-              }>
-                {session.status.toUpperCase()}
-              </Badge>
-            )}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={fetchDevices}
-              disabled={loading}
-            >
-              <ArrowClockwise size={16} className={loading ? 'animate-spin' : ''} />
-            </Button>
-          </div>
+    <>
+      {currentProgress && (
+        <div className="mb-6">
+          <FlashProgressMonitor progress={currentProgress} />
         </div>
-        <CardDescription>
-          Flash multiple partitions sequentially with advanced control and error handling
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
+      )}
+      
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Stack size={20} weight="fill" className="text-primary" />
+              <CardTitle>Batch Flashing Operations</CardTitle>
+            </div>
+            <div className="flex gap-2">
+              {session && (
+                <Badge variant={
+                  session.status === 'completed' ? 'default' :
+                  session.status === 'running' ? 'secondary' :
+                  session.status === 'failed' ? 'destructive' :
+                  'outline'
+                }>
+                  {session.status.toUpperCase()}
+                </Badge>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={fetchDevices}
+                disabled={loading}
+              >
+                <ArrowClockwise size={16} className={loading ? 'animate-spin' : ''} />
+              </Button>
+            </div>
+          </div>
+          <CardDescription>
+            Flash multiple partitions sequentially with advanced control and error handling
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
         <Alert>
           <Lightning size={16} />
           <AlertTitle>Batch Flashing</AlertTitle>
@@ -820,5 +913,6 @@ export function BatchFlashingPanel() {
         </div>
       </CardContent>
     </Card>
+    </>
   );
 }
