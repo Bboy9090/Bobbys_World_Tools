@@ -21,6 +21,7 @@ import { BatchFlashingPanel } from "./components/BatchFlashingPanel";
 import { BatchFlashingGuide } from "./components/BatchFlashingGuide";
 import { BatchFlashProfiles } from "./components/BatchFlashProfiles";
 import { ExportPandoraCodexFiles } from "./components/ExportPandoraCodexFiles";
+import { FlashSpeedProfiler } from "./components/FlashSpeedProfiler";
 import { Toaster } from "@/components/ui/sonner";
 
 function App() {
@@ -35,6 +36,8 @@ function App() {
                     <BobbyDevArsenalDashboard />
                     
                     <ADBFastbootDetector />
+                    
+                    <FlashSpeedProfiler />
                     
                     <FastbootFlashingGuide />
                     

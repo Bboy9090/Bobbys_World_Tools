@@ -14,6 +14,8 @@ import {
   CircleNotch
 } from '@phosphor-icons/react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useKV } from '@github/spark/hooks';
+import type { FlashSpeedProfile } from './FlashSpeedProfiler';
 
 export interface FlashProgress {
   partition: string;
@@ -28,15 +30,22 @@ export interface FlashProgress {
   startTime: number;
   currentTime: number;
   error?: string;
+  deviceSerial?: string;
+  deviceModel?: string;
 }
 
 interface FlashProgressMonitorProps {
   progress: FlashProgress | null;
   onCancel?: () => void;
+  onComplete?: (profile: FlashSpeedProfile) => void;
 }
 
-export function FlashProgressMonitor({ progress, onCancel }: FlashProgressMonitorProps) {
+export function FlashProgressMonitor({ progress, onCancel, onComplete }: FlashProgressMonitorProps) {
   const [speedHistory, setSpeedHistory] = useState<number[]>([]);
+  const [profiles, setProfiles] = useKV<FlashSpeedProfile[]>('flash-speed-profiles', []);
+  const [profileCreated, setProfileCreated] = useState(false);
+  const speedSamplesRef = useRef<Array<{ time: number; speed: number }>>([]);
+  const minSpeedRef = useRef<number>(Infinity);
   const maxHistoryLength = 30;
 
   useEffect(() => {
@@ -45,10 +54,67 @@ export function FlashProgressMonitor({ progress, onCancel }: FlashProgressMonito
         const newHistory = [...prev, progress.transferSpeed];
         return newHistory.slice(-maxHistoryLength);
       });
+
+      speedSamplesRef.current.push({
+        time: (progress.currentTime - progress.startTime) / 1000,
+        speed: progress.transferSpeed
+      });
+
+      if (progress.transferSpeed < minSpeedRef.current) {
+        minSpeedRef.current = progress.transferSpeed;
+      }
     } else if (!progress || progress.status === 'completed') {
       setSpeedHistory([]);
     }
   }, [progress?.transferSpeed, progress?.status]);
+
+  useEffect(() => {
+    if (progress?.status === 'completed' && !profileCreated) {
+      createSpeedProfile();
+      setProfileCreated(true);
+    } else if (!progress || progress.status === 'preparing') {
+      setProfileCreated(false);
+      speedSamplesRef.current = [];
+      minSpeedRef.current = Infinity;
+    }
+  }, [progress?.status]);
+
+  const createSpeedProfile = () => {
+    if (!progress) return;
+
+    const duration = progress.currentTime - progress.startTime;
+    const speeds = speedSamplesRef.current.map(s => s.speed);
+    if (speeds.length === 0) return;
+    
+    const avgSpeed = speeds.reduce((a, b) => a + b, 0) / speeds.length;
+    const variance = speeds.length > 1 
+      ? (Math.sqrt(speeds.reduce((sum, speed) => sum + Math.pow(speed - avgSpeed, 2), 0) / speeds.length) / avgSpeed) * 100
+      : 0;
+
+    const profile: FlashSpeedProfile = {
+      id: `profile-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      deviceSerial: progress.deviceSerial || 'unknown',
+      deviceModel: progress.deviceModel,
+      partition: progress.partition,
+      fileSize: progress.totalBytes,
+      timestamp: progress.startTime,
+      duration,
+      averageSpeed: avgSpeed,
+      peakSpeed: progress.peakSpeed,
+      minSpeed: minSpeedRef.current === Infinity ? avgSpeed : minSpeedRef.current,
+      speedVariance: variance,
+      transferEfficiency: Math.min(100, (progress.totalBytes / (avgSpeed * (duration / 1000))) * 100),
+      speedProfile: speedSamplesRef.current.slice(0, 100),
+      errors: progress.error ? 1 : 0,
+      retries: 0
+    };
+
+    setProfiles(prev => [profile, ...(prev || [])].slice(0, 100));
+
+    if (onComplete) {
+      onComplete(profile);
+    }
+  };
 
   if (!progress) {
     return null;
