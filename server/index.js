@@ -188,16 +188,258 @@ app.get('/api/adb/devices', (req, res) => {
   
   const devices = lines.map(line => {
     const parts = line.trim().split(/\s+/);
+    const serial = parts[0];
+    const state = parts[1];
+    const infoStr = parts.slice(2).join(' ');
+    
+    const product = infoStr.match(/product:(\S+)/)?.[1] || null;
+    const model = infoStr.match(/model:(\S+)/)?.[1] || null;
+    const device = infoStr.match(/device:(\S+)/)?.[1] || null;
+    const transport = infoStr.match(/transport_id:(\d+)/)?.[1] || null;
+    
+    let deviceMode = 'unknown';
+    let bootloaderMode = null;
+    let deviceProperties = {};
+    
+    if (state === 'device') {
+      deviceMode = 'android_os';
+      const props = safeExec(`adb -s ${serial} shell getprop 2>/dev/null`);
+      if (props) {
+        const manufacturer = props.match(/\[ro\.product\.manufacturer\]:\s*\[(.*?)\]/)?.[1];
+        const brand = props.match(/\[ro\.product\.brand\]:\s*\[(.*?)\]/)?.[1];
+        const modelProp = props.match(/\[ro\.product\.model\]:\s*\[(.*?)\]/)?.[1];
+        const androidVersion = props.match(/\[ro\.build\.version\.release\]:\s*\[(.*?)\]/)?.[1];
+        const sdkVersion = props.match(/\[ro\.build\.version\.sdk\]:\s*\[(.*?)\]/)?.[1];
+        const buildId = props.match(/\[ro\.build\.id\]:\s*\[(.*?)\]/)?.[1];
+        const bootloader = props.match(/\[ro\.boot\.bootloader\]:\s*\[(.*?)\]/)?.[1];
+        const secureMode = props.match(/\[ro\.secure\]:\s*\[(.*?)\]/)?.[1];
+        const debuggable = props.match(/\[ro\.debuggable\]:\s*\[(.*?)\]/)?.[1];
+        
+        deviceProperties = {
+          manufacturer,
+          brand,
+          model: modelProp,
+          androidVersion,
+          sdkVersion,
+          buildId,
+          bootloader,
+          secure: secureMode === '1',
+          debuggable: debuggable === '1'
+        };
+      }
+    } else if (state === 'recovery') {
+      deviceMode = 'recovery';
+    } else if (state === 'sideload') {
+      deviceMode = 'sideload';
+    } else if (state === 'unauthorized') {
+      deviceMode = 'unauthorized';
+    } else if (state === 'offline') {
+      deviceMode = 'offline';
+    } else if (state === 'bootloader') {
+      deviceMode = 'bootloader';
+    }
+    
     return {
-      serial: parts[0],
-      state: parts[1],
-      info: parts.slice(2).join(' ')
+      serial,
+      state,
+      deviceMode,
+      bootloaderMode,
+      product,
+      model,
+      device,
+      transportId: transport,
+      properties: deviceProperties,
+      info: infoStr
     };
   }).filter(d => d.serial && d.state);
   
   res.json({
     count: devices.length,
-    devices
+    devices,
+    timestamp: new Date().toISOString()
+  });
+});
+
+app.get('/api/fastboot/devices', (req, res) => {
+  if (!commandExists("fastboot")) {
+    return res.status(404).json({ error: "Fastboot not installed" });
+  }
+  
+  const devicesRaw = safeExec("fastboot devices");
+  const lines = devicesRaw?.split('\n').filter(l => l.trim()) || [];
+  
+  const devices = lines.map(line => {
+    const parts = line.trim().split(/\s+/);
+    const serial = parts[0];
+    const mode = parts[1] || 'fastboot';
+    
+    let deviceInfo = {};
+    const productOutput = safeExec(`fastboot -s ${serial} getvar product 2>&1`);
+    const variantOutput = safeExec(`fastboot -s ${serial} getvar variant 2>&1`);
+    const bootloaderOutput = safeExec(`fastboot -s ${serial} getvar version-bootloader 2>&1`);
+    const basebandOutput = safeExec(`fastboot -s ${serial} getvar version-baseband 2>&1`);
+    const serialnoOutput = safeExec(`fastboot -s ${serial} getvar serialno 2>&1`);
+    const secureOutput = safeExec(`fastboot -s ${serial} getvar secure 2>&1`);
+    const unlockStateOutput = safeExec(`fastboot -s ${serial} getvar unlocked 2>&1`);
+    
+    const extractValue = (output) => {
+      if (!output) return null;
+      const match = output.match(/:\s*(.+)/);
+      return match ? match[1].trim() : null;
+    };
+    
+    const product = extractValue(productOutput);
+    const variant = extractValue(variantOutput);
+    const bootloaderVersion = extractValue(bootloaderOutput);
+    const basebandVersion = extractValue(basebandOutput);
+    const serialNumber = extractValue(serialnoOutput);
+    const secure = extractValue(secureOutput);
+    const unlocked = extractValue(unlockStateOutput);
+    
+    let bootloaderState = 'unknown';
+    if (unlocked === 'yes' || unlocked === 'true') {
+      bootloaderState = 'unlocked';
+    } else if (unlocked === 'no' || unlocked === 'false') {
+      bootloaderState = 'locked';
+    }
+    
+    const isSecure = secure === 'yes' || secure === 'true';
+    
+    deviceInfo = {
+      product,
+      variant,
+      bootloaderVersion,
+      basebandVersion,
+      serialNumber,
+      secure: isSecure,
+      unlocked: bootloaderState === 'unlocked',
+      bootloaderState
+    };
+    
+    return {
+      serial,
+      mode,
+      deviceMode: 'bootloader',
+      bootloaderMode: mode,
+      properties: deviceInfo
+    };
+  }).filter(d => d.serial);
+  
+  res.json({
+    count: devices.length,
+    devices,
+    timestamp: new Date().toISOString()
+  });
+});
+
+app.get('/api/android-devices/all', async (req, res) => {
+  const adbInstalled = commandExists("adb");
+  const fastbootInstalled = commandExists("fastboot");
+  
+  let adbDevices = [];
+  let fastbootDevices = [];
+  
+  if (adbInstalled) {
+    const devicesRaw = safeExec("adb devices -l");
+    const lines = devicesRaw?.split('\n').slice(1).filter(l => l.trim()) || [];
+    
+    adbDevices = lines.map(line => {
+      const parts = line.trim().split(/\s+/);
+      const serial = parts[0];
+      const state = parts[1];
+      const infoStr = parts.slice(2).join(' ');
+      
+      const product = infoStr.match(/product:(\S+)/)?.[1] || null;
+      const model = infoStr.match(/model:(\S+)/)?.[1] || null;
+      const device = infoStr.match(/device:(\S+)/)?.[1] || null;
+      
+      let deviceMode = 'unknown';
+      if (state === 'device') deviceMode = 'android_os';
+      else if (state === 'recovery') deviceMode = 'recovery';
+      else if (state === 'sideload') deviceMode = 'sideload';
+      else if (state === 'unauthorized') deviceMode = 'unauthorized';
+      else if (state === 'offline') deviceMode = 'offline';
+      else if (state === 'bootloader') deviceMode = 'bootloader';
+      
+      let deviceProperties = {};
+      if (state === 'device') {
+        const props = safeExec(`adb -s ${serial} shell getprop 2>/dev/null`);
+        if (props) {
+          const manufacturer = props.match(/\[ro\.product\.manufacturer\]:\s*\[(.*?)\]/)?.[1];
+          const brand = props.match(/\[ro\.product\.brand\]:\s*\[(.*?)\]/)?.[1];
+          const modelProp = props.match(/\[ro\.product\.model\]:\s*\[(.*?)\]/)?.[1];
+          const androidVersion = props.match(/\[ro\.build\.version\.release\]:\s*\[(.*?)\]/)?.[1];
+          
+          deviceProperties = {
+            manufacturer,
+            brand,
+            model: modelProp,
+            androidVersion
+          };
+        }
+      }
+      
+      return {
+        id: `adb-${serial}`,
+        serial,
+        state,
+        deviceMode,
+        source: 'adb',
+        product,
+        model,
+        device,
+        properties: deviceProperties
+      };
+    }).filter(d => d.serial && d.state);
+  }
+  
+  if (fastbootInstalled) {
+    const devicesRaw = safeExec("fastboot devices");
+    const lines = devicesRaw?.split('\n').filter(l => l.trim()) || [];
+    
+    fastbootDevices = lines.map(line => {
+      const parts = line.trim().split(/\s+/);
+      const serial = parts[0];
+      const mode = parts[1] || 'fastboot';
+      
+      return {
+        id: `fastboot-${serial}`,
+        serial,
+        state: mode,
+        deviceMode: 'bootloader',
+        bootloaderMode: mode,
+        source: 'fastboot',
+        properties: {}
+      };
+    }).filter(d => d.serial);
+  }
+  
+  const allDevices = [...adbDevices, ...fastbootDevices];
+  
+  const uniqueDevices = allDevices.reduce((acc, device) => {
+    const existing = acc.find(d => d.serial === device.serial);
+    if (!existing) {
+      acc.push(device);
+    } else if (device.source === 'adb' && existing.source === 'fastboot') {
+      Object.assign(existing, device);
+    }
+    return acc;
+  }, [] as any[]);
+  
+  res.json({
+    count: uniqueDevices.length,
+    devices: uniqueDevices,
+    sources: {
+      adb: {
+        available: adbInstalled,
+        count: adbDevices.length
+      },
+      fastboot: {
+        available: fastbootInstalled,
+        count: fastbootDevices.length
+      }
+    },
+    timestamp: new Date().toISOString()
   });
 });
 

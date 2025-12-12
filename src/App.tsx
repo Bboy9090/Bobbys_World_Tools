@@ -14,6 +14,7 @@ import { USBMonitoringStats } from "./components/USBMonitoringStats";
 import { USBMonitoringSettings } from "./components/USBMonitoringSettings";
 import { NetworkDeviceScanner } from "./components/NetworkDeviceScanner";
 import { BackendAPIGuide } from "./components/BackendAPIGuide";
+import { ADBFastbootDetector } from "./components/ADBFastbootDetector";
 import { Toaster } from "@/components/ui/sonner";
 
 function App() {
@@ -26,6 +27,8 @@ function App() {
                     <PandoraCodexIntegrationGuide />
                     
                     <BobbyDevArsenalDashboard />
+                    
+                    <ADBFastbootDetector />
                     
                     <DeviceAnalyticsDashboard />
                     
