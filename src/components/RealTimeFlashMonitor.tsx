@@ -28,6 +28,7 @@ import {
 } from '@phosphor-icons/react';
 import { useKV } from '@github/spark/hooks';
 import { toast } from 'sonner';
+import { PerformanceOptimizer } from './PerformanceOptimizer';
 
 export interface RealtimeMetrics {
   timestamp: number;
@@ -485,9 +486,10 @@ export function RealTimeFlashMonitor() {
       )}
 
       <Tabs defaultValue="realtime" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="realtime">Real-Time</TabsTrigger>
           <TabsTrigger value="analysis">Analysis</TabsTrigger>
+          <TabsTrigger value="optimizer">Optimizer</TabsTrigger>
           <TabsTrigger value="history">History</TabsTrigger>
         </TabsList>
 
@@ -729,6 +731,14 @@ export function RealTimeFlashMonitor() {
               </CardContent>
             </Card>
           )}
+        </TabsContent>
+
+        <TabsContent value="optimizer" className="space-y-6 mt-6">
+          <PerformanceOptimizer
+            sessions={sessions || []}
+            currentMetrics={currentMetrics}
+            activeBottlenecks={activeBottlenecks}
+          />
         </TabsContent>
 
         <TabsContent value="history" className="space-y-4 mt-6">

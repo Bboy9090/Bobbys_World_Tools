@@ -47,6 +47,20 @@ This is a sophisticated monitoring system that tracks multiple real-time metrics
 - **Progression**: User requests export → Data collected → Report formatted → Downloaded as JSON/CSV
 - **Success criteria**: Export completes in <2 seconds, includes all relevant diagnostic data
 
+### Automatic Performance Optimization Recommendations
+- **Functionality**: AI-powered analysis that generates actionable optimization recommendations based on detected bottlenecks, performance patterns, and historical data
+- **Purpose**: Provide users with concrete steps to improve flash performance without requiring deep technical knowledge
+- **Trigger**: Continuously analyzes data during and after monitoring sessions, generates recommendations when patterns emerge
+- **Progression**: Data analysis → Pattern recognition → Bottleneck correlation → Recommendation generation → Priority ranking → Step-by-step guide displayed → User applies optimization → Performance improvement tracked
+- **Success criteria**: Recommendations appear within 3 seconds of analysis, 90%+ relevance rate, clear difficulty/impact ratings, measurable improvement tracking
+
+### Performance Score & Profiling
+- **Functionality**: Calculate multi-dimensional performance scores (speed, stability, efficiency, reliability) and create optimization profiles for different improvement strategies
+- **Purpose**: Give users a holistic view of system performance and curated paths to improvement
+- **Trigger**: Automatically calculated after each session, updated in real-time
+- **Progression**: Session completes → Metrics aggregated → Score calculated → Profile generated → Trends identified → User views insights
+- **Success criteria**: Score accurately reflects performance (validated against benchmarks), profiles reduce time-to-optimization by 70%
+
 ## Edge Case Handling
 
 - **No Historical Data**: Display real-time metrics only, disable comparison features gracefully
@@ -55,10 +69,13 @@ This is a sophisticated monitoring system that tracks multiple real-time metrics
 - **Multiple Concurrent Operations**: Track each operation independently, allow switching between active monitors
 - **Browser Tab Backgrounded**: Continue monitoring with reduced update frequency, warn user of potential timer throttling
 - **Storage Quota Exceeded**: Automatically prune oldest profiles, alert user, offer manual cleanup
+- **Conflicting Recommendations**: Prioritize by impact and confidence, show trade-offs when optimizations conflict
+- **Applied Optimization Doesn't Improve Performance**: Track results, adjust confidence scores, suggest alternative approaches
+- **User Dismisses Critical Recommendation**: Respect choice but show gentle reminders if issue persists
 
 ## Design Direction
 
-The interface should feel like a professional system monitoring tool - technical yet approachable, information-dense but organized, with a dark "command center" aesthetic. Real-time data should pulse and flow naturally, critical alerts should demand attention without overwhelming, and the overall feel should be of a powerful diagnostic system that's actively working for you.
+The interface should feel like a professional system monitoring tool with an intelligent advisor - technical yet approachable, information-dense but organized, with a dark "command center" aesthetic enhanced by AI-powered insights. Real-time data should pulse and flow naturally, critical alerts should demand attention without overwhelming, and optimization recommendations should feel like having an expert looking over your shoulder, providing clear guidance. The overall feel should be of a powerful diagnostic system that's actively working for you and continuously learning how to help you achieve better performance.
 
 ## Color Selection
 
@@ -125,6 +142,12 @@ Real-time monitoring demands smooth, purposeful animations. Metric values should
   - Cpu, HardDrive for resource usage
   - Warning for alerts
   - ChartLine for graphs
+  - Brain for AI-powered optimizer
+  - Sparkle for analysis actions
+  - Target for performance scores
+  - RocketLaunch for high performance
+  - CheckCircle for applied optimizations
+  - Wrench for recommendations
   
 - **Spacing**: Tight spacing (gap-3) within metric groups, standard spacing (gap-6) between major sections, generous padding (p-6) on cards
-- **Mobile**: Single column layout, collapse graphs to simple bar charts, prioritize current metrics over historical data, full-width cards, larger touch targets for export buttons
+- **Mobile**: Single column layout, collapse graphs to simple bar charts, prioritize current metrics and top recommendations over historical data, full-width cards, larger touch targets for export buttons and recommendation actions
