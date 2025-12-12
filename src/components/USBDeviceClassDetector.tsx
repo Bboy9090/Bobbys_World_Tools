@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Loader2, Usb, RefreshCw, Info } from 'lucide-react';
+import { Loader2, Usb, RefreshCw, Info, Filter } from 'lucide-react';
 import { detectUSBDevicesEnhanced, getUSBVendorName, type EnhancedUSBDeviceInfo } from '@/lib/deviceDetection';
 import { toast } from 'sonner';
 import {
@@ -12,11 +12,22 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Separator } from '@/components/ui/separator';
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+type DeviceClassFilter = 'storage' | 'audio' | 'hid' | 'video' | 'printer' | 'hub' | 'wireless' | 'vendor';
 
 export function USBDeviceClassDetector() {
   const [devices, setDevices] = useState<EnhancedUSBDeviceInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [supported, setSupported] = useState(true);
+  const [activeFilters, setActiveFilters] = useState<Set<DeviceClassFilter>>(new Set());
 
   const refresh = async () => {
     const nav = navigator as any;
@@ -62,6 +73,72 @@ export function USBDeviceClassDetector() {
     refresh();
   }, []);
 
+  const toggleFilter = (filter: DeviceClassFilter) => {
+    setActiveFilters(prev => {
+      const newFilters = new Set(prev);
+      if (newFilters.has(filter)) {
+        newFilters.delete(filter);
+      } else {
+        newFilters.add(filter);
+      }
+      return newFilters;
+    });
+  };
+
+  const clearFilters = () => {
+    setActiveFilters(new Set());
+  };
+
+  const filterDevicesByClass = (device: EnhancedUSBDeviceInfo): boolean => {
+    if (activeFilters.size === 0) return true;
+    
+    return device.classes.some(cls => {
+      const className = cls.className.toLowerCase();
+      
+      if (activeFilters.has('storage') && (className.includes('storage') || className.includes('mass storage'))) {
+        return true;
+      }
+      if (activeFilters.has('audio') && className.includes('audio')) {
+        return true;
+      }
+      if (activeFilters.has('hid') && (className.includes('hid') || className.includes('human interface'))) {
+        return true;
+      }
+      if (activeFilters.has('video') && className.includes('video')) {
+        return true;
+      }
+      if (activeFilters.has('printer') && className.includes('printer')) {
+        return true;
+      }
+      if (activeFilters.has('hub') && className.includes('hub')) {
+        return true;
+      }
+      if (activeFilters.has('wireless') && (className.includes('wireless') || className.includes('bluetooth'))) {
+        return true;
+      }
+      if (activeFilters.has('vendor') && className.includes('vendor')) {
+        return true;
+      }
+      
+      return false;
+    });
+  };
+
+  const filteredDevices = useMemo(() => {
+    return devices.filter(filterDevicesByClass);
+  }, [devices, activeFilters]);
+
+  const filterOptions: { value: DeviceClassFilter; label: string; icon: string }[] = [
+    { value: 'storage', label: 'Storage Devices', icon: '💾' },
+    { value: 'audio', label: 'Audio Devices', icon: '🎵' },
+    { value: 'hid', label: 'HID Devices', icon: '⌨️' },
+    { value: 'video', label: 'Video Devices', icon: '📹' },
+    { value: 'printer', label: 'Printers', icon: '🖨️' },
+    { value: 'hub', label: 'USB Hubs', icon: '🔌' },
+    { value: 'wireless', label: 'Wireless', icon: '📡' },
+    { value: 'vendor', label: 'Vendor Specific', icon: '⚙️' },
+  ];
+
   if (!supported) {
     return (
       <Card className="border-destructive/50">
@@ -92,6 +169,49 @@ export function USBDeviceClassDetector() {
             </CardDescription>
           </div>
           <div className="flex gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={loading}
+                >
+                  <Filter className="w-4 h-4 mr-2" />
+                  Filter
+                  {activeFilters.size > 0 && (
+                    <Badge variant="secondary" className="ml-2 h-5 w-5 p-0 flex items-center justify-center">
+                      {activeFilters.size}
+                    </Badge>
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel className="flex items-center justify-between">
+                  <span>Device Classes</span>
+                  {activeFilters.size > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-xs"
+                      onClick={clearFilters}
+                    >
+                      Clear
+                    </Button>
+                  )}
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {filterOptions.map((option) => (
+                  <DropdownMenuCheckboxItem
+                    key={option.value}
+                    checked={activeFilters.has(option.value)}
+                    onCheckedChange={() => toggleFilter(option.value)}
+                  >
+                    <span className="mr-2">{option.icon}</span>
+                    {option.label}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button
               variant="outline"
               size="sm"
@@ -116,6 +236,28 @@ export function USBDeviceClassDetector() {
         </div>
       </CardHeader>
       <CardContent>
+        {activeFilters.size > 0 && (
+          <div className="mb-4 flex flex-wrap gap-2 items-center">
+            <span className="text-sm text-muted-foreground">Active filters:</span>
+            {Array.from(activeFilters).map((filter) => {
+              const option = filterOptions.find(o => o.value === filter);
+              return (
+                <Badge key={filter} variant="secondary" className="gap-1">
+                  <span>{option?.icon}</span>
+                  {option?.label}
+                </Badge>
+              );
+            })}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 text-xs"
+              onClick={clearFilters}
+            >
+              Clear all
+            </Button>
+          </div>
+        )}
         {loading && devices.length === 0 ? (
           <div className="flex items-center justify-center py-8 text-muted-foreground">
             <Loader2 className="w-6 h-6 animate-spin mr-2" />
@@ -127,10 +269,23 @@ export function USBDeviceClassDetector() {
             <p className="font-medium mb-1">No USB Devices Found</p>
             <p className="text-sm">Click "Connect Device" to grant access to a USB device</p>
           </div>
+        ) : filteredDevices.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            <Filter className="w-12 h-12 mx-auto mb-3 opacity-50" />
+            <p className="font-medium mb-1">No Devices Match Selected Filters</p>
+            <p className="text-sm mb-3">Try adjusting your filter settings</p>
+            <Button variant="outline" size="sm" onClick={clearFilters}>
+              Clear Filters
+            </Button>
+          </div>
         ) : (
-          <Accordion type="single" collapsible className="space-y-2">
-            {devices.map((device, index) => (
-              <AccordionItem
+          <div className="space-y-2">
+            <div className="text-sm text-muted-foreground mb-3">
+              Showing {filteredDevices.length} of {devices.length} device{devices.length !== 1 ? 's' : ''}
+            </div>
+            <Accordion type="single" collapsible className="space-y-2">
+              {filteredDevices.map((device, index) => (
+                <AccordionItem
                 key={device.id}
                 value={device.id}
                 className="border rounded-lg px-4"
@@ -264,8 +419,9 @@ export function USBDeviceClassDetector() {
                   </div>
                 </AccordionContent>
               </AccordionItem>
-            ))}
-          </Accordion>
+              ))}
+            </Accordion>
+          </div>
         )}
       </CardContent>
     </Card>
