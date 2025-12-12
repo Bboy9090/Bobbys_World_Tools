@@ -29,6 +29,7 @@ import {
 import { useKV } from '@github/spark/hooks';
 import { toast } from 'sonner';
 import { PerformanceOptimizer } from './PerformanceOptimizer';
+import { PerformanceBenchmarking } from './PerformanceBenchmarking';
 
 export interface RealtimeMetrics {
   timestamp: number;
@@ -486,9 +487,10 @@ export function RealTimeFlashMonitor() {
       )}
 
       <Tabs defaultValue="realtime" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="realtime">Real-Time</TabsTrigger>
           <TabsTrigger value="analysis">Analysis</TabsTrigger>
+          <TabsTrigger value="benchmarks">Benchmarks</TabsTrigger>
           <TabsTrigger value="optimizer">Optimizer</TabsTrigger>
           <TabsTrigger value="history">History</TabsTrigger>
         </TabsList>
@@ -731,6 +733,13 @@ export function RealTimeFlashMonitor() {
               </CardContent>
             </Card>
           )}
+        </TabsContent>
+
+        <TabsContent value="benchmarks" className="space-y-6 mt-6">
+          <PerformanceBenchmarking
+            currentMetrics={currentMetrics || undefined}
+            isActive={isMonitoring}
+          />
         </TabsContent>
 
         <TabsContent value="optimizer" className="space-y-6 mt-6">

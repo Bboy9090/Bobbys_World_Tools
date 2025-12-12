@@ -68,6 +68,13 @@ This is a sophisticated monitoring system that tracks multiple real-time metrics
 - **Progression**: User clicks "Run Tests" → Test suite executes (device detection, metrics validation, bottleneck detection, performance improvement, real-time streaming, historical comparison, alerts, recommendations) → Results displayed with pass/fail status → Export available → Historical trends tracked
 - **Success criteria**: Complete test suite executes in <30 seconds, >90% pass rate for stable system, clear error reporting for failures, exportable results for documentation, persistent history tracking
 
+### Performance Benchmarking Against Industry Standards
+- **Functionality**: Comprehensive comparison of flash operation performance against industry-standard benchmarks across multiple categories (flash speed, USB bandwidth, CPU efficiency, memory usage, latency, reliability, power efficiency)
+- **Purpose**: Provide objective performance evaluation, identify optimization opportunities, validate improvements against recognized standards, and track performance trends
+- **Trigger**: Automatically during monitoring sessions, with manual session save and export capabilities
+- **Progression**: Operation starts → Metrics collected → Real-time comparison to standards → Performance rated (Optimal/Good/Acceptable/Poor) → Percentile calculated → Recommendations generated → User views detailed comparisons → Session saved → Historical tracking → Export for analysis
+- **Success criteria**: Accurate benchmark evaluation (<2% error vs standards), ratings reflect industry specifications (USB-IF, JEDEC, etc.), actionable recommendations provided for sub-optimal metrics, complete session history maintained, export includes all relevant data
+
 ## Edge Case Handling
 
 - **No Historical Data**: Display real-time metrics only, disable comparison features gracefully

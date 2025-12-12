@@ -32,6 +32,14 @@ A comprehensive device detection and monitoring system built with React, TypeScr
 - **Device Insights**: AI-powered analysis of device patterns
 - **Health Scores**: Automated device health assessment
 
+### Performance Monitoring & Benchmarking
+- **Real-time Flash Performance Monitor**: Live metrics during firmware operations
+- **Bottleneck Detection**: Automatic identification of performance issues
+- **Industry Benchmarking**: Compare your performance against official standards (USB-IF, JEDEC, etc.)
+- **Performance Optimization**: AI-powered recommendations for improvement
+- **Automated Testing**: Comprehensive validation of optimization effectiveness
+- **Historical Tracking**: Monitor performance trends over time
+
 ## 📋 System Architecture
 
 ### Frontend (React + TypeScript)
@@ -112,11 +120,44 @@ npm run dev
 
 - [ADB/Fastboot Detection Guide](./ADB_FASTBOOT_DETECTION.md) - Complete guide for Android device detection
 - [Fastboot Flashing Operations](./FASTBOOT_FLASHING.md) - Firmware deployment and partition management
+- [Performance Benchmarking](./PERFORMANCE_BENCHMARKING.md) - Industry standards comparison and optimization
+- [Benchmarking Quick Start](./BENCHMARKING_QUICKSTART.md) - Get started with performance evaluation
 - [Backend API Implementation](./BACKEND_API_IMPLEMENTATION.md) - API endpoints and usage
 - [WebUSB Monitoring](./WEBUSB_MONITORING.md) - WebUSB integration details
 - [Backend Setup](./BACKEND_SETUP.md) - Server configuration guide
+- [Automated Testing](./AUTOMATED_TESTING.md) - Test suite documentation
 
 ## 🎯 Key Components
+
+### Performance Benchmarking Dashboard
+Industry-standard performance comparison and optimization tracking.
+
+```tsx
+import { PerformanceBenchmarking } from '@/components/PerformanceBenchmarking';
+
+<PerformanceBenchmarking 
+  currentMetrics={metrics}
+  isActive={isMonitoring}
+/>
+```
+
+**Features:**
+- Compare against 16+ industry benchmarks (USB-IF, JEDEC, etc.)
+- Real-time performance rating (Optimal/Good/Acceptable/Poor)
+- Percentile rankings across 7 categories
+- Actionable optimization recommendations
+- Session history and trend tracking
+- Export benchmark data for analysis
+- Industry comparison view
+
+### Benchmark Standards Guide
+Reference documentation for all performance standards.
+
+```tsx
+import { BenchmarkStandardsGuide } from '@/components/BenchmarkStandardsGuide';
+
+<BenchmarkStandardsGuide />
+```
 
 ### Fastboot Flashing Panel
 Complete firmware deployment system with safety features.
