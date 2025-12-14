@@ -68,6 +68,13 @@ This is a curated resource hub and diagnostic toolkit for legitimate device repa
 - **Progression**: User enables atmosphere → Selects mode → Adjusts intensity (0-15%) → Enables auto-mute/pause options → Starts work → Audio fades in → Job completes → Audio fades out
 - **Success criteria**: Never auto-plays on launch, volume hard-capped at 15%, smooth fade in/out (200-300ms), respects user preferences via useKV persistence, works with all flash/diagnostic operations, gracefully handles missing audio files, External mode does nothing (BYO audio), legal/license-clean audio only
 
+### Plugin Marketplace
+- **Functionality**: Community-driven plugin ecosystem with browsing, installation, submission, and automated testing - includes 5+ sample plugins (Samsung Enhanced Diagnostics, Xiaomi EDL Helper, iOS Checkra1n Automation, Universal Fastboot Tools, Battery Health Pro), search/filter by category/risk/certification, detailed plugin pages with test results, ratings, and author info
+- **Purpose**: Extend Bobby's World capabilities through vetted community contributions with automated security and quality checks
+- **Trigger**: User clicks "Plugin Marketplace" from hub or navigates from Authority Dashboard
+- **Progression**: Browse marketplace → Filter by category/certification → View plugin details → See automated test results → Install plugin → Enable/disable from Installed tab → Submit own plugins for review
+- **Success criteria**: Plugins persist via useKV, install/uninstall works correctly, search/filtering responsive, submission form validates inputs, automated test badges display correctly (pass/fail status), plugin details modal shows all metadata, certified badge appears on approved plugins, risk level warnings clear
+
 ## Edge Case Handling
 
 - **No Devices Connected**: Show friendly empty state with connection instructions, avoid technical jargon

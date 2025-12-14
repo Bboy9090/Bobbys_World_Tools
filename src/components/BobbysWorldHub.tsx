@@ -1,4 +1,4 @@
-import { Books, Wrench, Cpu, Users, FolderOpen, Heart, Lightning, ShieldCheck, ChartLine, DeviceMobile, Gear, ListChecks, LockKey } from '@phosphor-icons/react';
+import { Books, Wrench, Cpu, Users, FolderOpen, Heart, Lightning, ShieldCheck, ChartLine, DeviceMobile, Gear, ListChecks, LockKey, Package, Storefront } from '@phosphor-icons/react';
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
 interface HubCardProps {
@@ -50,6 +50,13 @@ export function BobbysWorldHub({ onNavigate }: BobbysWorldHubProps) {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <HubCard
+            icon={<Storefront size={28} weight="duotone" />}
+            title="Plugin Marketplace"
+            description="Community-built tools with automated testing and certification"
+            onClick={() => onNavigate('marketplace')}
+            featured
+          />
           <HubCard
             icon={<ShieldCheck size={28} weight="duotone" />}
             title="Authority Dashboard"
