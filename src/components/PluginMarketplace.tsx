@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { 
   MagnifyingGlass, 
   Download, 
@@ -20,13 +21,15 @@ import {
   XCircle,
   Clock,
   Sparkle,
-  ArrowsClockwise
+  ArrowsClockwise,
+  Tree
 } from '@phosphor-icons/react';
 import { Plugin, PluginSearchFilters, InstalledPlugin, PluginSubmission } from '@/types/plugin';
 import { toast } from 'sonner';
 import { pluginAPI, PluginDownloadProgress } from '@/lib/plugin-api';
 import { PluginRegistrySync } from './PluginRegistrySync';
 import { PluginRegistryBrowser } from './PluginRegistryBrowser';
+import { PluginDependencyInstaller } from './PluginDependencyInstaller';
 
 const MOCK_PLUGINS_FALLBACK: Plugin[] = [
   {
@@ -295,6 +298,12 @@ export function PluginMarketplace() {
   const [plugins, setPlugins] = useState<Plugin[]>(MOCK_PLUGINS_FALLBACK);
   const [loading, setLoading] = useState(false);
   const [downloading, setDownloading] = useState<Map<string, PluginDownloadProgress>>(new Map());
+  const [dependencyInstallDialog, setDependencyInstallDialog] = useState<{
+    open: boolean;
+    pluginId: string;
+    pluginName: string;
+    version?: string;
+  } | null>(null);
 
   const installed = installedPlugins || [];
 
@@ -339,47 +348,21 @@ export function PluginMarketplace() {
       return;
     }
 
-    try {
-      const progressToastId = toast.loading(`Downloading ${plugin.name}...`);
-      
-      const blob = await pluginAPI.downloadPlugin(
-        plugin.id,
-        plugin.currentVersion.version,
-        (progress) => {
-          setDownloading(prev => new Map(prev).set(plugin.id, progress));
-          
-          if (progress.stage === 'downloading' && progress.progress > 0) {
-            toast.loading(
-              `Downloading ${plugin.name}... ${Math.round(progress.progress)}%`,
-              { id: progressToastId }
-            );
-          } else if (progress.stage === 'verifying') {
-            toast.loading(`Verifying ${plugin.name}...`, { id: progressToastId });
-          }
-        }
-      );
+    setDependencyInstallDialog({
+      open: true,
+      pluginId: plugin.id,
+      pluginName: plugin.name,
+      version: plugin.currentVersion.version,
+    });
+  };
 
-      toast.loading(`Installing ${plugin.name}...`, { id: progressToastId });
-      
-      const installedPlugin = await pluginAPI.installPlugin(plugin.id, plugin.currentVersion.version);
-      
-      setInstalledPlugins(current => [...(current || []), installedPlugin]);
-      setDownloading(prev => {
-        const next = new Map(prev);
-        next.delete(plugin.id);
-        return next;
-      });
-      
-      toast.success(`${plugin.name} installed successfully`, { id: progressToastId });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Installation failed';
-      toast.error(message);
-      setDownloading(prev => {
-        const next = new Map(prev);
-        next.delete(plugin.id);
-        return next;
-      });
+  const handleDependencyInstallComplete = async (success: boolean) => {
+    if (success && dependencyInstallDialog) {
+      await loadPlugins();
+      const installedList = await pluginAPI.getInstalledPlugins();
+      setInstalledPlugins(installedList);
     }
+    setDependencyInstallDialog(null);
   };
 
   const handleUninstall = async (pluginId: string) => {
@@ -696,6 +679,28 @@ export function PluginMarketplace() {
           isInstalled={installed.some(p => p.plugin.id === selectedPlugin.id)}
         />
       )}
+
+      <Dialog open={dependencyInstallDialog?.open || false} onOpenChange={(open) => {
+        if (!open) setDependencyInstallDialog(null);
+      }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Tree className="text-primary" />
+              Install with Dependencies
+            </DialogTitle>
+          </DialogHeader>
+          {dependencyInstallDialog && (
+            <PluginDependencyInstaller
+              pluginId={dependencyInstallDialog.pluginId}
+              pluginName={dependencyInstallDialog.pluginName}
+              version={dependencyInstallDialog.version}
+              onInstallComplete={handleDependencyInstallComplete}
+              onCancel={() => setDependencyInstallDialog(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
