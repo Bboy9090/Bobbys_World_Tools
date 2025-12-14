@@ -25,7 +25,9 @@ import { Toaster } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from '@phosphor-icons/react';
 
-type Section = 'hub' | 'repair-library' | 'tool-registry' | 'diagnostics' | 'flashing' | 'universal-flash' | 'multi-brand-flash' | 'mtk-flash' | 'ios-dfu' | 'security-edu' | 'pandora-codex' | 'support-matrix' | 'community' | 'workspace' | 'about' | 'settings' | 'vault' | 'authority' | 'plugins' | 'marketplace' | 'testing' | 'evidence';
+import { DiagnosticPluginsDashboard } from "./components/DiagnosticPluginsDashboard";
+
+type Section = 'hub' | 'repair-library' | 'tool-registry' | 'diagnostics' | 'flashing' | 'universal-flash' | 'multi-brand-flash' | 'mtk-flash' | 'ios-dfu' | 'security-edu' | 'pandora-codex' | 'support-matrix' | 'community' | 'workspace' | 'about' | 'settings' | 'vault' | 'authority' | 'plugins' | 'marketplace' | 'testing' | 'evidence' | 'diagnostic-plugins';
 
 function App() {
     const [currentSection, setCurrentSection] = useState<Section>('hub');
@@ -75,6 +77,7 @@ function App() {
                     {currentSection === 'marketplace' && <PluginMarketplace />}
                     {currentSection === 'testing' && <AutomatedTestingDashboard />}
                     {currentSection === 'evidence' && <EvidenceBundleManager />}
+                    {currentSection === 'diagnostic-plugins' && <DiagnosticPluginsDashboard />}
                 </div>
             </div>
             <Toaster />

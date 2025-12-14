@@ -110,11 +110,20 @@ export interface PluginContext {
     permissions: string[];
   };
   
+  deviceId?: string;
+  
+  platform?: 'android' | 'ios' | 'windows' | 'macos' | 'linux';
+  
   device?: {
     serial: string;
     platform: string;
     brand: string;
     model: string;
+  };
+  
+  adb?: {
+    shell: (deviceId: string, command: string) => Promise<string>;
+    execute: (deviceId: string, command: string) => Promise<string>;
   };
   
   kv: {
@@ -124,7 +133,7 @@ export interface PluginContext {
     keys: () => Promise<string[]>;
   };
   
-  logger: {
+  logger?: {
     info: (message: string, metadata?: Record<string, any>) => void;
     warn: (message: string, metadata?: Record<string, any>) => void;
     error: (message: string, metadata?: Record<string, any>) => void;
@@ -182,12 +191,14 @@ export interface PluginExecutionParams {
   dryRun?: boolean;
 }
 
-export interface PluginResult {
+export interface PluginResult<T = any> {
   success: boolean;
   
   message?: string;
   
-  data?: any;
+  data?: T;
+  
+  error?: string;
   
   warnings?: string[];
   
