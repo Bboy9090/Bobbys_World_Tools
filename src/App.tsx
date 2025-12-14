@@ -17,11 +17,12 @@ import { SettingsPanel } from "./components/SettingsPanel";
 import { BootForgeUSBSupportMatrix } from "./components/BootForgeUSBSupportMatrix";
 import { BobbysVault } from "./components/BobbysVault";
 import { AuthorityDashboard } from "./components/AuthorityDashboard";
+import { PluginManager } from "./components/PluginManager";
 import { Toaster } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from '@phosphor-icons/react';
 
-type Section = 'hub' | 'repair-library' | 'tool-registry' | 'diagnostics' | 'flashing' | 'universal-flash' | 'multi-brand-flash' | 'mtk-flash' | 'ios-dfu' | 'security-edu' | 'pandora-codex' | 'support-matrix' | 'community' | 'workspace' | 'about' | 'settings' | 'vault' | 'authority';
+type Section = 'hub' | 'repair-library' | 'tool-registry' | 'diagnostics' | 'flashing' | 'universal-flash' | 'multi-brand-flash' | 'mtk-flash' | 'ios-dfu' | 'security-edu' | 'pandora-codex' | 'support-matrix' | 'community' | 'workspace' | 'about' | 'settings' | 'vault' | 'authority' | 'plugins';
 
 function App() {
     const [currentSection, setCurrentSection] = useState<Section>('hub');
@@ -67,6 +68,7 @@ function App() {
                     {currentSection === 'settings' && <SettingsPanel />}
                     {currentSection === 'vault' && <BobbysVault />}
                     {currentSection === 'authority' && <AuthorityDashboard />}
+                    {currentSection === 'plugins' && <PluginManager onNavigate={navigateToSection} />}
                 </div>
             </div>
             <Toaster />
