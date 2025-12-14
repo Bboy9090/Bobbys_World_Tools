@@ -82,6 +82,13 @@ This is a sophisticated monitoring system that tracks multiple real-time metrics
 - **Progression**: Flash operation starts → Benchmark session initialized → Metrics collected continuously (100ms intervals) → Live graph displays real-time performance → Bottleneck alerts appear immediately when detected → Operation completes → Final analysis calculated → Performance grade assigned → Optimization recommendations generated → Results saved to history → Trends analyzed across sessions
 - **Success criteria**: Zero-overhead benchmarking (no impact on flash performance), metrics captured at 10Hz with <50ms latency, bottlenecks detected within 500ms of occurrence, final analysis completes within 2 seconds, accurate grade assignment (validated against manual evaluation), actionable recommendations (>85% user satisfaction), complete history tracking with trend analysis, cross-device performance comparison, exportable benchmark data
 
+### WebSocket Live Device Hotplug Notifications
+- **Functionality**: Real-time USB device connection and disconnection event notifications via WebSocket connections, with automatic reconnection, event history buffering, and live statistics tracking
+- **Purpose**: Enable instant awareness of device state changes without manual polling, provide developers and operators with immediate feedback on device connections for rapid diagnostics and workflow optimization
+- **Trigger**: WebSocket connection established on component mount, events received automatically when devices connect or disconnect
+- **Progression**: Component mounts → WebSocket connects to backend → Connection confirmed → Device plugged in → Event broadcast from server → Client receives event → UI updates instantly → Toast notification shown → Event added to history → Statistics updated → Device unplugged → Disconnect event received → UI updates → Process repeats
+- **Success criteria**: WebSocket connection establishes within 1 second, events received with <200ms latency from actual device state change, automatic reconnection with exponential backoff succeeds within 30 seconds, zero events lost during normal operation, event history maintains last 100 events, statistics accurately reflect device state, toast notifications appear within 500ms of event
+
 ## Edge Case Handling
 
 - **No Historical Data**: Display real-time metrics only, disable comparison features gracefully
@@ -96,6 +103,10 @@ This is a sophisticated monitoring system that tracks multiple real-time metrics
 - **Test Failures**: Provide detailed error messages, suggest fixes, allow re-running individual tests
 - **WebUSB Unavailable**: Gracefully degrade testing, show compatibility warnings, offer alternative validation methods
 - **Test History Full**: Auto-prune oldest sessions, maintain last 10 runs, offer bulk export before clearing
+- **WebSocket Connection Failed**: Show clear error message with backend server status, provide manual reconnect button, gracefully degrade to manual refresh mode
+- **WebSocket Disconnected Mid-Stream**: Automatically attempt reconnection with exponential backoff, preserve event history, show connection status indicator
+- **Duplicate Device Events**: Deduplicate events by device UID and timestamp, maintain event integrity
+- **Malformed WebSocket Messages**: Validate JSON schema, log parsing errors, continue processing valid events
 
 ## Design Direction
 
@@ -172,6 +183,10 @@ Real-time monitoring demands smooth, purposeful animations. Metric values should
   - RocketLaunch for high performance
   - CheckCircle for applied optimizations
   - Wrench for recommendations
+  - Broadcast for WebSocket/live monitoring
+  - PlugsConnected for device connections
+  - Plug for device disconnections
+  - DeviceMobile for device indicators
   
 - **Spacing**: Tight spacing (gap-3) within metric groups, standard spacing (gap-6) between major sections, generous padding (p-6) on cards
 - **Mobile**: Single column layout, collapse graphs to simple bar charts, prioritize current metrics and top recommendations over historical data, full-width cards, larger touch targets for export buttons and recommendation actions
