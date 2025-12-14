@@ -4,6 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { EmptyState } from './EmptyState';
+import { ErrorState } from './ErrorState';
+import { useApp } from '@/lib/app-context';
 import { 
   Play, 
   Pause, 
@@ -29,9 +32,11 @@ interface FlashOperation {
 const API_BASE = 'http://localhost:3001';
 
 export function PandoraFlashPanel() {
+  const { isDemoMode } = useApp();
   const [operations, setOperations] = useState<FlashOperation[]>([]);
   const [history, setHistory] = useState<FlashOperation[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadHistory();
@@ -39,28 +44,37 @@ export function PandoraFlashPanel() {
 
   const loadHistory = async () => {
     try {
+      setError(null);
       const res = await fetch(`${API_BASE}/api/flash/history`);
       if (res.ok) {
         const data = await res.json();
         setHistory(data);
+      } else {
+        setError('Failed to load flash history from backend');
       }
     } catch (err) {
       console.error('Failed to load flash history:', err);
+      setError('Backend API unavailable');
     }
   };
 
   const startDemoFlash = async () => {
+    if (!isDemoMode) {
+      toast.error('Flash operations require backend API connection');
+      return;
+    }
+    
     setLoading(true);
     try {
       const res = await fetch(`${API_BASE}/api/flash/start`, { method: 'POST' });
       if (res.ok) {
         const data = await res.json();
-        toast.success('Demo flash operation started');
+        toast.success('Demo flash operation started (DEMO MODE)');
         
         const newOp: FlashOperation = {
           id: Date.now().toString(),
-          device: 'Demo Device',
-          firmware: 'Demo Firmware v1.0',
+          device: '[DEMO] Simulated Device',
+          firmware: '[DEMO] Test Firmware v1.0',
           status: 'running',
           progress: 0,
           startTime: Date.now(),
@@ -141,23 +155,29 @@ export function PandoraFlashPanel() {
               </CardTitle>
               <CardDescription>Manage device firmware flashing operations</CardDescription>
             </div>
-            <Button onClick={startDemoFlash} disabled={loading}>
+            <Button onClick={startDemoFlash} disabled={loading || !isDemoMode}>
               {loading ? (
                 <CircleNotch className="w-4 h-4 animate-spin" />
               ) : (
                 <Play className="w-4 h-4" weight="fill" />
               )}
-              Start Demo Flash
+              {isDemoMode ? 'Start Demo Flash' : 'Connect Backend'}
             </Button>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
           {operations.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <Lightning className="w-12 h-12 mx-auto mb-3 opacity-50" weight="duotone" />
-              <p className="font-medium">No active operations</p>
-              <p className="text-sm mt-1">Click "Start Demo Flash" to begin</p>
-            </div>
+            <EmptyState
+              icon={<Lightning className="w-12 h-12" weight="duotone" />}
+              title="No operations queued"
+              description={isDemoMode 
+                ? "Click 'Start Demo Flash' to simulate a flash operation (demo mode)"
+                : "Connect to backend API to start real flash operations"}
+              action={isDemoMode ? {
+                label: 'Start Demo Flash',
+                onClick: startDemoFlash
+              } : undefined}
+            />
           ) : (
             <div className="space-y-3">
               {operations.map((op) => (
@@ -237,7 +257,17 @@ export function PandoraFlashPanel() {
         </CardHeader>
         <CardContent>
           <ScrollArea className="h-[200px]">
-            {history.length === 0 ? (
+            {error ? (
+              <ErrorState
+                title="Failed to load history"
+                message={error}
+                action={{
+                  label: 'Retry',
+                  onClick: loadHistory
+                }}
+                variant="warning"
+              />
+            ) : history.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <p className="text-sm">No flash history available</p>
               </div>

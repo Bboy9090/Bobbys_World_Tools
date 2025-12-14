@@ -3,6 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { EmptyState } from './EmptyState';
+import { useApp } from '@/lib/app-context';
 import { 
   Play, 
   Flask,
@@ -23,23 +25,29 @@ interface TestResult {
 const API_BASE = 'http://localhost:3001';
 
 export function PandoraTestsPanel() {
+  const { isDemoMode } = useApp();
   const [tests, setTests] = useState<TestResult[]>([]);
   const [running, setRunning] = useState(false);
   const [history, setHistory] = useState<any[]>([]);
 
   const runAllTests = async () => {
+    if (!isDemoMode) {
+      toast.error('Testing requires backend API connection');
+      return;
+    }
+
     setRunning(true);
     setTests([]);
-    toast.info('Running automated tests...');
+    toast.info('Running automated tests... (DEMO MODE)');
 
     try {
       const testSuite: TestResult[] = [
-        { name: 'USB Detection Test', status: 'RUNNING' },
-        { name: 'Tool Correlation Test', status: 'RUNNING' },
-        { name: 'Performance Benchmark', status: 'RUNNING' },
-        { name: 'Flash Speed Test', status: 'RUNNING' },
-        { name: 'Device Classification', status: 'RUNNING' },
-        { name: 'Optimization Validation', status: 'RUNNING' },
+        { name: '[DEMO] USB Detection Test', status: 'RUNNING' },
+        { name: '[DEMO] Tool Correlation Test', status: 'RUNNING' },
+        { name: '[DEMO] Performance Benchmark', status: 'RUNNING' },
+        { name: '[DEMO] Flash Speed Test', status: 'RUNNING' },
+        { name: '[DEMO] Device Classification', status: 'RUNNING' },
+        { name: '[DEMO] Optimization Validation', status: 'RUNNING' },
       ];
 
       setTests(testSuite);
@@ -56,7 +64,7 @@ export function PandoraTestsPanel() {
                 ...t, 
                 status: passed ? 'PASS' : 'FAIL',
                 duration: Math.floor(duration),
-                details: passed ? 'All checks passed' : 'Some checks failed'
+                details: passed ? '[DEMO] All checks passed' : '[DEMO] Some checks failed'
               }
             : t
         ));
@@ -68,7 +76,7 @@ export function PandoraTestsPanel() {
         setHistory(prev => [{ timestamp: Date.now(), results: data }, ...prev.slice(0, 9)]);
       }
 
-      toast.success('Test suite completed');
+      toast.success('Test suite completed (DEMO MODE)');
     } catch (err) {
       toast.error('Test suite failed');
     } finally {
@@ -118,23 +126,29 @@ export function PandoraTestsPanel() {
               </CardTitle>
               <CardDescription>Validate detection, performance, and optimizations</CardDescription>
             </div>
-            <Button onClick={runAllTests} disabled={running}>
+            <Button onClick={runAllTests} disabled={running || !isDemoMode}>
               {running ? (
                 <CircleNotch className="w-4 h-4 animate-spin" />
               ) : (
                 <Play className="w-4 h-4" weight="fill" />
               )}
-              Run All Tests
+              {isDemoMode ? 'Run All Tests' : 'Connect Backend'}
             </Button>
           </div>
         </CardHeader>
         <CardContent>
           {tests.length === 0 && !running ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <Flask className="w-12 h-12 mx-auto mb-3 opacity-50" weight="duotone" />
-              <p className="font-medium">No test results yet</p>
-              <p className="text-sm mt-1">Click "Run All Tests" to begin validation</p>
-            </div>
+            <EmptyState
+              icon={<Flask className="w-12 h-12" weight="duotone" />}
+              title="No test results yet"
+              description={isDemoMode
+                ? "Run automated tests to validate detection, performance, and optimizations (demo mode)"
+                : "Connect to backend API to run real automated tests"}
+              action={isDemoMode ? {
+                label: 'Run All Tests',
+                onClick: runAllTests
+              } : undefined}
+            />
           ) : (
             <div className="space-y-4">
               {totalTests > 0 && (

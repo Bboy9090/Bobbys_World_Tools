@@ -63,16 +63,22 @@ This is a comprehensive repair utility dashboard with real-time device monitorin
 
 ## Edge Case Handling
 
-- **No Devices Connected**: Sidebar shows "No devices connected" with dimmed icon, main panels still accessible
+- **No Devices Connected**: Sidebar shows "No devices connected" with dimmed icon, main panels still accessible but show empty states
+- **Backend API Unavailable**: Automatic demo mode with persistent banner, all fake data clearly labeled as "[DEMO]"
 - **Device Sidebar Collapsed**: Toggle button collapses sidebar to icon-only view, more screen space for content
 - **Logs Panel Collapsed**: Console minimized by default, click to expand for detailed activity
 - **Tab Switching**: Instant tab changes, no loading states, content preserved when switching back
 - **Legal Disclaimer Not Accepted**: Block access to advanced diagnostic tools until disclaimer acknowledged
 - **Browser Storage Full**: Gracefully handle useKV storage limits, prompt user to export/clear old data
-- **Unsupported Device Detected**: Show "Unknown Device" in sidebar with generic diagnostic options
+- **Unsupported Device Detected**: Show "Unknown Device" in sidebar with generic diagnostic options, never auto-promote to "Connected"
 - **Mobile Browser Access**: Responsive layout with bottom nav instead of sidebar, collapsible sections
 - **WebSocket Disconnection**: Auto-reconnect for live monitoring, show connection status in logs
 - **Plugin Installation Failure**: Clear error messages with troubleshooting steps, rollback support
+- **Tool Not Installed (ADB/Fastboot/etc.)**: Show clear "Tool not available" error state, provide installation guidance
+- **Empty Evidence Bundles**: Show "No evidence bundles created yet" instead of fake data
+- **No Test Results**: Show "No test results yet - run tests to see results" not hardcoded PASS/FAIL
+- **Registry Sync Failed**: Display "Unable to connect to plugin registry" error with retry action
+- **No Flash History**: Show "No flash operations performed yet" not simulated history entries
 
 ## Design Direction
 
