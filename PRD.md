@@ -54,8 +54,27 @@ This is a comprehensive device management system with simplified presentation - 
 - **Progression**: Click Connect → WebSocket establishes → Events stream in → Audio notifications play → Statistics update → Event history shown
 - **Success criteria**: Connection within 1 second, events <200ms latency, auto-reconnect on disconnect, event history to 100 items
 
+### BootForge USB Scanner Panel (Real Device Detection)
+- **Functionality**: Scan real USB devices connected to the system using BootForgeUSB CLI, detect Android/iOS platforms, correlate with system tools (ADB/Fastboot/idevice_id), display device evidence and confidence scores
+- **Purpose**: Enable real-time USB device detection and classification with automatic fallback to demo data when CLI not installed
+- **Trigger**: User navigates to BootForge USB tab, system auto-checks CLI status on mount, user clicks "Scan Real Devices" or "View Demo Data"
+- **Progression**: Page loads → Status check → CLI availability shown → User clicks scan → USB devices enumerated → Platform classification → Tool correlation → Results displayed with badges → User expands device for detailed evidence
+- **Success criteria**: Status check within 500ms, scan completes within 10 seconds, all connected USB devices detected, platform classification >85% confidence for known devices, correlation badges accurate, demo mode clearly indicated, installation guide accessible
+
+### BootForgeUSB Installation Guide
+- **Functionality**: Step-by-step dialog with copy-paste commands for installing Rust, building CLI, installing optional tools (ADB, Fastboot, libimobiledevice), troubleshooting tips
+- **Purpose**: Remove friction from CLI installation with clear instructions and clipboard integration
+- **Trigger**: User clicks "Installation Guide" button when CLI not installed
+- **Progression**: Click Guide → Dialog opens → Steps displayed → User copies commands → Executes in terminal → Refreshes status → CLI detected → Real scanning enabled
+- **Success criteria**: All commands copy successfully, instructions accurate for Linux/macOS, troubleshooting covers common issues, guide accessible without CLI installed
+
 ## Edge Case Handling
 
+- **BootForgeUSB CLI Not Installed**: Show installation guide button, display demo data with clear "DEMO MODE" badge, provide step-by-step setup instructions
+- **CLI Installed But No Devices**: Show helpful connection instructions for Android (USB debugging) and iOS (trust computer), display empty state with clear guidance
+- **Real Scan vs Demo Mode**: Use distinct badges and colors (emerald for "LIVE USB SCAN", amber for "DEMO MODE"), clear messaging about data source
+- **USB Permission Denied**: Show Linux-specific udev rules setup in installation guide, link to troubleshooting documentation
+- **Scan Timeout**: Display timeout error with retry button, suggest disconnecting unnecessary USB devices
 - **WebSocket Connection Failed**: Show clear error with reconnect button, degrade to manual refresh, display connection status
 - **WebSocket Disconnected Mid-Stream**: Auto-reconnect with exponential backoff, preserve event history, show status indicator
 - **No Test Data Available**: Display empty state with clear call-to-action to run tests
