@@ -5,7 +5,7 @@ import { ToolRegistry } from "./components/ToolRegistry";
 import { CommunityResources } from "./components/CommunityResources";
 import { MyWorkspace } from "./components/MyWorkspace";
 import { AboutBobby } from "./components/AboutBobby";
-import { BootForgeUSBScanner } from "./components/BootForgeUSBScanner";
+import { RealTimeUSBDiagnostics } from "./components/RealTimeUSBDiagnostics";
 import { Toaster } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from '@phosphor-icons/react';
@@ -41,7 +41,7 @@ function App() {
                     {currentSection === 'hub' && <BobbysWorldHub onNavigate={navigateToSection} />}
                     {currentSection === 'repair-library' && <RepairLibrary />}
                     {currentSection === 'tool-registry' && <ToolRegistry />}
-                    {currentSection === 'diagnostics' && <BootForgeUSBScanner />}
+                    {currentSection === 'diagnostics' && <RealTimeUSBDiagnostics />}
                     {currentSection === 'community' && <CommunityResources />}
                     {currentSection === 'workspace' && <MyWorkspace />}
                     {currentSection === 'about' && <AboutBobby />}
