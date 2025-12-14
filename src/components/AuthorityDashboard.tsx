@@ -16,8 +16,9 @@ import {
   XCircle,
   Clock
 } from '@phosphor-icons/react';
-import { PluginManager, type Plugin } from './PluginManager';
+import { PluginManager } from './PluginManager';
 import { EvidenceBundleViewer, EvidenceBundleList, type EvidenceBundle } from './EvidenceBundleViewer';
+import type { RegisteredPlugin, PluginManifest, PluginCertification, PluginCapability } from '@/types/plugin-sdk';
 
 interface AuthorityStats {
   totalDevices: number;
@@ -28,7 +29,11 @@ interface AuthorityStats {
   disputesResolved: number;
 }
 
-export function AuthorityDashboard() {
+interface AuthorityDashboardProps {
+  onNavigate?: (section: string) => void;
+}
+
+export function AuthorityDashboard({ onNavigate }: AuthorityDashboardProps = {}) {
   const [selectedBundle, setSelectedBundle] = useState<EvidenceBundle | null>(null);
 
   const stats: AuthorityStats = {
@@ -40,54 +45,111 @@ export function AuthorityDashboard() {
     disputesResolved: 37,
   };
 
-  const mockPlugins: Plugin[] = [
+  const mockPlugins: RegisteredPlugin[] = [
     {
-      id: 'detection-mediatek',
-      name: 'MediaTek Enhanced Detection',
-      version: '1.2.0',
-      author: 'Bobby\'s World Team',
-      description: 'Enhanced detection for MediaTek devices with Preloader/BROM mode support',
-      type: 'detection',
-      riskLevel: 'safe',
-      status: 'active',
-      capabilities: ['mtk-preloader', 'brom-mode', 'sp-flash-tool'],
-      hash: 'a3f5d8e2c1b4a7f9e8d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2a1f0e9d8c7b6a5f4',
-      signature: 'MEUCIQD...truncated',
-      verified: true,
-      installed: true,
+      plugin: {
+        manifest: {
+          id: 'detection-mediatek',
+          name: 'MediaTek Enhanced Detection',
+          version: '1.2.0',
+          author: 'Bobby\'s World Team',
+          description: 'Enhanced detection for MediaTek devices with Preloader/BROM mode support',
+          category: 'device-detection',
+          capabilities: ['detection' as PluginCapability],
+          riskLevel: 'safe',
+          requiredPermissions: ['usb.read', 'device.detect'],
+          supportedPlatforms: ['android'],
+          minimumSDKVersion: '1.0.0',
+          entryPoint: 'main.js',
+          license: 'MIT',
+          certification: {
+            certifiedBy: 'bobby',
+            status: 'certified',
+            certificationDate: Date.now() - 30 * 24 * 60 * 60 * 1000,
+            signatureHash: 'a3f5d8e2c1b4a7f9e8d6c5b4a3f2e1d0c9b8a7f6e5d4c3b2a1f0e9d8c7b6a5f4',
+            securityAudit: {
+              passed: true,
+              auditor: 'Bobby\'s World Security Team',
+              auditDate: Date.now() - 35 * 24 * 60 * 60 * 1000,
+              findings: [],
+            },
+          },
+        },
+        initialize: async () => {},
+      },
+      registeredAt: Date.now() - 60 * 24 * 60 * 60 * 1000,
       enabled: true,
+      executionCount: 342,
+      lastExecuted: Date.now() - 3600000,
+      errors: [],
+      trustScore: 0.98,
     },
     {
-      id: 'diagnostic-battery-advanced',
-      name: 'Advanced Battery Analytics',
-      version: '2.0.1',
-      author: 'Community',
-      description: 'Deep battery health analysis with predictive degradation modeling',
-      type: 'diagnostic',
-      riskLevel: 'safe',
-      status: 'active',
-      capabilities: ['battery-health', 'cycle-count', 'degradation-analysis'],
-      hash: 'b4g6e9f3d2c5b8a1f0e9d7c6b5a4f3e2d1c0b9a8f7e6d5c4b3a2f1e0d9c8b7a6',
-      signature: 'MEYCIQE...truncated',
-      verified: true,
-      installed: true,
+      plugin: {
+        manifest: {
+          id: 'diagnostic-battery-advanced',
+          name: 'Advanced Battery Analytics',
+          version: '2.0.1',
+          author: 'Community',
+          description: 'Deep battery health analysis with predictive degradation modeling',
+          category: 'diagnostics',
+          capabilities: ['diagnostics' as PluginCapability],
+          riskLevel: 'safe',
+          requiredPermissions: ['device.read', 'battery.info'],
+          supportedPlatforms: ['android', 'ios'],
+          minimumSDKVersion: '1.0.0',
+          entryPoint: 'index.js',
+          license: 'Apache-2.0',
+          certification: {
+            certifiedBy: 'community',
+            status: 'certified',
+            certificationDate: Date.now() - 20 * 24 * 60 * 60 * 1000,
+            signatureHash: 'b4g6e9f3d2c5b8a1f0e9d7c6b5a4f3e2d1c0b9a8f7e6d5c4b3a2f1e0d9c8b7a6',
+          },
+        },
+        initialize: async () => {},
+      },
+      registeredAt: Date.now() - 45 * 24 * 60 * 60 * 1000,
       enabled: true,
+      executionCount: 218,
+      lastExecuted: Date.now() - 7200000,
+      errors: [],
+      trustScore: 0.95,
     },
     {
-      id: 'workflow-tradein',
-      name: 'Trade-In Prep Automation',
-      version: '1.0.5',
-      author: 'Bobby\'s World Team',
-      description: 'Automated workflow for preparing devices for trade-in programs',
-      type: 'workflow',
-      riskLevel: 'moderate',
-      status: 'active',
-      capabilities: ['data-wipe', 'verification', 'report-generation'],
-      hash: 'c5h7f0g4e3d6c9b2a1f0e8d7c6b5a4f3e2d1c0b9a8f7e6d5c4b3a2f1e0d9c8b7',
-      signature: 'MEZCIQA...truncated',
-      verified: true,
-      installed: false,
+      plugin: {
+        manifest: {
+          id: 'workflow-tradein',
+          name: 'Trade-In Prep Automation',
+          version: '1.0.5',
+          author: 'Bobby\'s World Team',
+          description: 'Automated workflow for preparing devices for trade-in programs',
+          category: 'workflow',
+          capabilities: ['diagnostics' as PluginCapability, 'recovery' as PluginCapability],
+          riskLevel: 'moderate',
+          requiredPermissions: ['device.write', 'storage.wipe', 'report.generate'],
+          supportedPlatforms: ['android', 'ios'],
+          minimumSDKVersion: '1.0.0',
+          entryPoint: 'workflow.js',
+          license: 'Proprietary',
+          certification: {
+            certifiedBy: 'bobby',
+            status: 'certified',
+            certificationDate: Date.now() - 10 * 24 * 60 * 60 * 1000,
+            signatureHash: 'c5h7f0g4e3d6c9b2a1f0e8d7c6b5a4f3e2d1c0b9a8f7e6d5c4b3a2f1e0d9c8b7',
+            restrictions: {
+              requiresUserConfirmation: true,
+              requiresOwnerApproval: false,
+            },
+          },
+        },
+        initialize: async () => {},
+      },
+      registeredAt: Date.now() - 15 * 24 * 60 * 60 * 1000,
       enabled: false,
+      executionCount: 0,
+      errors: [],
+      trustScore: 1.0,
     },
   ];
 
@@ -116,21 +178,7 @@ export function AuthorityDashboard() {
     },
   ];
 
-  const handleInstallPlugin = (plugin: Plugin) => {
-    console.log('Installing plugin:', plugin.name);
-  };
 
-  const handleUninstallPlugin = (plugin: Plugin) => {
-    console.log('Uninstalling plugin:', plugin.name);
-  };
-
-  const handleEnablePlugin = (plugin: Plugin) => {
-    console.log('Enabling plugin:', plugin.name);
-  };
-
-  const handleDisablePlugin = (plugin: Plugin) => {
-    console.log('Disabling plugin:', plugin.name);
-  };
 
   const handleExportBundle = (bundle: EvidenceBundle) => {
     console.log('Exporting evidence bundle:', bundle.id);
@@ -363,13 +411,7 @@ export function AuthorityDashboard() {
         </TabsContent>
 
         <TabsContent value="plugins" className="mt-6">
-          <PluginManager 
-            plugins={mockPlugins}
-            onInstall={handleInstallPlugin}
-            onUninstall={handleUninstallPlugin}
-            onEnable={handleEnablePlugin}
-            onDisable={handleDisablePlugin}
-          />
+          <PluginManager onNavigate={onNavigate} />
         </TabsContent>
 
         <TabsContent value="analytics" className="space-y-6 mt-6">
