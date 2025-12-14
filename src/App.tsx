@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BobbysWorldHub } from "./components/BobbysWorldHub";
 import { RepairLibrary } from "./components/RepairLibrary";
 import { ToolRegistry } from "./components/ToolRegistry";
@@ -27,11 +27,21 @@ import { ArrowLeft } from '@phosphor-icons/react';
 
 import { DiagnosticPluginsDashboard } from "./components/DiagnosticPluginsDashboard";
 import { BatchDiagnosticsPanel } from "./components/BatchDiagnosticsPanel";
+import { MockBatchDiagnosticsWebSocket } from "./lib/mock-batch-diagnostics-websocket";
 
 type Section = 'hub' | 'repair-library' | 'tool-registry' | 'diagnostics' | 'flashing' | 'universal-flash' | 'multi-brand-flash' | 'mtk-flash' | 'ios-dfu' | 'security-edu' | 'pandora-codex' | 'support-matrix' | 'community' | 'workspace' | 'about' | 'settings' | 'vault' | 'authority' | 'plugins' | 'marketplace' | 'testing' | 'evidence' | 'diagnostic-plugins' | 'batch-diagnostics';
 
 function App() {
     const [currentSection, setCurrentSection] = useState<Section>('hub');
+
+    useEffect(() => {
+        MockBatchDiagnosticsWebSocket.initialize();
+        console.log('[App] Mock Batch Diagnostics Server initialized');
+
+        return () => {
+            MockBatchDiagnosticsWebSocket.cleanup();
+        };
+    }, []);
 
     const navigateToSection = (section: string) => {
         setCurrentSection(section as Section);
