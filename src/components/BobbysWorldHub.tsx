@@ -1,23 +1,28 @@
-import { Books, Wrench, Cpu, Users, FolderOpen, Heart, Lightning, ShieldCheck, ChartLine } from '@phosphor-icons/react';
+import { Books, Wrench, Cpu, Users, FolderOpen, Heart, Lightning, ShieldCheck, ChartLine, DeviceMobile } from '@phosphor-icons/react';
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 
 interface HubCardProps {
   icon: React.ReactNode;
   title: string;
   description: string;
   onClick: () => void;
+  featured?: boolean;
 }
 
-function HubCard({ icon, title, description, onClick }: HubCardProps) {
+function HubCard({ icon, title, description, onClick, featured }: HubCardProps) {
   return (
-    <Card className="hover:scale-105 transition-transform cursor-pointer border-2 border-primary/20 hover:border-primary/60 bg-card/50 backdrop-blur" onClick={onClick}>
-      <CardHeader className="text-center space-y-4">
-        <div className="mx-auto w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center text-primary">
+    <Card 
+      className={`hover:scale-[1.02] transition-all cursor-pointer bg-card border-border hover:border-primary/50 group ${
+        featured ? 'border-primary/40 shadow-lg shadow-primary/10' : ''
+      }`}
+      onClick={onClick}
+    >
+      <CardHeader className="text-center space-y-3">
+        <div className="mx-auto w-14 h-14 rounded-md bg-secondary flex items-center justify-center text-primary group-hover:bg-primary/10 transition-colors">
           {icon}
         </div>
-        <CardTitle className="text-xl font-display uppercase tracking-wide">{title}</CardTitle>
-        <CardDescription className="text-muted-foreground">{description}</CardDescription>
+        <CardTitle className="text-lg font-semibold">{title}</CardTitle>
+        <CardDescription className="text-sm text-muted-foreground">{description}</CardDescription>
       </CardHeader>
     </Card>
   );
@@ -29,113 +34,109 @@ interface BobbysWorldHubProps {
 
 export function BobbysWorldHub({ onNavigate }: BobbysWorldHubProps) {
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-6xl mx-auto space-y-8">
-        <div className="text-center space-y-4 py-8">
-          <h1 className="text-6xl font-display uppercase tracking-wider text-primary drop-shadow-lg">
+    <div className="min-h-screen">
+      <div className="max-w-7xl mx-auto space-y-10">
+        <div className="text-center space-y-3 py-10">
+          <h1 className="text-5xl font-display uppercase tracking-tight text-foreground">
             Bobby's World
           </h1>
-          <p className="text-xl text-muted-foreground font-medium">
-            Bronx Workshop • Fixing the Hood One Phone at a Time
+          <p className="text-lg text-muted-foreground">
+            Workshop • Diagnostics • Educational Resources
           </p>
-          <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-            <Heart className="w-4 h-4 text-accent" weight="fill" />
-            <span>Community-powered repair knowledge & tools</span>
+          <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground/80">
+            <Wrench className="w-4 h-4" />
+            <span>Professional repair toolkit and knowledge base</span>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           <HubCard
-            icon={<Books size={32} weight="duotone" />}
-            title="Repair Library"
-            description="Free repair guides, teardowns, and tutorials for common device issues"
-            onClick={() => onNavigate('repair-library')}
+            icon={<DeviceMobile size={28} weight="duotone" />}
+            title="iOS DFU Flash"
+            description="checkra1n/palera1n jailbreak support with DFU mode detection"
+            onClick={() => onNavigate('ios-dfu')}
+            featured
           />
           <HubCard
-            icon={<Wrench size={32} weight="duotone" />}
-            title="Tool Registry"
-            description="Curated open-source diagnostic and repair tools with installation guides"
-            onClick={() => onNavigate('tool-registry')}
-          />
-          <HubCard
-            icon={<Cpu size={32} weight="duotone" />}
-            title="Diagnostics"
-            description="Real device detection and health checks using legitimate system tools"
-            onClick={() => onNavigate('diagnostics')}
-          />
-          <HubCard
-            icon={<Lightning size={32} weight="fill" className="animate-pulse" />}
+            icon={<Lightning size={28} weight="duotone" />}
             title="Multi-Brand Flash"
-            description="iOS DFU, Xiaomi EDL, Samsung Odin, Universal Fastboot - All in One"
+            description="Samsung Odin, Xiaomi EDL, Universal Fastboot protocols"
             onClick={() => onNavigate('multi-brand-flash')}
+            featured
           />
           <HubCard
-            icon={<Cpu size={32} weight="duotone" />}
+            icon={<Cpu size={28} weight="duotone" />}
             title="MediaTek Flash"
-            description="SP Flash Tool integration for MediaTek chipsets with scatter-based flashing"
+            description="SP Flash Tool integration for MTK chipsets"
             onClick={() => onNavigate('mtk-flash')}
           />
           <HubCard
-            icon={<ShieldCheck size={32} weight="duotone" />}
+            icon={<ShieldCheck size={28} weight="duotone" />}
             title="Security Lock Guide"
-            description="Educational resources for FRP, MDM, and carrier locks - legitimate recovery only"
+            description="FRP/MDM detection and legitimate recovery resources"
             onClick={() => onNavigate('security-edu')}
           />
           <HubCard
-            icon={<ChartLine size={32} weight="duotone" />}
+            icon={<Cpu size={28} weight="duotone" />}
+            title="Device Diagnostics"
+            description="Real USB detection with ADB/Fastboot integration"
+            onClick={() => onNavigate('diagnostics')}
+          />
+          <HubCard
+            icon={<ChartLine size={28} weight="duotone" />}
             title="Pandora Codex"
-            description="Control room for flash operations, monitoring, benchmarks, and device hotplug"
+            description="Flash monitoring, benchmarking, and correlation tracking"
             onClick={() => onNavigate('pandora-codex')}
           />
           <HubCard
-            icon={<Lightning size={32} weight="duotone" />}
-            title="Universal Flash"
-            description="Multi-brand phone flashing with pause/resume control and live progress"
-            onClick={() => onNavigate('universal-flash')}
+            icon={<Books size={28} weight="duotone" />}
+            title="Repair Library"
+            description="Teardown guides and repair tutorials"
+            onClick={() => onNavigate('repair-library')}
           />
           <HubCard
-            icon={<Lightning size={32} weight="duotone" />}
-            title="Device Flashing"
-            description="Flash firmware with real-time progress tracking and performance monitoring"
-            onClick={() => onNavigate('flashing')}
+            icon={<Wrench size={28} weight="duotone" />}
+            title="Tool Registry"
+            description="Open-source diagnostic tools catalog"
+            onClick={() => onNavigate('tool-registry')}
           />
           <HubCard
-            icon={<Users size={32} weight="duotone" />}
+            icon={<Users size={28} weight="duotone" />}
             title="Community"
-            description="Connect with repair advocates, forums, and local shops"
+            description="Forums, advocacy, and repair network"
             onClick={() => onNavigate('community')}
           />
           <HubCard
-            icon={<FolderOpen size={32} weight="duotone" />}
+            icon={<FolderOpen size={28} weight="duotone" />}
             title="My Workspace"
-            description="Your personal tool bookmarks, notes, and repair history"
+            description="Personal notes and repair history"
             onClick={() => onNavigate('workspace')}
           />
           <HubCard
-            icon={<Heart size={32} weight="duotone" />}
+            icon={<Heart size={28} weight="duotone" />}
             title="About"
-            description="Learn about Bobby's mission and the right to repair movement"
+            description="Mission and right to repair advocacy"
             onClick={() => onNavigate('about')}
           />
         </div>
 
-        <div className="mt-12 p-6 border-2 border-primary/20 rounded-lg bg-card/30 backdrop-blur">
-          <div className="flex items-start gap-4">
-            <div className="text-primary text-4xl font-display">⚠️</div>
+        <div className="mt-10 p-5 border border-warning/30 rounded-lg bg-warning/5">
+          <div className="flex items-start gap-3">
+            <ShieldCheck className="text-warning flex-shrink-0 mt-0.5" size={24} />
             <div className="flex-1 space-y-2">
-              <h3 className="font-semibold text-lg">Legal Disclaimer</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                Bobby's World provides educational resources and tools for <strong>authorized repair technicians only</strong>. 
-                All guides and tools are for legitimate repair purposes on devices you own or have permission to repair. 
-                We do not support, enable, or provide resources for bypassing device security features, unauthorized unlocking, 
-                or any activities that may violate manufacturer warranties or local laws. Use responsibly and ethically.
+              <h3 className="font-semibold text-foreground">Legal Notice</h3>
+              <p className="text-sm text-foreground/90 leading-relaxed">
+                This toolkit is for <strong>authorized repair technicians only</strong>. All tools and guides 
+                are for legitimate repair on devices you own or have permission to service. We do not support 
+                bypassing security features, unauthorized unlocking, or activities violating manufacturer warranties 
+                or local laws. Use responsibly.
               </p>
             </div>
           </div>
         </div>
 
-        <div className="text-center text-sm text-muted-foreground py-6">
-          <p>Built with ❤️ in the Bronx • Soundtrack: 90s Hip-Hop Classics</p>
+        <div className="text-center text-xs text-muted-foreground/60 py-6 font-mono">
+          <p>Bobby's World • Workshop Toolkit • Educational Resources Only</p>
         </div>
       </div>
     </div>

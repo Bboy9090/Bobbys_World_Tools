@@ -73,21 +73,26 @@ This is a curated resource hub and diagnostic toolkit for legitimate device repa
 
 ## Design Direction
 
-The interface should feel like you stepped into Bobby's apartment workshop in the Bronx circa 2005 - concrete textures, spray-paint graffiti accents, vintage boom-box aesthetics, cassette tape UI elements. Think old-school hip-hop album covers mixed with street art murals. Color palette inspired by subway graffiti, urban decay, and classic sneaker colorways. Typography should mix bold graffiti-style headers with clean technical fonts for readability. The vibe: authentic, gritty, community-focused, and unapologetically DIY. Every element should scream "built by the community, for the community."
+Industrial Operator aesthetic - the interface should feel like operator-grade field equipment. Think military-spec hardware consoles, avionics displays, and professional technician toolkits. Clean graphite surfaces, cyan signal accents, and no-nonsense typography. The UI says "I know what I'm doing." This is Bobby's professional workshop interface - authoritative, capable, and honest about what it can and cannot do.
 
 ## Color Selection
 
-A raw urban palette with spray-paint inspired accents and concrete industrial tones.
+Industrial Operator colorway - clean, professional, and field-ready.
 
-- **Primary Color**: `oklch(0.85 0.20 50)` - Spray-paint orange/gold, representing creativity and street art culture
-- **Secondary Colors**: `oklch(0.25 0.02 250)` - Concrete gray backgrounds, `oklch(0.15 0.01 260)` - Dark asphalt tones
-- **Accent Color**: `oklch(0.70 0.25 150)` - Fresh mint/jade green, classic sneaker accent color
+- **Background**: `#0B0F14` - Deep graphite black, operator console base
+- **Card/Panel**: `#141922` - Elevated surface tone
+- **Border**: `#1F2632` - Subtle divisions
+- **Primary Color**: `#2FD3FF` - Signal cyan, attention-commanding accent
+- **Secondary Colors**: `#9AA4B2` - Neutral technical gray, `#6B7380` - Muted tones
+- **Success**: `#2ECC71` - Clean green for positive states
+- **Warning**: `#F1C40F` - Amber for caution
+- **Error**: `#E74C3C` - Red for critical states
 - **Foreground/Background Pairings**: 
-  - Background (Concrete #3A3A3F): White text (#FFFFFF) - Ratio 10.8:1 ✓
-  - Primary (Spray Gold #FFB84D): Dark text (#1A1A1D) - Ratio 9.2:1 ✓
-  - Accent (Mint Jade #4ADE80): Dark text (#1A1A1D) - Ratio 11.5:1 ✓
-  - Warning (Hot Pink #FF3B7F): White text (#FFFFFF) - Ratio 5.4:1 ✓
-  - Concrete Light (#52525B): White text (#FFFFFF) - Ratio 7.2:1 ✓
+  - Background (#0B0F14): White text (#E6EAF0) - Ratio 12.5:1 ✓
+  - Primary Cyan (#2FD3FF): Dark text (#0B0F14) - Ratio 11.2:1 ✓
+  - Success Green (#2ECC71): Dark text (#0B0F14) - Ratio 8.8:1 ✓
+  - Warning Amber (#F1C40F): Dark text (#0B0F14) - Ratio 13.1:1 ✓
+  - Card Surface (#141922): White text (#E6EAF0) - Ratio 11.3:1 ✓
 
 ## Font Selection
 

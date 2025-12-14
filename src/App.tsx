@@ -12,11 +12,12 @@ import { MultiBrandFlashDashboard } from "./components/MultiBrandFlashDashboard"
 import { MediaTekFlashPanel } from "./components/MediaTekFlashPanel";
 import { SecurityLockEducationPanel } from "./components/SecurityLockEducationPanel";
 import { PandoraCodexControlRoom } from "./components/PandoraCodexControlRoom";
+import { IOSDFUFlashPanel } from "./components/IOSDFUFlashPanel";
 import { Toaster } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from '@phosphor-icons/react';
 
-type Section = 'hub' | 'repair-library' | 'tool-registry' | 'diagnostics' | 'flashing' | 'universal-flash' | 'multi-brand-flash' | 'mtk-flash' | 'security-edu' | 'pandora-codex' | 'community' | 'workspace' | 'about';
+type Section = 'hub' | 'repair-library' | 'tool-registry' | 'diagnostics' | 'flashing' | 'universal-flash' | 'multi-brand-flash' | 'mtk-flash' | 'ios-dfu' | 'security-edu' | 'pandora-codex' | 'community' | 'workspace' | 'about';
 
 function App() {
     const [currentSection, setCurrentSection] = useState<Section>('hub');
@@ -33,17 +34,17 @@ function App() {
         <>
             <div className="min-h-screen bg-background">
                 {currentSection !== 'hub' && (
-                    <div className="bg-card/50 backdrop-blur border-b border-border sticky top-0 z-50">
-                        <div className="max-w-6xl mx-auto px-6 py-4">
-                            <Button variant="outline" onClick={goHome}>
-                                <ArrowLeft className="w-4 h-4 mr-2" weight="duotone" />
+                    <div className="bg-card/80 backdrop-blur-sm border-b border-border sticky top-0 z-50">
+                        <div className="max-w-7xl mx-auto px-6 py-3">
+                            <Button variant="outline" onClick={goHome} size="sm">
+                                <ArrowLeft className="w-4 h-4 mr-2" />
                                 Back to Hub
                             </Button>
                         </div>
                     </div>
                 )}
 
-                <div className="max-w-6xl mx-auto p-6">
+                <div className="max-w-7xl mx-auto p-6">
                     {currentSection === 'hub' && <BobbysWorldHub onNavigate={navigateToSection} />}
                     {currentSection === 'repair-library' && <RepairLibrary />}
                     {currentSection === 'tool-registry' && <ToolRegistry />}
@@ -52,6 +53,7 @@ function App() {
                     {currentSection === 'universal-flash' && <UniversalFlashPanel />}
                     {currentSection === 'multi-brand-flash' && <MultiBrandFlashDashboard />}
                     {currentSection === 'mtk-flash' && <MediaTekFlashPanel />}
+                    {currentSection === 'ios-dfu' && <IOSDFUFlashPanel />}
                     {currentSection === 'security-edu' && <SecurityLockEducationPanel />}
                     {currentSection === 'pandora-codex' && <PandoraCodexControlRoom />}
                     {currentSection === 'community' && <CommunityResources />}

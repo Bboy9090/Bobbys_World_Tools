@@ -4,464 +4,428 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import {
   ShieldCheck,
-  LockKey,
-  Warning,
   Info,
+  Warning,
   CheckCircle,
-  Question,
+  XCircle,
+  MagnifyingGlass,
   BookOpen,
-  Path,
-  Phone,
-  DeviceMobile,
-  Cpu,
+  Link as LinkIcon,
 } from '@phosphor-icons/react';
+import { toast } from 'sonner';
 
-interface SecurityLockStatus {
-  device: string;
-  frpStatus: 'active' | 'inactive' | 'unknown';
-  mdmStatus: 'enrolled' | 'not_enrolled' | 'unknown';
-  carrierLock: 'locked' | 'unlocked' | 'unknown';
-  bootloaderLock: 'locked' | 'unlocked' | 'unknown';
+interface FRPStatus {
+  detected: boolean;
+  confidence: 'high' | 'medium' | 'low' | 'unknown';
+  indicators: string[];
+  deviceInfo?: {
+    manufacturer?: string;
+    model?: string;
+    androidVersion?: string;
+  };
+}
+
+interface MDMStatus {
+  detected: boolean;
+  profileName?: string;
+  organization?: string;
+  restrictions: string[];
 }
 
 export function SecurityLockEducationPanel() {
-  const [deviceStatus, setDeviceStatus] = useState<SecurityLockStatus | null>(null);
-  const [isScanning, setIsScanning] = useState(false);
+  const [frpStatus, setFrpStatus] = useState<FRPStatus | null>(null);
+  const [mdmStatus, setMdmStatus] = useState<MDMStatus | null>(null);
+  const [scanning, setScanning] = useState(false);
 
-  const scanDevice = async () => {
-    setIsScanning(true);
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    setDeviceStatus({
-      device: 'Samsung Galaxy A52',
-      frpStatus: 'active',
-      mdmStatus: 'not_enrolled',
-      carrierLock: 'unlocked',
-      bootloaderLock: 'locked',
-    });
-    setIsScanning(false);
+  const detectFRP = async () => {
+    setScanning(true);
+    toast.info('Scanning for FRP indicators...');
+
+    try {
+      const response = await fetch('http://localhost:3001/api/frp/detect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const data = await response.json();
+      
+      setFrpStatus({
+        detected: data.detected || false,
+        confidence: data.confidence || 'unknown',
+        indicators: data.indicators || [],
+        deviceInfo: data.deviceInfo,
+      });
+
+      if (data.detected) {
+        toast.warning('FRP lock detected', {
+          description: 'Device has Factory Reset Protection enabled',
+        });
+      } else {
+        toast.success('No FRP lock detected');
+      }
+    } catch (error) {
+      toast.error('Detection failed', {
+        description: 'Unable to connect to detection service',
+      });
+    } finally {
+      setScanning(false);
+    }
   };
+
+  const detectMDM = async () => {
+    setScanning(true);
+    toast.info('Scanning for MDM profiles...');
+
+    try {
+      const response = await fetch('http://localhost:3001/api/mdm/detect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const data = await response.json();
+      
+      setMdmStatus({
+        detected: data.detected || false,
+        profileName: data.profileName,
+        organization: data.organization,
+        restrictions: data.restrictions || [],
+      });
+
+      if (data.detected) {
+        toast.warning('MDM profile detected', {
+          description: 'Device is managed by an organization',
+        });
+      } else {
+        toast.success('No MDM profile detected');
+      }
+    } catch (error) {
+      toast.error('Detection failed', {
+        description: 'Unable to connect to detection service',
+      });
+    } finally {
+      setScanning(false);
+    }
+  };
+
+  const legitimateResources = [
+    {
+      title: 'What is FRP (Factory Reset Protection)?',
+      description:
+        'FRP is a security feature that prevents unauthorized use of a device after factory reset. It requires the previously synced Google account credentials.',
+      type: 'explanation',
+    },
+    {
+      title: 'Legitimate Recovery Method #1: Account Sign-In',
+      description:
+        'Sign in with the Google account that was previously synced to the device. This is the primary and most straightforward method.',
+      type: 'solution',
+    },
+    {
+      title: 'Legitimate Recovery Method #2: Account Recovery',
+      description:
+        'Use Google Account Recovery (account.google.com/recovery) if you forgot the password. You may need backup email, phone number, or security questions.',
+      type: 'solution',
+    },
+    {
+      title: 'Legitimate Recovery Method #3: Proof of Purchase',
+      description:
+        'Contact the manufacturer or carrier with proof of purchase (receipt, invoice). They may unlock FRP after verifying ownership.',
+      type: 'solution',
+    },
+    {
+      title: 'Enterprise/MDM Devices',
+      description:
+        'If device shows MDM enrollment, contact the organization IT admin. Only authorized personnel can remove enterprise management profiles.',
+      type: 'solution',
+    },
+    {
+      title: 'Why FRP Exists',
+      description:
+        'FRP protects stolen devices from being resold. It reduces device theft incentive and protects user data. Bypassing FRP on devices you do not own is illegal.',
+      type: 'explanation',
+    },
+  ];
+
+  const officialResources = [
+    {
+      name: 'Google Account Help - Device Protection',
+      url: 'https://support.google.com/accounts/answer/6160491',
+      description: 'Official Google documentation on Factory Reset Protection',
+    },
+    {
+      name: 'Google Account Recovery',
+      url: 'https://accounts.google.com/signin/recovery',
+      description: 'Recover access to your Google account',
+    },
+    {
+      name: 'Samsung Find My Mobile',
+      url: 'https://findmymobile.samsung.com',
+      description: 'Samsung official device unlock service (requires Samsung account)',
+    },
+    {
+      name: 'Apple Activation Lock Support',
+      url: 'https://support.apple.com/en-us/HT201441',
+      description: 'Official Apple guide for Activation Lock issues',
+    },
+  ];
 
   return (
     <div className="space-y-6">
-      <Card className="border-accent/30 bg-gradient-to-br from-card/90 to-card/60">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <ShieldCheck className="w-10 h-10 text-accent" weight="duotone" />
-              <div>
-                <CardTitle className="text-2xl font-display">Security Lock Education Center</CardTitle>
-                <CardDescription className="text-base mt-1">
-                  Understanding device security features and legitimate recovery paths
-                </CardDescription>
-              </div>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Alert className="mb-6">
-            <Info className="w-4 h-4" />
-            <AlertTitle>What This Panel Provides</AlertTitle>
-            <AlertDescription>
-              This panel helps you understand device security features (FRP, MDM, carrier locks) and provides
-              <strong className="text-foreground"> legitimate, legal recovery methods only</strong>. We do not provide
-              or support bypass tools, hacks, or workarounds.
-            </AlertDescription>
-          </Alert>
+      <div>
+        <h2 className="text-2xl font-bold text-foreground">Security Lock Education</h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          Detection tools and legitimate recovery resources for FRP and MDM
+        </p>
+      </div>
 
-          <Tabs defaultValue="detect" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="detect">Detect</TabsTrigger>
-              <TabsTrigger value="learn">Learn</TabsTrigger>
-              <TabsTrigger value="recovery">Recovery</TabsTrigger>
-              <TabsTrigger value="resources">Resources</TabsTrigger>
-            </TabsList>
+      <Alert className="border-warning/50 bg-warning/10">
+        <Warning className="text-warning" />
+        <AlertTitle className="text-foreground">Legal Notice</AlertTitle>
+        <AlertDescription className="text-sm text-foreground">
+          <strong>Only use these tools on devices you own or have authorization to service.</strong>
+          {' '}Bypassing security locks on devices you do not own is illegal and violates anti-theft laws.
+          This panel provides educational information and legitimate recovery paths only.
+        </AlertDescription>
+      </Alert>
 
-            <TabsContent value="detect" className="space-y-4">
-              <div className="flex justify-between items-center">
-                <p className="text-sm text-muted-foreground">
-                  Scan your device to detect security lock status
-                </p>
-                <Button onClick={scanDevice} disabled={isScanning}>
-                  {isScanning ? 'Scanning...' : 'Scan Device'}
+      <Tabs defaultValue="detection" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="detection">Detection</TabsTrigger>
+          <TabsTrigger value="education">Education</TabsTrigger>
+          <TabsTrigger value="resources">Official Resources</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="detection" className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card className="bg-card border-border">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ShieldCheck className="text-primary" />
+                  FRP Detection
+                </CardTitle>
+                <CardDescription>Check for Factory Reset Protection</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Button
+                  onClick={detectFRP}
+                  disabled={scanning}
+                  className="w-full"
+                >
+                  <MagnifyingGlass />
+                  {scanning ? 'Scanning...' : 'Detect FRP Status'}
                 </Button>
+
+                {frpStatus && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      {frpStatus.detected ? (
+                        <XCircle className="text-destructive" size={20} />
+                      ) : (
+                        <CheckCircle className="text-success" size={20} />
+                      )}
+                      <span className="font-medium text-foreground">
+                        {frpStatus.detected ? 'FRP Detected' : 'No FRP Lock'}
+                      </span>
+                      <Badge variant={frpStatus.detected ? 'destructive' : 'default'}>
+                        {frpStatus.confidence}
+                      </Badge>
+                    </div>
+
+                    {frpStatus.indicators.length > 0 && (
+                      <div className="space-y-1">
+                        <p className="text-xs font-medium text-muted-foreground">Indicators:</p>
+                        <ul className="text-xs text-foreground space-y-1">
+                          {frpStatus.indicators.map((indicator, index) => (
+                            <li key={index} className="flex items-start gap-2">
+                              <span className="text-primary">•</span>
+                              <span>{indicator}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {frpStatus.deviceInfo && (
+                      <div className="text-xs text-muted-foreground space-y-1 pt-2 border-t border-border">
+                        {frpStatus.deviceInfo.manufacturer && (
+                          <p>Manufacturer: {frpStatus.deviceInfo.manufacturer}</p>
+                        )}
+                        {frpStatus.deviceInfo.model && (
+                          <p>Model: {frpStatus.deviceInfo.model}</p>
+                        )}
+                        {frpStatus.deviceInfo.androidVersion && (
+                          <p>Android: {frpStatus.deviceInfo.androidVersion}</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="bg-card border-border">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ShieldCheck className="text-primary" />
+                  MDM Detection
+                </CardTitle>
+                <CardDescription>Check for Mobile Device Management</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Button
+                  onClick={detectMDM}
+                  disabled={scanning}
+                  variant="secondary"
+                  className="w-full"
+                >
+                  <MagnifyingGlass />
+                  {scanning ? 'Scanning...' : 'Detect MDM Profile'}
+                </Button>
+
+                {mdmStatus && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      {mdmStatus.detected ? (
+                        <XCircle className="text-destructive" size={20} />
+                      ) : (
+                        <CheckCircle className="text-success" size={20} />
+                      )}
+                      <span className="font-medium text-foreground">
+                        {mdmStatus.detected ? 'MDM Detected' : 'No MDM Profile'}
+                      </span>
+                    </div>
+
+                    {mdmStatus.detected && (
+                      <>
+                        {mdmStatus.profileName && (
+                          <p className="text-sm text-foreground">
+                            <span className="text-muted-foreground">Profile:</span>{' '}
+                            {mdmStatus.profileName}
+                          </p>
+                        )}
+                        {mdmStatus.organization && (
+                          <p className="text-sm text-foreground">
+                            <span className="text-muted-foreground">Organization:</span>{' '}
+                            {mdmStatus.organization}
+                          </p>
+                        )}
+                        {mdmStatus.restrictions.length > 0 && (
+                          <div className="space-y-1">
+                            <p className="text-xs font-medium text-muted-foreground">
+                              Restrictions:
+                            </p>
+                            <ul className="text-xs text-foreground space-y-1">
+                              {mdmStatus.restrictions.map((restriction, index) => (
+                                <li key={index} className="flex items-start gap-2">
+                                  <span className="text-primary">•</span>
+                                  <span>{restriction}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        <Alert className="border-destructive/30 bg-destructive/5">
+                          <AlertDescription className="text-xs text-foreground">
+                            This device is enterprise-managed. Contact the organization's IT
+                            administrator for assistance.
+                          </AlertDescription>
+                        </Alert>
+                      </>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="education" className="space-y-4">
+          <Card className="bg-card border-border">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BookOpen className="text-primary" />
+                Understanding Security Locks
+              </CardTitle>
+              <CardDescription>
+                What they are, why they exist, and legitimate ways to resolve them
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {legitimateResources.map((resource, index) => (
+                  <div
+                    key={index}
+                    className="p-4 rounded-lg border border-border bg-background/50"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="mt-1">
+                        {resource.type === 'solution' ? (
+                          <CheckCircle className="text-success" size={20} />
+                        ) : (
+                          <Info className="text-primary" size={20} />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-medium text-foreground mb-2">{resource.title}</h4>
+                        <p className="text-sm text-muted-foreground">{resource.description}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="resources" className="space-y-4">
+          <Card className="bg-card border-border">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <LinkIcon className="text-primary" />
+                Official Support Resources
+              </CardTitle>
+              <CardDescription>
+                Direct links to manufacturer and platform support documentation
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {officialResources.map((resource, index) => (
+                  <a
+                    key={index}
+                    href={resource.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block p-4 rounded-lg border border-border bg-background/50 hover:border-primary/50 transition-colors"
+                  >
+                    <div className="flex items-start gap-3">
+                      <LinkIcon className="text-primary mt-1 flex-shrink-0" size={20} />
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-foreground mb-1">{resource.name}</h4>
+                        <p className="text-sm text-muted-foreground mb-2">
+                          {resource.description}
+                        </p>
+                        <p className="text-xs text-primary truncate">{resource.url}</p>
+                      </div>
+                    </div>
+                  </a>
+                ))}
               </div>
 
-              {deviceStatus ? (
-                <div className="space-y-3">
-                  <Card className="border-secondary/30">
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="font-medium flex items-center gap-2">
-                          <Phone className="w-5 h-5 text-primary" weight="duotone" />
-                          {deviceStatus.device}
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-muted-foreground">Factory Reset Protection (FRP)</span>
-                          <Badge variant={deviceStatus.frpStatus === 'active' ? 'destructive' : 'default'}>
-                            {deviceStatus.frpStatus}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-muted-foreground">Mobile Device Management (MDM)</span>
-                          <Badge variant={deviceStatus.mdmStatus === 'enrolled' ? 'secondary' : 'default'}>
-                            {deviceStatus.mdmStatus}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-muted-foreground">Carrier Lock</span>
-                          <Badge variant={deviceStatus.carrierLock === 'locked' ? 'secondary' : 'default'}>
-                            {deviceStatus.carrierLock}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-muted-foreground">Bootloader Lock</span>
-                          <Badge variant={deviceStatus.bootloaderLock === 'locked' ? 'secondary' : 'default'}>
-                            {deviceStatus.bootloaderLock}
-                          </Badge>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {deviceStatus.frpStatus === 'active' && (
-                    <Alert>
-                      <Warning className="w-4 h-4" />
-                      <AlertTitle>FRP Active</AlertTitle>
-                      <AlertDescription>
-                        This device has Factory Reset Protection enabled. See the "Recovery" tab for legitimate
-                        recovery methods.
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                </div>
-              ) : (
-                <Alert>
-                  <DeviceMobile className="w-4 h-4" />
-                  <AlertTitle>No device scanned</AlertTitle>
-                  <AlertDescription>
-                    Connect a device and click "Scan Device" to detect security lock status
-                  </AlertDescription>
-                </Alert>
-              )}
-            </TabsContent>
-
-            <TabsContent value="learn" className="space-y-4">
-              <Accordion type="single" collapsible className="w-full">
-                <AccordionItem value="frp">
-                  <AccordionTrigger className="text-base font-medium">
-                    <div className="flex items-center gap-2">
-                      <LockKey className="w-5 h-5 text-primary" weight="duotone" />
-                      What is Factory Reset Protection (FRP)?
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent>
-                    <div className="space-y-3 text-sm text-muted-foreground">
-                      <p>
-                        Factory Reset Protection (FRP) is a security feature introduced by Google in Android 5.1 (Lollipop).
-                        When you set up a Google account on your device, FRP is automatically activated.
-                      </p>
-                      <p className="font-medium text-foreground">Why FRP Exists:</p>
-                      <ul className="list-disc list-inside space-y-1 ml-2">
-                        <li>Protects your device from unauthorized factory resets</li>
-                        <li>Deters theft by making stolen devices unusable</li>
-                        <li>Ensures only the rightful owner can set up the device after a reset</li>
-                        <li>Requires the original Google account credentials to proceed</li>
-                      </ul>
-                      <p className="text-xs text-warning mt-3">
-                        ⚠️ FRP is a critical anti-theft feature. Attempting to bypass it without proper authorization
-                        may violate laws in your jurisdiction.
-                      </p>
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-
-                <AccordionItem value="mdm">
-                  <AccordionTrigger className="text-base font-medium">
-                    <div className="flex items-center gap-2">
-                      <ShieldCheck className="w-5 h-5 text-secondary" weight="duotone" />
-                      What is Mobile Device Management (MDM)?
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent>
-                    <div className="space-y-3 text-sm text-muted-foreground">
-                      <p>
-                        Mobile Device Management (MDM) is software that allows organizations (employers, schools)
-                        to manage and secure mobile devices used by their employees or students.
-                      </p>
-                      <p className="font-medium text-foreground">Common MDM Features:</p>
-                      <ul className="list-disc list-inside space-y-1 ml-2">
-                        <li>Remote device configuration and policy enforcement</li>
-                        <li>App installation and restriction controls</li>
-                        <li>Device location tracking and remote wipe</li>
-                        <li>Network and data usage monitoring</li>
-                      </ul>
-                      <p className="font-medium text-foreground mt-3">Apple Business Manager / iOS MDM:</p>
-                      <ul className="list-disc list-inside space-y-1 ml-2">
-                        <li>Devices enrolled in Apple Business Manager cannot be removed from MDM without admin authorization</li>
-                        <li>Attempting to bypass MDM on organization-owned devices is illegal</li>
-                        <li>Contact your IT administrator for legitimate device removal</li>
-                      </ul>
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-
-                <AccordionItem value="carrier">
-                  <AccordionTrigger className="text-base font-medium">
-                    <div className="flex items-center gap-2">
-                      <Phone className="w-5 h-5 text-accent" weight="duotone" />
-                      What is a Carrier Lock?
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent>
-                    <div className="space-y-3 text-sm text-muted-foreground">
-                      <p>
-                        A carrier lock (SIM lock) restricts your device to work only with a specific mobile carrier
-                        until the device is paid off or unlocked by the carrier.
-                      </p>
-                      <p className="font-medium text-foreground">Why Carrier Locks Exist:</p>
-                      <ul className="list-disc list-inside space-y-1 ml-2">
-                        <li>Carriers subsidize phone costs with contracts</li>
-                        <li>Locks ensure contract fulfillment before device can be used elsewhere</li>
-                        <li>Prevents resale of subsidized devices before payment completion</li>
-                      </ul>
-                      <p className="font-medium text-foreground mt-3">Legal Unlock Methods:</p>
-                      <ul className="list-disc list-inside space-y-1 ml-2">
-                        <li>Contact your carrier's customer service after contract completion</li>
-                        <li>Pay off remaining device balance if on payment plan</li>
-                        <li>Request unlock code (usually provided within 2-5 business days)</li>
-                        <li>Use official carrier unlock request websites</li>
-                      </ul>
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-
-                <AccordionItem value="bootloader">
-                  <AccordionTrigger className="text-base font-medium">
-                    <div className="flex items-center gap-2">
-                      <Cpu className="w-5 h-5 text-primary" weight="duotone" />
-                      What is a Bootloader Lock?
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent>
-                    <div className="space-y-3 text-sm text-muted-foreground">
-                      <p>
-                        A bootloader lock prevents unauthorized firmware from being installed on your device,
-                        ensuring only verified software from the manufacturer can run.
-                      </p>
-                      <p className="font-medium text-foreground">Why Bootloader Locks Exist:</p>
-                      <ul className="list-disc list-inside space-y-1 ml-2">
-                        <li>Protects device integrity and security</li>
-                        <li>Prevents installation of malicious or unstable firmware</li>
-                        <li>Maintains warranty and support eligibility</li>
-                      </ul>
-                      <p className="font-medium text-foreground mt-3">Legal Unlock Methods:</p>
-                      <ul className="list-disc list-inside space-y-1 ml-2">
-                        <li>Google Pixel: Use official fastboot unlock commands (voids warranty)</li>
-                        <li>OnePlus: Request unlock token from official website</li>
-                        <li>Motorola: Generate unlock code via official Motorola unlock site</li>
-                        <li>Samsung: Generally locked; only developer editions support unlock</li>
-                      </ul>
-                      <p className="text-xs text-warning mt-3">
-                        ⚠️ Unlocking bootloader typically voids warranty and may compromise device security.
-                      </p>
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-            </TabsContent>
-
-            <TabsContent value="recovery" className="space-y-4">
-              <Alert>
-                <Path className="w-4 h-4" />
-                <AlertTitle>Legitimate Recovery Paths Only</AlertTitle>
-                <AlertDescription>
-                  These are the only legal and ethical methods to recover access to a security-locked device.
-                  Any method not listed here is likely illegal and/or will damage your device.
+              <Alert className="mt-4 border-primary/30 bg-primary/5">
+                <Info className="text-primary" />
+                <AlertDescription className="text-xs text-foreground">
+                  <strong>Before You Start:</strong> Gather proof of purchase, receipts, account
+                  recovery information, and device IMEI/serial numbers. These will be required for
+                  legitimate unlock procedures.
                 </AlertDescription>
               </Alert>
-
-              <Card className="border-primary/30">
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <CheckCircle className="w-5 h-5 text-primary" weight="fill" />
-                    FRP Recovery Methods
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm">
-                  <div className="space-y-2">
-                    <p className="font-medium text-foreground">Method 1: Sign in with Original Google Account</p>
-                    <ul className="list-disc list-inside space-y-1 ml-2 text-muted-foreground">
-                      <li>Enter the email address that was signed in before the factory reset</li>
-                      <li>Enter the password for that account</li>
-                      <li>This is the intended and fastest recovery method</li>
-                    </ul>
-                  </div>
-
-                  <div className="space-y-2">
-                    <p className="font-medium text-foreground">Method 2: Google Account Recovery</p>
-                    <ul className="list-disc list-inside space-y-1 ml-2 text-muted-foreground">
-                      <li>If you forgot your password, use Google Account Recovery</li>
-                      <li>Visit: accounts.google.com/signin/recovery</li>
-                      <li>Follow the prompts to verify your identity (phone, email, security questions)</li>
-                      <li>Reset your password and use it to bypass FRP</li>
-                    </ul>
-                  </div>
-
-                  <div className="space-y-2">
-                    <p className="font-medium text-foreground">Method 3: Wait 72 Hours (Some Devices)</p>
-                    <ul className="list-disc list-inside space-y-1 ml-2 text-muted-foreground">
-                      <li>Some Samsung devices allow FRP bypass after 72 hours of inactivity</li>
-                      <li>This is a built-in feature for legitimate owners who lost account access</li>
-                      <li>Not available on all models; check manufacturer documentation</li>
-                    </ul>
-                  </div>
-
-                  <div className="space-y-2">
-                    <p className="font-medium text-foreground">Method 4: Proof of Purchase with Manufacturer</p>
-                    <ul className="list-disc list-inside space-y-1 ml-2 text-muted-foreground">
-                      <li>Contact manufacturer support (Samsung, Google, etc.) with proof of purchase</li>
-                      <li>Provide original receipt, IMEI, and government-issued ID</li>
-                      <li>Manufacturer may assist with FRP removal verification process</li>
-                      <li>This process can take 5-10 business days</li>
-                    </ul>
-                  </div>
-
-                  <div className="space-y-2">
-                    <p className="font-medium text-foreground">Method 5: Contact Previous Owner</p>
-                    <ul className="list-disc list-inside space-y-1 ml-2 text-muted-foreground">
-                      <li>If you purchased a used device, contact the previous owner</li>
-                      <li>Ask them to remove the Google account from their account settings remotely</li>
-                      <li>Visit: myaccount.google.com → Security → Manage Devices</li>
-                    </ul>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border-secondary/30">
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <CheckCircle className="w-5 h-5 text-secondary" weight="fill" />
-                    MDM Recovery Methods
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm">
-                  <div className="space-y-2">
-                    <p className="font-medium text-foreground">For Organization-Owned Devices:</p>
-                    <ul className="list-disc list-inside space-y-1 ml-2 text-muted-foreground">
-                      <li>Contact your IT administrator or company's device management team</li>
-                      <li>Provide device serial number and employee ID</li>
-                      <li>Follow internal procedures for device return or MDM removal</li>
-                      <li>If you left the organization, return the device as it's company property</li>
-                    </ul>
-                  </div>
-
-                  <div className="space-y-2">
-                    <p className="font-medium text-foreground">For Personal Devices Enrolled in MDM:</p>
-                    <ul className="list-disc list-inside space-y-1 ml-2 text-muted-foreground">
-                      <li>Go to device Settings → General → VPN & Device Management</li>
-                      <li>Select the MDM profile and tap "Remove Management"</li>
-                      <li>If password-protected, contact your organization's IT department</li>
-                    </ul>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border-accent/30">
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <CheckCircle className="w-5 h-5 text-accent" weight="fill" />
-                    Carrier Unlock Recovery
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm">
-                  <div className="space-y-2">
-                    <p className="font-medium text-foreground">Official Carrier Unlock Request:</p>
-                    <ul className="list-disc list-inside space-y-1 ml-2 text-muted-foreground">
-                      <li>Contact customer service: AT&T, Verizon, T-Mobile, etc.</li>
-                      <li>Ensure device is fully paid off and account is in good standing</li>
-                      <li>Provide IMEI number (dial *#06# to find it)</li>
-                      <li>Wait 2-5 business days for unlock code or confirmation</li>
-                    </ul>
-                  </div>
-
-                  <p className="text-xs text-warning mt-3">
-                    ⚠️ Third-party "unlock services" are often scams or use illegal methods. Always use official carrier channels.
-                  </p>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="resources" className="space-y-4">
-              <Card className="border-primary/30">
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <BookOpen className="w-5 h-5 text-primary" weight="duotone" />
-                    Official Support Resources
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm">
-                  <div className="space-y-2">
-                    <p className="font-medium text-foreground">Google / Android:</p>
-                    <ul className="list-disc list-inside space-y-1 ml-2 text-muted-foreground">
-                      <li>Google Account Recovery: accounts.google.com/signin/recovery</li>
-                      <li>Android Device Manager: android.com/find</li>
-                      <li>Google Support: support.google.com/android</li>
-                    </ul>
-                  </div>
-
-                  <div className="space-y-2">
-                    <p className="font-medium text-foreground">Apple / iOS:</p>
-                    <ul className="list-disc list-inside space-y-1 ml-2 text-muted-foreground">
-                      <li>Apple ID Account Recovery: iforgot.apple.com</li>
-                      <li>Find My iPhone: icloud.com/find</li>
-                      <li>Apple Business Manager Support: business.apple.com</li>
-                      <li>Apple Support: support.apple.com</li>
-                    </ul>
-                  </div>
-
-                  <div className="space-y-2">
-                    <p className="font-medium text-foreground">Samsung:</p>
-                    <ul className="list-disc list-inside space-y-1 ml-2 text-muted-foreground">
-                      <li>Find My Mobile: findmymobile.samsung.com</li>
-                      <li>Samsung Account Recovery: account.samsung.com</li>
-                      <li>Samsung Support: samsung.com/us/support</li>
-                    </ul>
-                  </div>
-
-                  <div className="space-y-2">
-                    <p className="font-medium text-foreground">US Carriers:</p>
-                    <ul className="list-disc list-inside space-y-1 ml-2 text-muted-foreground">
-                      <li>AT&T Unlock: att.com/deviceunlock</li>
-                      <li>Verizon Unlock: verizon.com/support/unlocking-device</li>
-                      <li>T-Mobile Unlock: t-mobile.com/support/devices/unlock-your-device</li>
-                      <li>Sprint (now T-Mobile): sprint.com/unlock</li>
-                    </ul>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Alert>
-                <Warning className="w-4 h-4" />
-                <AlertTitle>Legal Disclaimer</AlertTitle>
-                <AlertDescription>
-                  Bobby's World provides educational information only. We do not offer, support, or endorse any
-                  bypass tools, exploits, or unofficial methods to circumvent device security features.
-                  Attempting to bypass security features on devices you do not own or do not have authorization
-                  to modify may violate federal and state laws, including the Computer Fraud and Abuse Act (CFAA).
-                  Always seek legal methods first.
-                </AlertDescription>
-              </Alert>
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
