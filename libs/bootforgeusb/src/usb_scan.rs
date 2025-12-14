@@ -1,4 +1,4 @@
-use crate::model::{UsbEvidence};
+use crate::model::{UsbEvidence, InterfaceHint};
 use rusb::{Context, Device, DeviceDescriptor, UsbContext};
 use std::time::Duration;
 
@@ -40,7 +40,7 @@ fn extract_usb_evidence<T: UsbContext>(device: &Device<T>) -> Result<UsbEvidence
         .ok()
         .and_then(|h| h.read_serial_number_string_ascii(&device_desc, timeout).ok());
     
-    let interface_class = get_interface_class(device);
+    let (interface_class, interface_hints) = get_interface_info(device);
     
     Ok(UsbEvidence {
         vid,
@@ -51,20 +51,30 @@ fn extract_usb_evidence<T: UsbContext>(device: &Device<T>) -> Result<UsbEvidence
         bus,
         address,
         interface_class,
+        interface_hints,
     })
 }
 
-fn get_interface_class<T: UsbContext>(device: &Device<T>) -> Option<u8> {
-    let device_desc = device.device_descriptor().ok()?;
-    let config_desc = device.config_descriptor(0).ok()?;
+fn get_interface_info<T: UsbContext>(device: &Device<T>) -> (Option<u8>, Vec<InterfaceHint>) {
+    let mut hints = Vec::new();
+    let mut first_class = None;
     
-    for interface in config_desc.interfaces() {
-        for desc in interface.descriptors() {
-            return Some(desc.class_code());
+    if let Ok(config_desc) = device.config_descriptor(0) {
+        for interface in config_desc.interfaces() {
+            for desc in interface.descriptors() {
+                if first_class.is_none() {
+                    first_class = Some(desc.class_code());
+                }
+                hints.push(InterfaceHint {
+                    class: desc.class_code(),
+                    subclass: desc.sub_class_code(),
+                    protocol: desc.protocol_code(),
+                });
+            }
         }
     }
     
-    None
+    (first_class, hints)
 }
 
 #[cfg(test)]

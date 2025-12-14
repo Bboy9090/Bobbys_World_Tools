@@ -1,9 +1,9 @@
 [package]
 name = "bootforgeusb"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 authors = ["Pandora Codex Team"]
-description = "Evidence-based USB device detection for Pandora Codex - no fake outputs, only proven facts"
+description = "Evidence-based USB device detection with per-device correlation for Pandora Codex - no fake outputs, only proven facts"
 license = "MIT"
 
 [lib]

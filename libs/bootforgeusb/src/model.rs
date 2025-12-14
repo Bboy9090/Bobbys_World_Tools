@@ -9,6 +9,7 @@ pub struct DeviceRecord {
     pub confidence: f32,
     pub evidence: Evidence,
     pub notes: Vec<String>,
+    pub matched_tool_ids: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -27,6 +28,14 @@ pub struct UsbEvidence {
     pub bus: u8,
     pub address: u8,
     pub interface_class: Option<u8>,
+    pub interface_hints: Vec<InterfaceHint>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InterfaceHint {
+    pub class: u8,
+    pub subclass: u8,
+    pub protocol: u8,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -34,6 +43,7 @@ pub struct ToolEvidence {
     pub present: bool,
     pub seen: bool,
     pub raw: String,
+    pub device_ids: Vec<String>,
 }
 
 impl ToolEvidence {
@@ -42,6 +52,7 @@ impl ToolEvidence {
             present: false,
             seen: false,
             raw: "missing".to_string(),
+            device_ids: vec![],
         }
     }
 
@@ -50,14 +61,16 @@ impl ToolEvidence {
             present: true,
             seen: false,
             raw: String::new(),
+            device_ids: vec![],
         }
     }
 
-    pub fn confirmed(raw: String) -> Self {
+    pub fn confirmed(raw: String, device_ids: Vec<String>) -> Self {
         Self {
             present: true,
-            seen: true,
+            seen: !device_ids.is_empty(),
             raw,
+            device_ids,
         }
     }
 }

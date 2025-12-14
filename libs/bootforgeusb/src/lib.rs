@@ -12,15 +12,17 @@ pub fn scan() -> Result<Vec<DeviceRecord>, Box<dyn std::error::Error>> {
     
     let mut results = Vec::new();
     
-    for usb in usb_devices {
+    for usb in &usb_devices {
         let device_uid = format!(
             "usb:{}:{}:bus{}:addr{}",
             usb.vid, usb.pid, usb.bus, usb.address
         );
         
-        let mut classification = classify::classify_device(&usb);
-        
-        confirmers.confirm_device(usb.serial.as_deref(), &mut classification);
+        let (classification, matched_tool_ids) = classify::classify_with_correlation(
+            usb,
+            &usb_devices,
+            &confirmers,
+        );
         
         let platform_hint = match classification.mode.as_str() {
             s if s.starts_with("ios_") => "ios",
@@ -39,10 +41,11 @@ pub fn scan() -> Result<Vec<DeviceRecord>, Box<dyn std::error::Error>> {
             mode: classification.mode.as_str().to_string(),
             confidence: classification.confidence,
             evidence: Evidence {
-                usb,
+                usb: usb.clone(),
                 tools: tool_evidence,
             },
             notes: classification.notes,
+            matched_tool_ids,
         };
         
         results.push(record);
