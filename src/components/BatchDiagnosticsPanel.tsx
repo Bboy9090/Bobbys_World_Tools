@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -20,8 +20,12 @@ import {
   ListChecks,
   ArrowsClockwise,
   Info,
+  WifiHigh,
+  WifiSlash,
+  Circle,
 } from '@phosphor-icons/react';
 import { toast } from 'sonner';
+import { useBatchDiagnosticsWebSocket } from '@/hooks/use-batch-diagnostics-websocket';
 import {
   batteryHealthManifest,
   BatteryHealthData,
@@ -78,6 +82,11 @@ export function BatchDiagnosticsPanel() {
   );
   const [concurrencyMode, setConcurrencyMode] = useState<'sequential' | 'parallel'>('sequential');
   const [maxConcurrent, setMaxConcurrent] = useState(2);
+  const [currentBatchId, setCurrentBatchId] = useState<string | null>(null);
+
+  const ws = useBatchDiagnosticsWebSocket({
+    wsUrl: 'ws://localhost:3001/ws/batch-diagnostics',
+  });
 
   const scanDevices = async () => {
     setIsScanning(true);
@@ -123,6 +132,133 @@ export function BatchDiagnosticsPanel() {
     const interval = setInterval(scanDevices, 10000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (!currentBatchId) return;
+
+    const unsubscribeProgress = ws.on('progress', (event) => {
+      if (event.batchId !== currentBatchId || !event.deviceId) return;
+
+      setDevices(prev => {
+        const newDevices = new Map(prev);
+        const device = newDevices.get(event.deviceId!);
+        if (device) {
+          device.progress = event.progress || device.progress;
+          device.currentOperation = event.metadata?.currentOperation || device.currentOperation;
+        }
+        return newDevices;
+      });
+    });
+
+    const unsubscribeDeviceStart = ws.on('device_start', (event) => {
+      if (event.batchId !== currentBatchId || !event.deviceId) return;
+
+      setDevices(prev => {
+        const newDevices = new Map(prev);
+        const device = newDevices.get(event.deviceId!);
+        if (device) {
+          device.status = 'running';
+          device.startTime = event.timestamp;
+          device.currentOperation = 'Starting diagnostics...';
+        }
+        return newDevices;
+      });
+
+      toast.info(`Device ${event.deviceId} started`, {
+        description: 'Running diagnostics',
+      });
+    });
+
+    const unsubscribeDeviceComplete = ws.on('device_complete', (event) => {
+      if (event.batchId !== currentBatchId || !event.deviceId) return;
+
+      setDevices(prev => {
+        const newDevices = new Map(prev);
+        const device = newDevices.get(event.deviceId!);
+        if (device) {
+          device.status = 'completed';
+          device.progress = 100;
+          device.endTime = event.timestamp;
+          device.currentOperation = undefined;
+          if (event.data) {
+            device.batteryData = event.data.batteryData;
+            device.storageData = event.data.storageData;
+            device.thermalData = event.data.thermalData;
+          }
+        }
+        return newDevices;
+      });
+    });
+
+    const unsubscribeOperationStart = ws.on('operation_start', (event) => {
+      if (event.batchId !== currentBatchId || !event.deviceId) return;
+
+      setDevices(prev => {
+        const newDevices = new Map(prev);
+        const device = newDevices.get(event.deviceId!);
+        if (device && event.operation) {
+          device.currentOperation = `Running ${event.operation} diagnostic...`;
+        }
+        return newDevices;
+      });
+    });
+
+    const unsubscribeOperationComplete = ws.on('operation_complete', (event) => {
+      if (event.batchId !== currentBatchId || !event.deviceId) return;
+
+      setDevices(prev => {
+        const newDevices = new Map(prev);
+        const device = newDevices.get(event.deviceId!);
+        if (device && event.operation) {
+          device.completedOperations.push(event.operation);
+        }
+        return newDevices;
+      });
+    });
+
+    const unsubscribeError = ws.on('error', (event) => {
+      if (event.batchId !== currentBatchId || !event.deviceId) return;
+
+      setDevices(prev => {
+        const newDevices = new Map(prev);
+        const device = newDevices.get(event.deviceId!);
+        if (device && event.error) {
+          device.errors.push(event.error);
+          device.status = 'failed';
+        }
+        return newDevices;
+      });
+
+      toast.error(`Device ${event.deviceId} error`, {
+        description: event.error,
+      });
+    });
+
+    const unsubscribeBatchComplete = ws.on('batch_complete', (event) => {
+      if (event.batchId !== currentBatchId) return;
+
+      setBatchRunning(false);
+      setBatchPaused(false);
+      setCurrentBatchId(null);
+
+      const completed = event.metadata?.completedDevices || 0;
+      const failed = event.metadata?.failedDevices || 0;
+
+      toast.success('Batch diagnostics complete', {
+        description: `${completed} succeeded, ${failed} failed`,
+      });
+    });
+
+    return () => {
+      unsubscribeProgress();
+      unsubscribeDeviceStart();
+      unsubscribeDeviceComplete();
+      unsubscribeOperationStart();
+      unsubscribeOperationComplete();
+      unsubscribeError();
+      unsubscribeBatchComplete();
+    };
+  }, [currentBatchId, ws]);
 
   const toggleDeviceSelection = (deviceId: string) => {
     setDevices(prev => {
@@ -263,6 +399,15 @@ export function BatchDiagnosticsPanel() {
       return;
     }
 
+    if (!ws.isConnected) {
+      toast.error('WebSocket not connected', {
+        description: 'Cannot start batch operation without WebSocket connection',
+      });
+      return;
+    }
+
+    const batchId = `batch-${Date.now()}`;
+    setCurrentBatchId(batchId);
     setBatchRunning(true);
     setBatchPaused(false);
 
@@ -275,6 +420,21 @@ export function BatchDiagnosticsPanel() {
         device.startTime = Date.now();
       });
       setDevices(new Map(devices));
+
+      ws.subscribeToBatch(batchId);
+      
+      const batchConfig = {
+        devices: selectedDevices.map(d => d.device.device_uid),
+        diagnostics: Array.from(selectedDiagnostics),
+        concurrencyMode,
+        maxConcurrent: concurrencyMode === 'parallel' ? maxConcurrent : 1,
+      };
+
+      ws.startBatch(batchId, batchConfig);
+
+      toast.info('Batch diagnostics started', {
+        description: `Processing ${selectedDevices.length} device(s) via WebSocket`,
+      });
 
       if (concurrencyMode === 'sequential') {
         for (const deviceState of selectedDevices) {
@@ -339,30 +499,41 @@ export function BatchDiagnosticsPanel() {
         }
       }
 
-      const completed = selectedDevices.filter(d => d.status === 'completed').length;
-      const failed = selectedDevices.filter(d => d.status === 'failed').length;
-
-      toast.success('Batch diagnostics complete', {
-        description: `${completed} succeeded, ${failed} failed`,
-      });
     } catch (error) {
       toast.error('Batch operation failed', {
         description: error instanceof Error ? error.message : 'Unknown error',
       });
-    } finally {
       setBatchRunning(false);
       setBatchPaused(false);
+      setCurrentBatchId(null);
     }
   };
 
   const pauseBatchDiagnostics = () => {
-    setBatchPaused(true);
-    toast.info('Batch operation paused');
+    if (currentBatchId) {
+      ws.pauseBatch(currentBatchId);
+      setBatchPaused(true);
+      toast.info('Batch operation paused');
+    }
+  };
+
+  const resumeBatchDiagnostics = () => {
+    if (currentBatchId) {
+      ws.resumeBatch(currentBatchId);
+      setBatchPaused(false);
+      toast.info('Batch operation resumed');
+    }
   };
 
   const stopBatchDiagnostics = () => {
+    if (currentBatchId) {
+      ws.stopBatch(currentBatchId);
+      ws.unsubscribeFromBatch(currentBatchId);
+    }
+    
     setBatchRunning(false);
     setBatchPaused(false);
+    setCurrentBatchId(null);
     
     setDevices(prev => {
       const newDevices = new Map(prev);
@@ -413,17 +584,69 @@ export function BatchDiagnosticsPanel() {
   const failedCount = Array.from(devices.values()).filter(d => d.status === 'failed').length;
   const runningCount = Array.from(devices.values()).filter(d => d.status === 'running').length;
 
+  const connectionStatusColor = useMemo(() => {
+    switch (ws.connectionStatus) {
+      case 'connected':
+        return 'text-success';
+      case 'connecting':
+        return 'text-warning';
+      case 'error':
+        return 'text-destructive';
+      default:
+        return 'text-muted-foreground';
+    }
+  }, [ws.connectionStatus]);
+
+  const connectionStatusText = useMemo(() => {
+    switch (ws.connectionStatus) {
+      case 'connected':
+        return 'Connected';
+      case 'connecting':
+        return 'Connecting...';
+      case 'error':
+        return 'Connection Error';
+      default:
+        return 'Disconnected';
+    }
+  }, [ws.connectionStatus]);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-display font-bold text-primary">Batch Diagnostic Operations</h1>
           <p className="text-muted-foreground mt-1">Run diagnostics across multiple connected devices</p>
+          <div className="flex items-center gap-2 mt-2">
+            {ws.isConnected ? (
+              <WifiHigh weight="fill" className={connectionStatusColor} />
+            ) : (
+              <WifiSlash weight="fill" className={connectionStatusColor} />
+            )}
+            <span className={`text-xs ${connectionStatusColor}`}>
+              WebSocket: {connectionStatusText}
+            </span>
+            {batchRunning && currentBatchId && (
+              <>
+                <Circle weight="fill" className="text-primary animate-pulse w-2 h-2" />
+                <span className="text-xs text-primary font-mono">
+                  Batch ID: {currentBatchId}
+                </span>
+              </>
+            )}
+          </div>
         </div>
-        <Button onClick={scanDevices} disabled={isScanning} variant="outline">
-          <ArrowsClockwise className={`mr-2 ${isScanning ? 'animate-spin' : ''}`} />
-          {isScanning ? 'Scanning...' : 'Refresh Devices'}
-        </Button>
+        <div className="flex gap-2">
+          {!ws.isConnected && (
+            <Button onClick={ws.connect} variant="outline" size="sm">
+              <WifiHigh className="mr-2" />
+              Connect WebSocket
+            </Button>
+          )}
+          <Button onClick={scanDevices} disabled={isScanning} variant="outline">
+            <ArrowsClockwise className={`mr-2 ${isScanning ? 'animate-spin' : ''}`} />
+            {isScanning ? 'Scanning...' : 'Refresh Devices'}
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
@@ -631,7 +854,7 @@ export function BatchDiagnosticsPanel() {
                         Pause
                       </Button>
                     ) : (
-                      <Button onClick={runBatchDiagnostics} className="w-full" variant="secondary">
+                      <Button onClick={resumeBatchDiagnostics} className="w-full" variant="secondary">
                         <Play className="mr-2" />
                         Resume
                       </Button>
