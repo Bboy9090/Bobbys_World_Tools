@@ -1,122 +1,102 @@
 # Planning Guide
 
-Bobby's World - A gritty Bronx workshop repair toolkit featuring educational resources, legitimate diagnostic tools, and community repair guides with a hip-hop inspired aesthetic straight from Bobby's apartment in the 20s, fixing the hood one phone at a time.
+Bobby's World - A professional repair utility dashboard (3uTools / SamFW style) featuring device diagnostics, flash monitoring, evidence reporting, and community repair guides. Transformed from enterprise square design to streamlined workshop toolkit with sidebar device list, top navigation tabs, and bottom logs panel.
 
 **Experience Qualities**: 
-1. **Authentic** - Raw, unpolished workshop vibe with spray-paint graffiti accents and vintage boom-box aesthetics
-2. **Educational** - Community-focused repair knowledge sharing with step-by-step guides and legal techniques
-3. **Empowering** - Tools and resources that put repair power back in the hands of the community
+1. **Professional** - Clean utility interface with proper grouping and hierarchy, like field equipment
+2. **Efficient** - Quick access to diagnostic tools, flash operations, and reports without navigation bloat
+3. **Technical** - Workshop-grade infrastructure that technicians trust for real work
 
-**Complexity Level**: Light Application (multiple features with basic state)
-This is a curated resource hub and diagnostic toolkit for legitimate device repair technicians, presented through a distinctive Bronx workshop aesthetic with hip-hop cultural influences.
+**Complexity Level**: Complex Application (advanced functionality with multiple views)
+This is a comprehensive repair utility dashboard with real-time device monitoring, batch diagnostics, flash operations, evidence management, plugin ecosystem, and community resources - all organized in a professional utility interface with sidebar + tabs layout.
 
 ## Essential Features
 
-### Bobby's Workshop Hub
-- **Functionality**: Main landing page with graffiti-style navigation cards linking to Repair Library, Tool Registry, Device Diagnostics, and Community Resources
-- **Purpose**: Provide immediate access to educational repair content and legitimate diagnostic tools in an authentic workshop aesthetic
-- **Trigger**: App loads, user sees spray-painted menu on concrete-textured background
-- **Progression**: App opens → Bobby's logo animates in → Navigation cards appear → User selects category → Content loads
-- **Success criteria**: Page loads <2 seconds, all navigation cards interactive, authentic hip-hop aesthetic maintained, links functional
+### Dashboard Layout (Utility-Style Interface)
+- **Functionality**: Professional dashboard with left sidebar (device list with status icons), top navigation tabs (Diagnostics | Reports | Tests | Plugins | Community | Settings), main content area, and bottom logs/notifications panel
+- **Purpose**: Provide efficient access to all tools with proper visual hierarchy like 3uTools/SamFW - everything visible at a glance
+- **Trigger**: App loads into dashboard layout with device sidebar showing connected/weak/confirmed/likely/unconfirmed devices
+- **Progression**: App opens → Dashboard loads → Sidebar shows devices → User clicks tab → Content switches → Logs panel shows activity
+- **Success criteria**: Device sidebar updates in real-time, tab switching instant, logs panel expandable/collapsible, no nested navigation, all tools 1-2 clicks away
 
-### Repair Library (Educational Resources)
-- **Functionality**: Curated collection of legal repair guides, iFixit-style teardowns, battery replacement tutorials, screen repair instructions, and community-submitted techniques
-- **Purpose**: Democratize repair knowledge with free, accessible tutorials for common device issues
-- **Trigger**: User clicks "Repair Library" card from hub
-- **Progression**: Click card → Category selector appears → User picks device type → Guides listed → User selects guide → Step-by-step instructions shown
-- **Success criteria**: 20+ repair guides available, guides include images/diagrams, difficulty ratings clear, legal disclaimer present
+### Diagnostics Tab
+- **Functionality**: Four sub-sections: Device Diagnostics (ADB/Fastboot/USB detection), Batch Diagnostics (multi-device runs), Flash Monitoring (Pandora Codex integration with benchmarking), Multi-Brand Flash (iOS DFU, Odin, EDL, Fastboot, MTK)
+- **Purpose**: Centralize all device testing and flashing operations in one location with proper categorization
+- **Trigger**: User clicks Diagnostics tab in top navigation
+- **Progression**: Click tab → Sub-tabs appear → User selects diagnostic type → Operations panel loads → User runs tests → Results display → Logs update
+- **Success criteria**: All diagnostic modules accessible, flash progress real-time, WebSocket connection stable, benchmarking metrics accurate, multi-brand protocols working
 
-### Tool Registry (Private & Public)
-- **Functionality**: Organized directory of legitimate open-source repair tools (ADB, Fastboot, libimobiledevice, scrcpy, etc.) with descriptions, installation guides, and documentation links
-- **Purpose**: Help technicians discover and learn about legal diagnostic and repair utilities
-- **Trigger**: User clicks "Tool Registry" card, can toggle between Public Tools and Private Workspace
-- **Progression**: Click card → Tool categories shown → User filters by platform → Tool cards displayed → Click tool for details → Installation instructions provided
-- **Success criteria**: 30+ tools catalogued, clear legal status indicators, working documentation links, installation commands copy-to-clipboard
+### Reports Tab (Evidence & Backups)
+- **Functionality**: Three sub-sections: Evidence Bundles (signed reports with chain-of-custody), Backups (snapshot retention with auto-cleanup), Evidence Dashboard (authority signing, correlation tracking)
+- **Purpose**: Consolidate all reporting and evidence management - simpler naming, clearer purpose
+- **Trigger**: User clicks Reports tab
+- **Progression**: Click tab → Sub-tabs show → User views/creates evidence bundles → Automatic snapshots visible → Authority dashboard accessible
+- **Success criteria**: Evidence bundles exportable, snapshots auto-created during operations, retention policies enforced, signing/verification working
 
-### Device Diagnostics Dashboard
-- **Functionality**: Real USB device detection (ADB/Fastboot/iOS), battery health checks, storage diagnostics, sensor tests, device flashing with live progress tracking via WebSocket - all using legitimate system tools
-- **Purpose**: Provide technicians with quick diagnostic capabilities for common hardware issues and live monitoring of flash operations
-- **Trigger**: User clicks "Diagnostics" or "Flashing" card, connects device via USB
-- **Progression**: Click card → Device detection runs → Connected devices shown → User selects device → Test suite options appear → User runs tests → Results displayed OR User initiates flash → WebSocket connects → Live progress updates stream → Flash completes
-- **Success criteria**: Detects Android/iOS devices correctly, battery health % accurate, storage info correct, test results clear, WebSocket connection stable, progress updates real-time (<500ms latency), flash completion notifications work
+### Tests Tab (Test Suite & Performance)
+- **Functionality**: Three sub-sections: Test Suite (automated security scans, quality checks, compatibility validation), Performance (CPU/memory/execution benchmarking), Plugin Map (dependency graph, conflict detection)
+- **Purpose**: Group all testing and validation tools together - security, performance, and plugin health
+- **Trigger**: User clicks Tests tab
+- **Progression**: Click tab → Sub-tabs visible → User runs automated tests → Results show pass/fail badges → Performance metrics display → Dependency conflicts highlighted
+- **Success criteria**: Automated test pipeline runs correctly, security scans complete, performance benchmarks accurate, dependency graph visualizes conflicts
 
-### Multi-Brand Flash Station
-- **Functionality**: Comprehensive flashing support for all major phone brands and emergency modes - iOS DFU (checkra1n/palera1n jailbreak support), Xiaomi EDL (emergency download for bricked devices), Samsung Odin (official protocol), and Universal Fastboot (Google, OnePlus, Motorola, etc.)
-- **Purpose**: Provide one unified interface for flashing any brand of phone with appropriate protocols, including emergency recovery for deeply bricked devices
-- **Trigger**: User clicks "Multi-Brand Flash" card from hub, selects brand-specific tab
-- **Progression**: Click card → Tab interface loads → User selects iOS/Samsung/Xiaomi/Universal tab → Device scan runs → User selects detected device → Protocol-specific options appear → User configures flash settings → Start flash → Real-time progress with pause/resume → Flash completes with verification
-- **Success criteria**: iOS DFU mode detection works, checkra1n/palera1n jailbreak instructions accurate, Xiaomi EDL mode scanning functional, Samsung Odin download mode recognition correct, partition selection for all brands, real-time progress tracking <500ms latency, pause/resume controls work, error handling shows helpful messages, legal disclaimers present
+### Plugins Tab (Marketplace & Management)
+- **Functionality**: Three sub-sections: Marketplace (browse, search, filter by certification/risk), Installed (manage enabled plugins), Submit Plugin (community contribution portal)
+- **Purpose**: Centralize plugin discovery, installation, and submission with certification badges
+- **Trigger**: User clicks Plugins tab
+- **Progression**: Click tab → Marketplace loads → User browses/searches → Views plugin details → Sees automated test results → Installs plugin → Manages in Installed tab
+- **Success criteria**: Plugin marketplace searchable/filterable, installation works, certification badges visible, installed plugins manageable, submission form validates
 
-### Community Resources Hub
-- **Functionality**: Links to legal repair advocacy groups (Right to Repair movement), forum communities, YouTube repair channels, and local repair shop directories
-- **Purpose**: Connect technicians with broader repair community and advocacy resources
-- **Trigger**: User clicks "Community" card
-- **Progression**: Click card → Resource categories shown → User browses links → External sites open in new tabs
-- **Success criteria**: 15+ quality resource links, organized by category, all links functional, descriptions clear
+### Community Tab
+- **Functionality**: Four sub-sections: Forums (advocacy, repair network), Repair Library (teardown guides), My Workspace (personal notes, repair history), Bobby's Vault (educational resources)
+- **Purpose**: Group all community and educational content together
+- **Trigger**: User clicks Community tab
+- **Progression**: Click tab → Sub-tabs show → User accesses forums → Views repair guides → Manages workspace → Explores vault
+- **Success criteria**: All community resources accessible, workspace data persists, guides organized by device type
 
-### Bobby's Private Workspace
-- **Functionality**: Personal tool bookmarks, custom repair notes, device history log - all stored locally in browser using useKV
-- **Purpose**: Let individual technicians organize their personal workflow and track repair jobs
-- **Trigger**: User clicks "My Workspace" from menu, data persists between sessions
-- **Progression**: Click workspace → Saved tools/notes appear → User adds/edits content → Changes auto-save → Persist on reload
-- **Success criteria**: Data persists correctly using useKV, no data loss, export/import functionality works, clear organizational structure
-
-### Workshop Atmosphere System
-- **Functionality**: Optional background audio atmosphere for focused work - instrumental (80-92 BPM boom-bap), ambient (vinyl hiss/city hum), or external (user's own audio). Hard capped at 15% volume, never auto-plays, starts only when work begins, fades out on errors/completion
-- **Purpose**: Create authentic workshop vibe without distraction - feels like music in the next room, not a soundtrack
-- **Trigger**: User enables in Settings → Atmosphere panel, audio plays when flash/diagnostic operations start
-- **Progression**: User enables atmosphere → Selects mode → Adjusts intensity (0-15%) → Enables auto-mute/pause options → Starts work → Audio fades in → Job completes → Audio fades out
-- **Success criteria**: Never auto-plays on launch, volume hard-capped at 15%, smooth fade in/out (200-300ms), respects user preferences via useKV persistence, works with all flash/diagnostic operations, gracefully handles missing audio files, External mode does nothing (BYO audio), legal/license-clean audio only
-
-### Snapshot Retention System
-- **Functionality**: Automatic backup management with configurable retention policies - captures device states, diagnostic results, flash operations, plugin configs, evidence bundles, and workspace backups. Includes age-based deletion, count-based limits, priority levels, automatic compression, and minimum retention guarantees
-- **Purpose**: Provide reliable data lifecycle management, ensure critical operations are never lost, and automatically clean up old data while preserving forensic evidence
-- **Trigger**: Automatic snapshots created during device operations (diagnostics, flashing, plugin changes), manual snapshot creation from UI, periodic workspace backups every 24 hours, retention policies applied every 6 hours
-- **Progression**: Operation occurs → Auto-snapshot created with metadata → Policy check runs → Compression applied after threshold → Old snapshots deleted per policy → Activity logged → Stats updated
-- **Success criteria**: All critical operations automatically snapshotted (flash ops, evidence bundles), diagnostic results retained for 90 days, device states retained for 30 days, workspace backups run daily, compression saves >40% storage after 7 days, policies respect minimum retention counts, never auto-delete priority=critical snapshots, export/import works correctly, audit trail tracks all lifecycle events, UI shows real-time stats and filtering, policy editor validates all inputs
-
-### Plugin Marketplace
-- **Functionality**: Community-driven plugin ecosystem with browsing, installation, submission, and automated testing - includes 5+ sample plugins (Samsung Enhanced Diagnostics, Xiaomi EDL Helper, iOS Checkra1n Automation, Universal Fastboot Tools, Battery Health Pro), search/filter by category/risk/certification, detailed plugin pages with test results, ratings, and author info
-- **Purpose**: Extend Bobby's World capabilities through vetted community contributions with automated security and quality checks
-- **Trigger**: User clicks "Plugin Marketplace" from hub or navigates from Authority Dashboard
-- **Progression**: Browse marketplace → Filter by category/certification → View plugin details → See automated test results → Install plugin → Enable/disable from Installed tab → Submit own plugins for review
-- **Success criteria**: Plugins persist via useKV, install/uninstall works correctly, search/filtering responsive, submission form validates inputs, automated test badges display correctly (pass/fail status), plugin details modal shows all metadata, certified badge appears on approved plugins, risk level warnings clear
+### Settings Tab
+- **Functionality**: Four sub-sections: Preferences (audio notifications, workshop atmosphere), Device Modes (BootForge support matrix), Legal Notice (authorized repair compliance), About (mission, right-to-repair advocacy)
+- **Purpose**: Consolidate configuration, device specs, legal info, and about into one location
+- **Trigger**: User clicks Settings tab
+- **Progression**: Click tab → Sub-tabs visible → User adjusts preferences → Views device mode specifications → Reads legal compliance → Views about info
+- **Success criteria**: Settings persist via useKV, audio preferences work, device mode matrix displays correctly, legal disclaimers present
 
 ## Edge Case Handling
 
-- **No Devices Connected**: Show friendly empty state with connection instructions, avoid technical jargon
+- **No Devices Connected**: Sidebar shows "No devices connected" with dimmed icon, main panels still accessible
+- **Device Sidebar Collapsed**: Toggle button collapses sidebar to icon-only view, more screen space for content
+- **Logs Panel Collapsed**: Console minimized by default, click to expand for detailed activity
+- **Tab Switching**: Instant tab changes, no loading states, content preserved when switching back
 - **Legal Disclaimer Not Accepted**: Block access to advanced diagnostic tools until disclaimer acknowledged
-- **External Links Broken**: Show error toast, provide alternative resource suggestions
 - **Browser Storage Full**: Gracefully handle useKV storage limits, prompt user to export/clear old data
-- **Unsupported Device Detected**: Show "Unknown Device" with generic diagnostic options
-- **Installation Commands Fail**: Troubleshooting section in guides with common error solutions
-- **Mobile Browser Access**: Responsive layout maintains functionality, diagnostic features may have limited capability warnings
-- **Audio Files Missing**: Workshop Atmosphere system continues to function (settings UI works), audio simply doesn't play - no errors shown to user
-- **Atmosphere During Errors**: Auto-mute kicks in immediately (200ms fade), never competes with error notifications or diagnostic output
+- **Unsupported Device Detected**: Show "Unknown Device" in sidebar with generic diagnostic options
+- **Mobile Browser Access**: Responsive layout with bottom nav instead of sidebar, collapsible sections
+- **WebSocket Disconnection**: Auto-reconnect for live monitoring, show connection status in logs
+- **Plugin Installation Failure**: Clear error messages with troubleshooting steps, rollback support
 
 ## Design Direction
 
-**Bronx Workshop Soul** - This interface channels Bobby's apartment workshop in the 20s: fluorescent lights flickering, oil on concrete floors, cigarette smoke in the air, tools older than the city. A line outside the roll-up gate - a dealer with a cracked screen, a sex worker scrolling on shattered glass, a thug waiting respectfully, a smart kid with hope, a businessman who doesn't belong but needs it done. Different lives, same problem. When Bobby shows up, shit gets fixed.
+**Professional Utility Dashboard** - This interface channels 3uTools and SamFW style: clean, efficient, technical. No unnecessary decoration - just proper visual hierarchy and intuitive grouping. Device sidebar on left with real-time status icons (Connected/Weak/Confirmed/Likely/Unconfirmed). Top navigation tabs for main sections. Bottom logs panel for activity monitoring.
 
-The UI captures this energy: raw authenticity meets professional capability. Not polished corporate design, not hacker aesthetics - this is *workshop reality*. Fluorescent cyan like overhead lights. Amber like sodium streetlamps. Asphalt black and oil-stained surfaces. The app feels like field equipment that's seen real work. No speeches, no promises - just results.
+The UI captures repair utility professionalism: field-tested equipment aesthetic, technical credibility, workshop-grade infrastructure. Fluorescent cyan accents for active states. Amber highlights for warnings. Dark background reduces eye strain during long repair sessions. Status indicators use color + icon for quick scanning.
 
-This is operator-grade infrastructure with street soul. Industrial credibility that knows where it came from.
+This is operator-grade tooling with proper information architecture - everything visible at a glance, no nested navigation, 1-2 clicks to any feature.
 
 ## Color Selection
 
-**Bronx Workshop Aesthetic** - Raw, authentic, street-level repair culture with industrial credibility.
+**Utility Dashboard Aesthetic** - Professional repair tool interface with technical credibility.
 
-The colorway evokes Bobby's apartment workshop: fluorescent lights, oil-stained concrete, cold winter nights, and tools older than the city itself. This is the soul of the street technician - not polished, not corporate, just real.
+The colorway evokes field-tested equipment: dark backgrounds for reduced eye strain, cyan accents for clarity, amber warnings for attention. Clean, functional, efficient.
 
-- **Background**: `#0A0A0A` - Asphalt black, apartment floor
-- **Card/Panel**: `#121212` - Oil-stained charcoal surfaces
-- **Border**: `#1F2632` - Worn metal divisions
-- **Primary Color**: `#1ECAD3` - Fluorescent shop cyan, that bright overhead light
-- **Accent**: `#CFA24D` - Sodium light amber, streetlamp warmth
-- **Rust Red** (rare/critical): `#8B2E2E` - Old tool patina, use sparingly
-- **Success**: `#2ECC71` - Clean fix confirmation
-- **Muted**: `#8C8C8C` - Dust gray for secondary text
-- **Foreground**: `#EDEDED` - Chalk white, written-on-concrete clarity
+- **Background**: `#0A0A0A` - Deep black, reduces eye strain
+- **Card/Panel**: `#121212` - Elevated surfaces
+- **Border**: `#1F2632` - Subtle divisions
+- **Primary Color**: `#1ECAD3` - Cyan accent for active states, buttons, selected tabs
+- **Accent**: `#CFA24D` - Amber for warnings, highlights
+- **Rust Red** (destructive): `#8B2E2E` - Error states, dangerous actions
+- **Success**: `#2ECC71` - Successful operations, connected devices
+- **Muted**: `#8C8C8C` - Secondary text, inactive states
+- **Foreground**: `#EDEDED` - Primary text, high contrast
 - **Foreground/Background Pairings**: 
   - Background (#0A0A0A): Chalk white (#EDEDED) - Ratio 18.2:1 ✓
   - Primary Cyan (#1ECAD3): Dark text (#0A0A0A) - Ratio 10.8:1 ✓
@@ -126,50 +106,55 @@ The colorway evokes Bobby's apartment workshop: fluorescent lights, oil-stained 
 
 ## Font Selection
 
-Mix of graffiti-inspired display fonts and clean technical monospace for readability.
+Clean, technical typography for professional repair utility interface.
 
-- **Primary**: Outfit (bold, geometric) for headers and navigation - street-style meets readability
-- **Secondary**: Space Mono for technical data, device IDs, and code
-- **Accent**: Bebas Neue for large impact text and hero sections
+- **Primary**: Outfit (geometric sans) for headers and UI text - technical yet approachable
+- **Secondary**: Space Mono for device IDs, serials, technical data, logs
+- **Accent**: Bebas Neue for large headers and branding
 - **Typographic Hierarchy**: 
-  - Hero Title: Bebas Neue Bold/48px/tight spacing
-  - Section Headers: Outfit Bold/28px/normal spacing  
-  - Card Titles: Outfit SemiBold/18px/normal spacing
-  - Body Text: Outfit Regular/15px/relaxed spacing (1.6)
-  - Technical Data: Space Mono Regular/13px/normal spacing
-  - Labels: Outfit Medium/12px/wide spacing/uppercase
+  - Logo/Branding: Bebas Neue Bold/24px/tight spacing
+  - Section Headers: Outfit Bold/24px/tight tracking
+  - Tab Labels: Outfit Medium/14px/normal spacing  
+  - Body Text: Outfit Regular/14px/relaxed spacing (1.5)
+  - Technical Data: Space Mono Regular/12px/normal spacing
+  - Labels: Outfit Medium/11px/wide spacing/uppercase
 
 ## Animations
 
-Raw, impactful animations inspired by street culture - spray-paint reveals, cassette tape loading animations, vinyl scratch transitions. Cards should feel like they're being slapped onto a wall with a slight bounce. Hover states should have subtle graffiti-style glow effects. Page transitions should feel snappy and urban, not corporate. Key moments (successful repairs, device connections) should celebrate with spray-paint burst animations or old-school boom-box visual effects.
+Minimal, purposeful animations for utility interface - instant feedback without distraction. Tab switching should be instant. Device sidebar status icons pulse subtly on state change. Logs panel expands/collapses with smooth 200ms transition. Active tab highlights with quick 150ms underline animation. Status badges fade in on device detection. Success states show brief checkmark animation. Keep everything snappy and professional - this is a working tool, not a showcase.
 
 ## Component Selection
 
 - **Components**: 
-  - Card with concrete texture backgrounds and spray-paint borders
-  - Button styled like cassette tape buttons or boom-box controls
-  - Badge shaped like price tags or graffiti tags
-  - Custom navigation cards styled like vinyl record covers or cassette cases
-  - Tooltip styled like sticky notes or torn paper
+  - Tabs for main navigation (Diagnostics, Reports, Tests, Plugins, Community, Settings)
+  - Sidebar with collapsible device list
+  - Card components for content sections
+  - Badge for status indicators (connected, weak, confirmed, etc.)
+  - Button for actions (primary cyan, ghost for secondary)
+  - ScrollArea for device list, logs panel, content areas
+  - Tooltip for additional info without cluttering UI
   
 - **Customizations**: 
-  - Graffiti-style border treatments using SVG spray effects
-  - Concrete texture overlays on major containers
-  - Custom scrollbars styled like spray-paint drips
-  - Icon buttons styled like old-school boom-box controls
+  - Custom device sidebar with collapsible state
+  - Logs panel with expand/collapse animation
+  - Status icons with color coding (green=connected, amber=weak, cyan=confirmed)
+  - Tab indicators with active state highlighting
   
 - **States**: 
-  - Buttons: Rest (cassette button), Hover (slight glow), Active (pressed in), Disabled (faded)
-  - Cards: Rest (concrete texture), Hover (spray-paint glow), Active (lifted with shadow)
-  - Status: Success (mint jade glow), Warning (hot pink), Error (rust red), Info (spray gold)
+  - Buttons: Rest (default), Hover (slight brightness), Active (pressed), Disabled (faded)
+  - Tabs: Inactive (muted), Active (primary background), Hover (subtle highlight)
+  - Devices: Connected (green), Weak (amber), Confirmed (cyan), Unconfirmed (gray)
+  - Logs: Info (cyan), Success (green), Warning (amber), Error (red)
   
 - **Icon Selection**: 
-  - Wrench, Hammer, Screwdriver for tool references
-  - Books, GraduationCap for educational content
-  - Users, Heart for community features
-  - Lightning, Cpu for diagnostics
-  - Bookmarks, FolderOpen for workspace
-  - Link, Download for external resources
+  - Cpu, Scan for diagnostics
+  - FileText, Archive for reports/evidence
+  - Flask, TestTube for testing
+  - Plug, Package for plugins
+  - Users, ChatsCircle for community
+  - Gear, SlidersHorizontal for settings
+  - DeviceMobile for devices
+  - Lightning, Gauge for performance
   
-- **Spacing**: Generous spacing (gap-6) between major sections, standard padding (p-5) on cards, tight clustering (gap-2) for related controls
-- **Mobile**: Single column stacking, larger touch targets (min 48px), collapsible sections with accordion behavior, bottom-sticky navigation
+- **Spacing**: Tight spacing in sidebar (gap-1), standard in tabs (gap-4), generous in content (gap-6)
+- **Mobile**: Sidebar becomes bottom sheet, tabs become horizontal scroll, logs panel always collapsed by default
