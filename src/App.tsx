@@ -8,16 +8,21 @@ import { BootForgeUSBScanner } from "./components/BootForgeUSBScanner";
 import { LiveDeviceHotplugMonitor } from "./components/LiveDeviceHotplugMonitor";
 import { AudioNotificationSettings } from "./components/AudioNotificationSettings";
 import { CorrelationDashboard } from "./components/CorrelationDashboard";
+import { PandoraCodexControlRoom } from "./components/PandoraCodexControlRoom";
 import { Toaster } from "@/components/ui/sonner";
-import { Pulse, Flask, Book, Gauge, Lightning, Broadcast, Gear, LinkSimple } from '@phosphor-icons/react';
+import { Pulse, Flask, Book, Gauge, Lightning, Broadcast, Gear, LinkSimple, Wrench } from '@phosphor-icons/react';
 
 function App() {
     return (
         <>
             <div className="min-h-screen bg-background p-4 md:p-6">
                 <div className="max-w-7xl mx-auto">
-                    <Tabs defaultValue="correlation" className="w-full">
-                        <TabsList className="grid w-full grid-cols-8 mb-6">
+                    <Tabs defaultValue="pandora" className="w-full">
+                        <TabsList className="grid w-full grid-cols-9 mb-6">
+                            <TabsTrigger value="pandora" className="gap-2">
+                                <Wrench className="w-4 h-4" weight="duotone" />
+                                Pandora Codex
+                            </TabsTrigger>
                             <TabsTrigger value="correlation" className="gap-2">
                                 <LinkSimple className="w-4 h-4" weight="duotone" />
                                 Correlation
@@ -51,6 +56,10 @@ function App() {
                                 Settings
                             </TabsTrigger>
                         </TabsList>
+
+                        <TabsContent value="pandora">
+                            <PandoraCodexControlRoom />
+                        </TabsContent>
 
                         <TabsContent value="correlation">
                             <CorrelationDashboard />
