@@ -65,6 +65,12 @@ export function BobbysWorldHub({ onNavigate }: BobbysWorldHubProps) {
           />
           <HubCard
             icon={<Lightning size={32} weight="duotone" />}
+            title="Universal Flash"
+            description="Multi-brand phone flashing with pause/resume control and live progress"
+            onClick={() => onNavigate('universal-flash')}
+          />
+          <HubCard
+            icon={<Lightning size={32} weight="duotone" />}
             title="Device Flashing"
             description="Flash firmware with real-time progress tracking and performance monitoring"
             onClick={() => onNavigate('flashing')}
