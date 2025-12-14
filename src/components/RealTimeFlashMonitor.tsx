@@ -122,30 +122,53 @@ export function RealTimeFlashMonitor() {
     });
   };
 
-  const startMonitoring = () => {
-    const newSession: MonitoringSession = {
-      id: `session-${Date.now()}`,
-      startTime: Date.now(),
-      deviceSerial: `device-${Math.random().toString(36).substr(2, 9)}`,
-      partition: 'system',
-      fileSize: Math.floor(Math.random() * 2000 + 500) * 1024 * 1024,
-      metrics: [],
-      bottlenecks: [],
-      averageSpeed: 0,
-      peakSpeed: 0,
-      minSpeed: Infinity,
-      status: 'active'
-    };
+  const startMonitoring = async () => {
+    try {
+      const response = await fetch('http://localhost:3001/api/monitor/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to start monitoring');
+      }
 
-    setCurrentSession(newSession);
-    setIsMonitoring(true);
-    metricsHistoryRef.current = [];
-    setActiveBottlenecks([]);
-    toast.success('Real-time monitoring started');
+      const newSession: MonitoringSession = {
+        id: `session-${Date.now()}`,
+        startTime: Date.now(),
+        deviceSerial: `device-${Math.random().toString(36).substr(2, 9)}`,
+        partition: 'system',
+        fileSize: Math.floor(Math.random() * 2000 + 500) * 1024 * 1024,
+        metrics: [],
+        bottlenecks: [],
+        averageSpeed: 0,
+        peakSpeed: 0,
+        minSpeed: Infinity,
+        status: 'active'
+      };
+
+      setCurrentSession(newSession);
+      setIsMonitoring(true);
+      metricsHistoryRef.current = [];
+      setActiveBottlenecks([]);
+      toast.success('Real-time monitoring started');
+    } catch (error) {
+      console.error('Failed to start monitoring:', error);
+      toast.error('Failed to start monitoring - backend may be offline');
+    }
   };
 
-  const stopMonitoring = () => {
+  const stopMonitoring = async () => {
     if (!currentSession) return;
+
+    try {
+      await fetch('http://localhost:3001/api/monitor/stop', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+    } catch (error) {
+      console.error('Failed to stop monitoring:', error);
+    }
 
     const completedSession: MonitoringSession = {
       ...currentSession,
@@ -163,47 +186,53 @@ export function RealTimeFlashMonitor() {
   };
 
   const startMetricsCollection = () => {
-    let tickCount = 0;
-    
-    monitoringIntervalRef.current = setInterval(() => {
-      tickCount++;
-      const baseSpeed = 15 + Math.random() * 20;
-      const speedVariation = Math.sin(tickCount / 10) * 5;
-      const transferSpeed = (baseSpeed + speedVariation) * 1024 * 1024;
-      
-      const cpuBase = 35 + Math.random() * 25;
-      const cpuSpike = tickCount % 30 === 0 ? 20 : 0;
-      const cpuUsage = Math.min(100, cpuBase + cpuSpike);
+    monitoringIntervalRef.current = setInterval(async () => {
+      try {
+        const response = await fetch('http://localhost:3001/api/monitor/live');
+        if (!response.ok) {
+          console.error('Failed to fetch metrics');
+          return;
+        }
+        
+        const data = await response.json();
+        
+        if (!data.active) {
+          return;
+        }
 
-      const metrics: RealtimeMetrics = {
-        timestamp: Date.now(),
-        transferSpeed,
-        cpuUsage,
-        memoryUsage: 45 + Math.random() * 15,
-        usbUtilization: (transferSpeed / (500 * 1024 * 1024)) * 100,
-        diskIO: 60 + Math.random() * 25,
-        bufferHealth: 70 + Math.random() * 20
-      };
+        const transferSpeed = parseFloat(data.speed) * 1024 * 1024;
+        const metrics: RealtimeMetrics = {
+          timestamp: Date.now(),
+          transferSpeed,
+          cpuUsage: data.cpu,
+          memoryUsage: data.memory,
+          usbUtilization: data.usb,
+          diskIO: data.disk,
+          bufferHealth: 70 + Math.random() * 20
+        };
 
-      metricsHistoryRef.current.push(metrics);
-      if (metricsHistoryRef.current.length > 300) {
-        metricsHistoryRef.current.shift();
+        metricsHistoryRef.current.push(metrics);
+        if (metricsHistoryRef.current.length > 300) {
+          metricsHistoryRef.current.shift();
+        }
+
+        setCurrentMetrics(metrics);
+
+        if (currentSession) {
+          setCurrentSession(prev => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              averageSpeed: metricsHistoryRef.current.reduce((sum, m) => sum + m.transferSpeed, 0) / metricsHistoryRef.current.length,
+              peakSpeed: Math.max(prev.peakSpeed, metrics.transferSpeed),
+              minSpeed: Math.min(prev.minSpeed, metrics.transferSpeed)
+            };
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching metrics:', error);
       }
-
-      setCurrentMetrics(metrics);
-
-      if (currentSession) {
-        setCurrentSession(prev => {
-          if (!prev) return prev;
-          return {
-            ...prev,
-            averageSpeed: metricsHistoryRef.current.reduce((sum, m) => sum + m.transferSpeed, 0) / metricsHistoryRef.current.length,
-            peakSpeed: Math.max(prev.peakSpeed, metrics.transferSpeed),
-            minSpeed: Math.min(prev.minSpeed, metrics.transferSpeed)
-          };
-        });
-      }
-    }, 100);
+    }, 2000);
   };
 
   const stopMetricsCollection = () => {

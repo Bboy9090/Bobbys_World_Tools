@@ -1,53 +1,85 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Play, FileText, ClockCounterClockwise } from '@phosphor-icons/react';
 import { toast } from 'sonner';
+import { API_CONFIG, getAPIUrl } from '@/lib/apiConfig';
 
 export function PandoraFlashPanel() {
   const [operations, setOperations] = useState<any[]>([]);
   const [history, setHistory] = useState<any[]>([]);
   const [isRunning, setIsRunning] = useState(false);
 
+  useEffect(() => {
+    fetchHistory();
+  }, []);
+
+  const fetchHistory = async () => {
+    try {
+      const response = await fetch(getAPIUrl(API_CONFIG.ENDPOINTS.FLASH_HISTORY));
+      if (response.ok) {
+        const data = await response.json();
+        setHistory(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch flash history:', error);
+    }
+  };
+
   const startDemoFlash = async () => {
     setIsRunning(true);
-    const operation = {
-      id: Date.now(),
-      name: 'Demo Flash Operation',
-      status: 'running',
-      progress: 0,
-      speed: '0 MB/s',
-      startTime: new Date().toISOString()
-    };
     
-    setOperations([operation]);
-    toast.success('Demo flash started');
-
-    const interval = setInterval(() => {
-      setOperations(ops => {
-        const updated = ops.map(op => {
-          if (op.id === operation.id && op.progress < 100) {
-            return {
-              ...op,
-              progress: Math.min(op.progress + 10, 100),
-              speed: `${(Math.random() * 30 + 10).toFixed(2)} MB/s`
-            };
-          }
-          return op;
-        });
-        
-        if (updated[0]?.progress === 100) {
-          clearInterval(interval);
-          setIsRunning(false);
-          setHistory(prev => [...prev, { ...updated[0], status: 'completed', endTime: new Date().toISOString() }]);
-          setOperations([]);
-          toast.success('Demo flash completed');
-        }
-        
-        return updated;
+    try {
+      const response = await fetch(getAPIUrl(API_CONFIG.ENDPOINTS.FLASH_START), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
       });
-    }, 1000);
+      
+      if (!response.ok) {
+        throw new Error('Failed to start flash operation');
+      }
+      
+      const { entry } = await response.json();
+      
+      const operation = {
+        ...entry,
+        progress: 0,
+        speed: '0 MB/s'
+      };
+      
+      setOperations([operation]);
+      toast.success('Demo flash started');
+
+      const interval = setInterval(() => {
+        setOperations(ops => {
+          const updated = ops.map(op => {
+            if (op.id === operation.id && op.progress < 100) {
+              return {
+                ...op,
+                progress: Math.min(op.progress + 10, 100),
+                speed: `${(Math.random() * 30 + 10).toFixed(2)} MB/s`
+              };
+            }
+            return op;
+          });
+          
+          if (updated[0]?.progress === 100) {
+            clearInterval(interval);
+            setIsRunning(false);
+            fetchHistory();
+            setOperations([]);
+            toast.success('Demo flash completed');
+          }
+          
+          return updated;
+        });
+      }, 1000);
+    } catch (error) {
+      console.error('Failed to start flash:', error);
+      toast.error('Failed to start flash operation');
+      setIsRunning(false);
+    }
   };
 
   return (

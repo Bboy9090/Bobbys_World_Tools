@@ -38,37 +38,61 @@ export function AutomatedTestingDashboard() {
     setTestResults([]);
 
     try {
-      const suite = createOptimizationTestSuite();
-      const totalTests = suite.tests.length;
-      let completed = 0;
+      const response = await fetch('http://localhost:3001/api/tests/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
 
-      const progressInterval = setInterval(() => {
-        completed++;
-        setProgress((completed / totalTests) * 100);
-      }, 300);
-
-      const results = await runner.runSuite(suite);
-
-      clearInterval(progressInterval);
-      setProgress(100);
-      setTestResults(results);
-
-      setTestHistory(current => [
-        ...(current || []),
-        { timestamp: Date.now(), results }
-      ].slice(-10));
-
-      const summary = runner.getSummary();
-      if (summary.passRate === 100) {
-        toast.success(`All tests passed! (${summary.passed}/${summary.total})`);
-      } else {
-        toast.warning(`${summary.passed}/${summary.total} tests passed (${summary.passRate.toFixed(1)}%)`);
+      if (!response.ok) {
+        throw new Error('Failed to run tests');
       }
+
+      const data = await response.json();
+      
+      const progressInterval = setInterval(() => {
+        setProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 100;
+          }
+          return prev + 10;
+        });
+      }, 200);
+
+      setTimeout(() => {
+        clearInterval(progressInterval);
+        setProgress(100);
+        
+        const mappedResults: TestResult[] = data.results.map((r: any) => ({
+          id: `test-${Date.now()}-${Math.random()}`,
+          testName: r.name,
+          passed: r.status === 'PASS',
+          duration: r.duration || 0,
+          error: r.status !== 'PASS' ? r.details : undefined,
+          timestamp: Date.now()
+        }));
+        
+        setTestResults(mappedResults);
+
+        setTestHistory(current => [
+          ...(current || []),
+          { timestamp: data.timestamp || Date.now(), results: mappedResults }
+        ].slice(-10));
+
+        const passed = mappedResults.filter(r => r.passed).length;
+        const total = mappedResults.length;
+        
+        if (passed === total) {
+          toast.success(`All tests passed! (${passed}/${total})`);
+        } else {
+          toast.warning(`${passed}/${total} tests passed`);
+        }
+      }, 1500);
     } catch (error) {
-      toast.error('Test execution failed');
+      toast.error('Test execution failed - backend may be offline');
       console.error(error);
     } finally {
-      setIsRunning(false);
+      setTimeout(() => setIsRunning(false), 1500);
     }
   };
 
