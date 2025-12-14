@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useKV } from '@github/spark/hooks';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,12 +19,14 @@ import {
   CheckCircle,
   XCircle,
   Clock,
-  Sparkle
+  Sparkle,
+  ArrowsClockwise
 } from '@phosphor-icons/react';
 import { Plugin, PluginSearchFilters, InstalledPlugin, PluginSubmission } from '@/types/plugin';
 import { toast } from 'sonner';
+import { pluginAPI, PluginDownloadProgress } from '@/lib/plugin-api';
 
-const MOCK_PLUGINS: Plugin[] = [
+const MOCK_PLUGINS_FALLBACK: Plugin[] = [
   {
     id: 'samsung-enhanced-diag',
     name: 'Samsung Enhanced Diagnostics',
@@ -288,18 +290,35 @@ export function PluginMarketplace() {
   const [installedPlugins, setInstalledPlugins] = useKV<InstalledPlugin[]>('installed-plugins', []);
   const [selectedPlugin, setSelectedPlugin] = useState<Plugin | null>(null);
   const [activeTab, setActiveTab] = useState<'browse' | 'installed' | 'submit'>('browse');
+  const [plugins, setPlugins] = useState<Plugin[]>(MOCK_PLUGINS_FALLBACK);
+  const [loading, setLoading] = useState(false);
+  const [downloading, setDownloading] = useState<Map<string, PluginDownloadProgress>>(new Map());
 
   const installed = installedPlugins || [];
 
-  const filteredPlugins = MOCK_PLUGINS.filter(plugin => {
+  useEffect(() => {
+    loadPlugins();
+  }, [filters]);
+
+  const loadPlugins = async () => {
+    setLoading(true);
+    try {
+      const results = await pluginAPI.searchPlugins(filters);
+      setPlugins(results);
+    } catch (error) {
+      console.error('Failed to load plugins:', error);
+      toast.error('Failed to load plugins, showing local cache');
+      setPlugins(MOCK_PLUGINS_FALLBACK);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredPlugins = plugins.filter(plugin => {
     if (searchQuery && !plugin.name.toLowerCase().includes(searchQuery.toLowerCase()) && 
         !plugin.description.toLowerCase().includes(searchQuery.toLowerCase())) {
       return false;
     }
-    if (filters.category && plugin.category !== filters.category) return false;
-    if (filters.riskLevel && plugin.riskLevel !== filters.riskLevel) return false;
-    if (filters.platform && !plugin.capabilities.platforms.includes(filters.platform)) return false;
-    if (filters.certified !== undefined && plugin.certified !== filters.certified) return false;
     return true;
   }).sort((a, b) => {
     switch (filters.sortBy) {
@@ -318,25 +337,57 @@ export function PluginMarketplace() {
       return;
     }
 
-    toast.info('Installing plugin...', { duration: 1000 });
-    
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    try {
+      const progressToastId = toast.loading(`Downloading ${plugin.name}...`);
+      
+      const blob = await pluginAPI.downloadPlugin(
+        plugin.id,
+        plugin.currentVersion.version,
+        (progress) => {
+          setDownloading(prev => new Map(prev).set(plugin.id, progress));
+          
+          if (progress.stage === 'downloading' && progress.progress > 0) {
+            toast.loading(
+              `Downloading ${plugin.name}... ${Math.round(progress.progress)}%`,
+              { id: progressToastId }
+            );
+          } else if (progress.stage === 'verifying') {
+            toast.loading(`Verifying ${plugin.name}...`, { id: progressToastId });
+          }
+        }
+      );
 
-    const newInstalled: InstalledPlugin = {
-      plugin,
-      installedVersion: plugin.currentVersion.version,
-      installedAt: Date.now(),
-      enabled: true,
-      autoUpdate: true
-    };
-
-    setInstalledPlugins(current => [...(current || []), newInstalled]);
-    toast.success(`${plugin.name} installed successfully`);
+      toast.loading(`Installing ${plugin.name}...`, { id: progressToastId });
+      
+      const installedPlugin = await pluginAPI.installPlugin(plugin.id, plugin.currentVersion.version);
+      
+      setInstalledPlugins(current => [...(current || []), installedPlugin]);
+      setDownloading(prev => {
+        const next = new Map(prev);
+        next.delete(plugin.id);
+        return next;
+      });
+      
+      toast.success(`${plugin.name} installed successfully`, { id: progressToastId });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Installation failed';
+      toast.error(message);
+      setDownloading(prev => {
+        const next = new Map(prev);
+        next.delete(plugin.id);
+        return next;
+      });
+    }
   };
 
-  const handleUninstall = (pluginId: string) => {
-    setInstalledPlugins(current => (current || []).filter(p => p.plugin.id !== pluginId));
-    toast.success('Plugin uninstalled');
+  const handleUninstall = async (pluginId: string) => {
+    try {
+      await pluginAPI.uninstallPlugin(pluginId);
+      setInstalledPlugins(current => (current || []).filter(p => p.plugin.id !== pluginId));
+      toast.success('Plugin uninstalled');
+    } catch (error) {
+      toast.error('Failed to uninstall plugin');
+    }
   };
 
   const handleToggleEnabled = (pluginId: string) => {
@@ -377,9 +428,17 @@ export function PluginMarketplace() {
           <p className="text-muted-foreground mt-1">Extend Bobby's World with community-built tools</p>
         </div>
         <div className="flex gap-2">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={loadPlugins}
+            disabled={loading}
+          >
+            <ArrowsClockwise className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          </Button>
           <Badge variant="outline" className="gap-1.5">
             <Package className="w-3.5 h-3.5" />
-            {MOCK_PLUGINS.length} Available
+            {plugins.length} Available
           </Badge>
           <Badge variant="outline" className="gap-1.5">
             <Download className="w-3.5 h-3.5" />
@@ -451,6 +510,7 @@ export function PluginMarketplace() {
           <div className="grid gap-4 md:grid-cols-2">
             {filteredPlugins.map(plugin => {
               const isInstalled = installed.some(p => p.plugin.id === plugin.id);
+              const downloadProgress = downloading.get(plugin.id);
               
               return (
                 <Card key={plugin.id} className="p-5 hover:border-primary/50 transition-colors cursor-pointer" onClick={() => setSelectedPlugin(plugin)}>
@@ -493,17 +553,42 @@ export function PluginMarketplace() {
                     ))}
                   </div>
 
+                  {downloadProgress && (
+                    <div className="mb-3 space-y-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground capitalize">{downloadProgress.stage}</span>
+                        {downloadProgress.progress > 0 && (
+                          <span className="text-muted-foreground">{Math.round(downloadProgress.progress)}%</span>
+                        )}
+                      </div>
+                      <Progress value={downloadProgress.progress} />
+                      {downloadProgress.bytesDownloaded && downloadProgress.totalBytes && (
+                        <div className="text-xs text-muted-foreground">
+                          {(downloadProgress.bytesDownloaded / 1024 / 1024).toFixed(1)} MB / {(downloadProgress.totalBytes / 1024 / 1024).toFixed(1)} MB
+                        </div>
+                      )}
+                      {downloadProgress.error && (
+                        <div className="text-xs text-destructive">{downloadProgress.error}</div>
+                      )}
+                    </div>
+                  )}
+
                   <div className="flex items-center gap-2">
                     <Button
                       size="sm"
-                      disabled={isInstalled}
+                      disabled={isInstalled || !!downloadProgress}
                       onClick={(e) => {
                         e.stopPropagation();
                         handleInstall(plugin);
                       }}
                       className="flex-1"
                     >
-                      {isInstalled ? (
+                      {downloadProgress ? (
+                        <>
+                          <ArrowsClockwise className="w-4 h-4 mr-1.5 animate-spin" />
+                          {downloadProgress.stage === 'downloading' ? 'Downloading' : 'Installing'}
+                        </>
+                      ) : isInstalled ? (
                         <>
                           <CheckCircle className="w-4 h-4 mr-1.5" />
                           Installed
