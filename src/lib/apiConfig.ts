@@ -1,5 +1,6 @@
 export const API_CONFIG = {
   BASE_URL: import.meta.env.VITE_API_URL || 'http://localhost:3001',
+  USE_MOCK: true,
   ENDPOINTS: {
     HEALTH: '/api/health',
     SYSTEM_TOOLS: '/api/system-tools',
@@ -23,6 +24,8 @@ export const API_CONFIG = {
 };
 
 export async function checkAPIHealth(): Promise<boolean> {
+  if (API_CONFIG.USE_MOCK) return true;
+  
   try {
     const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.HEALTH}`, {
       signal: AbortSignal.timeout(5000),

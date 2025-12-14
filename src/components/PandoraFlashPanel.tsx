@@ -4,11 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Play, FileText, ClockCounterClockwise } from '@phosphor-icons/react';
 import { toast } from 'sonner';
-import { API_CONFIG, getAPIUrl } from '@/lib/apiConfig';
+import { MockPandoraAPI, type FlashOperation } from '@/lib/mockAPI';
 
 export function PandoraFlashPanel() {
-  const [operations, setOperations] = useState<any[]>([]);
-  const [history, setHistory] = useState<any[]>([]);
+  const [operations, setOperations] = useState<FlashOperation[]>([]);
+  const [history, setHistory] = useState<FlashOperation[]>([]);
   const [isRunning, setIsRunning] = useState(false);
 
   useEffect(() => {
@@ -17,11 +17,8 @@ export function PandoraFlashPanel() {
 
   const fetchHistory = async () => {
     try {
-      const response = await fetch(getAPIUrl(API_CONFIG.ENDPOINTS.FLASH_HISTORY));
-      if (response.ok) {
-        const data = await response.json();
-        setHistory(data);
-      }
+      const data = await MockPandoraAPI.getFlashHistory();
+      setHistory(data);
     } catch (error) {
       console.error('Failed to fetch flash history:', error);
     }
@@ -31,22 +28,7 @@ export function PandoraFlashPanel() {
     setIsRunning(true);
     
     try {
-      const response = await fetch(getAPIUrl(API_CONFIG.ENDPOINTS.FLASH_START), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to start flash operation');
-      }
-      
-      const { entry } = await response.json();
-      
-      const operation = {
-        ...entry,
-        progress: 0,
-        speed: '0 MB/s'
-      };
+      const operation = await MockPandoraAPI.startFlash();
       
       setOperations([operation]);
       toast.success('Demo flash started');
@@ -58,7 +40,8 @@ export function PandoraFlashPanel() {
               return {
                 ...op,
                 progress: Math.min(op.progress + 10, 100),
-                speed: `${(Math.random() * 30 + 10).toFixed(2)} MB/s`
+                speed: `${(Math.random() * 30 + 10).toFixed(2)} MB/s`,
+                status: 'running' as const,
               };
             }
             return op;
@@ -114,7 +97,7 @@ export function PandoraFlashPanel() {
               {operations.map(op => (
                 <div key={op.id} className="p-4 bg-secondary rounded-lg border border-border space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="font-medium">{op.name}</span>
+                    <span className="font-medium">{op.device || 'Unknown Device'}</span>
                     <Badge variant="secondary">{op.status}</Badge>
                   </div>
                   <div className="w-full bg-muted rounded-full h-2">
@@ -145,8 +128,10 @@ export function PandoraFlashPanel() {
               <div className="space-y-2">
                 {history.slice(-3).reverse().map(item => (
                   <div key={item.id} className="flex items-center justify-between p-3 bg-muted rounded-lg text-sm">
-                    <span className="text-foreground">{item.name}</span>
-                    <Badge variant="outline" className="text-xs">Completed</Badge>
+                    <span className="text-foreground">{item.device}</span>
+                    <Badge variant="outline" className="text-xs">
+                      {new Date(item.timestamp).toLocaleTimeString()}
+                    </Badge>
                   </div>
                 ))}
               </div>

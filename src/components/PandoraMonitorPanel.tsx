@@ -4,45 +4,38 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Play, Stop, FileArrowDown, Wrench, ClockCounterClockwise } from '@phosphor-icons/react';
 import { toast } from 'sonner';
-
-interface Metrics {
-  speed: number;
-  cpu: number;
-  memory: number;
-  usb: number;
-  disk: number;
-  baseline: number;
-}
+import { MockPandoraAPI, type PerformanceMetrics } from '@/lib/mockAPI';
 
 export function PandoraMonitorPanel() {
   const [isMonitoring, setIsMonitoring] = useState(false);
-  const [metrics, setMetrics] = useState<Metrics | null>(null);
+  const [metrics, setMetrics] = useState<PerformanceMetrics | null>(null);
+  const [cleanupFn, setCleanupFn] = useState<(() => void) | null>(null);
 
   useEffect(() => {
-    if (!isMonitoring) return;
-
-    const interval = setInterval(() => {
-      setMetrics({
-        speed: Math.random() * 30 + 5,
-        cpu: Math.random() * 100,
-        memory: Math.random() * 100,
-        usb: Math.random() * 100,
-        disk: Math.random() * 100,
-        baseline: 21.25
-      });
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [isMonitoring]);
+    return () => {
+      if (cleanupFn) {
+        cleanupFn();
+      }
+    };
+  }, [cleanupFn]);
 
   const startMonitoring = () => {
     setIsMonitoring(true);
+    const cleanup = MockPandoraAPI.startMonitoring((newMetrics) => {
+      setMetrics(newMetrics);
+    });
+    setCleanupFn(() => cleanup);
     toast.success('Performance monitoring started');
   };
 
   const stopMonitoring = () => {
     setIsMonitoring(false);
     setMetrics(null);
+    if (cleanupFn) {
+      cleanupFn();
+      setCleanupFn(null);
+    }
+    MockPandoraAPI.stopMonitoring();
     toast.info('Performance monitoring stopped');
   };
 
@@ -58,6 +51,7 @@ export function PandoraMonitorPanel() {
     a.href = url;
     a.download = `performance-report-${Date.now()}.json`;
     a.click();
+    URL.revokeObjectURL(url);
     toast.success('Performance report exported');
   };
 

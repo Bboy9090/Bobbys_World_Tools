@@ -2,15 +2,9 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Flask, Play, ClockCounterClockwise, CheckCircle, XCircle } from '@phosphor-icons/react';
+import { Flask, Play, ClockCounterClockwise, CheckCircle, XCircle, CircleNotch } from '@phosphor-icons/react';
 import { toast } from 'sonner';
-
-interface TestResult {
-  name: string;
-  status: 'pass' | 'fail' | 'running';
-  duration?: number;
-  message?: string;
-}
+import { MockPandoraAPI, type TestResult } from '@/lib/mockAPI';
 
 export function PandoraTestsPanel() {
   const [isRunning, setIsRunning] = useState(false);
@@ -21,39 +15,24 @@ export function PandoraTestsPanel() {
     setResults([]);
     toast.info('Running automated tests...');
 
-    const tests = [
-      { name: 'Device Detection Test', delay: 1000 },
-      { name: 'Performance Metrics Validation', delay: 1500 },
-      { name: 'Bottleneck Detection', delay: 1200 },
-      { name: 'Correlation Matching', delay: 800 },
-      { name: 'Policy Gates Evaluation', delay: 900 },
-      { name: 'USB Identity Check', delay: 1100 },
-      { name: 'Tool Health Status', delay: 700 },
-    ];
-
-    for (const test of tests) {
-      setResults(prev => [...prev, { name: test.name, status: 'running' }]);
+    try {
+      const testResults = await MockPandoraAPI.runTests();
+      setResults(testResults);
       
-      await new Promise(resolve => setTimeout(resolve, test.delay));
+      const passCount = testResults.filter(r => r.status === 'PASS').length;
+      const totalCount = testResults.length;
       
-      const passed = Math.random() > 0.15;
-      setResults(prev => 
-        prev.map(r => 
-          r.name === test.name 
-            ? { 
-                ...r, 
-                status: passed ? 'pass' : 'fail', 
-                duration: test.delay,
-                message: passed ? 'Test passed successfully' : 'Test failed - check logs'
-              } 
-            : r
-        )
-      );
+      if (passCount === totalCount) {
+        toast.success(`All tests passed! ${passCount}/${totalCount}`);
+      } else {
+        toast.warning(`Tests completed: ${passCount}/${totalCount} passed`);
+      }
+    } catch (error) {
+      toast.error('Failed to run tests');
+      console.error(error);
+    } finally {
+      setIsRunning(false);
     }
-
-    setIsRunning(false);
-    const passCount = results.filter(r => r.status === 'pass').length;
-    toast.success(`Tests completed: ${passCount}/${tests.length} passed`);
   };
 
   return (
@@ -84,7 +63,7 @@ export function PandoraTestsPanel() {
 
           {isRunning && (
             <div className="flex items-center gap-2 text-sm">
-              <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+              <CircleNotch weight="bold" className="w-4 h-4 text-primary animate-spin" />
               <span className="text-muted-foreground">Tests running...</span>
             </div>
           )}
@@ -98,14 +77,14 @@ export function PandoraTestsPanel() {
                   className="flex items-center justify-between p-3 bg-secondary rounded-lg border border-border"
                 >
                   <div className="flex items-center gap-3">
-                    {result.status === 'running' && (
-                      <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                    )}
-                    {result.status === 'pass' && (
+                    {result.status === 'PASS' && (
                       <CheckCircle weight="fill" className="w-4 h-4 text-accent" />
                     )}
-                    {result.status === 'fail' && (
+                    {result.status === 'FAIL' && (
                       <XCircle weight="fill" className="w-4 h-4 text-destructive" />
+                    )}
+                    {result.status === 'SKIP' && (
+                      <CircleNotch weight="bold" className="w-4 h-4 text-muted-foreground" />
                     )}
                     <div>
                       <div className="font-medium text-sm">{result.name}</div>
@@ -115,14 +94,15 @@ export function PandoraTestsPanel() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    {result.duration && (
-                      <span className="text-xs text-muted-foreground font-mono">{result.duration}ms</span>
-                    )}
-                    {result.status === 'pass' && (
+                    <span className="text-xs text-muted-foreground font-mono">{result.duration.toFixed(0)}ms</span>
+                    {result.status === 'PASS' && (
                       <Badge variant="default" className="text-xs">PASS</Badge>
                     )}
-                    {result.status === 'fail' && (
+                    {result.status === 'FAIL' && (
                       <Badge variant="destructive" className="text-xs">FAIL</Badge>
+                    )}
+                    {result.status === 'SKIP' && (
+                      <Badge variant="outline" className="text-xs">SKIP</Badge>
                     )}
                   </div>
                 </div>
