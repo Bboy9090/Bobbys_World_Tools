@@ -1,163 +1,133 @@
 # Planning Guide
 
-A simplified, tool-style device management and performance monitoring system inspired by 3uTools and SamFW Tool, providing clear labels, simple icons, and one-click actions for Android/iOS device operations.
+Bobby's World - A gritty Bronx workshop repair toolkit featuring educational resources, legitimate diagnostic tools, and community repair guides with a hip-hop inspired aesthetic straight from Bobby's apartment in the 20s, fixing the hood one phone at a time.
 
 **Experience Qualities**: 
-1. **Simple** - Clear, intuitive interface with straightforward labels and minimal jargon, modeled after popular device management utilities
-2. **Efficient** - One-click actions with instant feedback, streamlined workflows that minimize complexity
-3. **Transparent** - Honest device correlation status with clear policy gates showing exactly what's allowed and blocked
+1. **Authentic** - Raw, unpolished workshop vibe with spray-paint graffiti accents and vintage boom-box aesthetics
+2. **Educational** - Community-focused repair knowledge sharing with step-by-step guides and legal techniques
+3. **Empowering** - Tools and resources that put repair power back in the hands of the community
 
-**Complexity Level**: Complex Application (advanced functionality, likely with multiple views)
-This is a comprehensive device management system with simplified presentation - real-time monitoring, correlation tracking, performance benchmarking, automated testing, and live hotplug detection, all presented through an accessible tool-style interface.
+**Complexity Level**: Light Application (multiple features with basic state)
+This is a curated resource hub and diagnostic toolkit for legitimate device repair technicians, presented through a distinctive Bronx workshop aesthetic with hip-hop cultural influences.
 
 ## Essential Features
 
-### Pandora Codex Control Room (3uTools-Style Interface)
-- **Functionality**: Simplified dashboard with five clear tabs (Flash, Monitor, Tests, Standards, Hotplug) providing straightforward device management without enterprise jargon
-- **Purpose**: Make powerful device operations accessible through a familiar repair-tool aesthetic with clear buttons and simple status labels
-- **Trigger**: Default landing page, accessed immediately on app load
-- **Progression**: App opens → Pandora Codex tab active → User selects function tab → Sees clear actions and metrics → One-click operations → Instant feedback
-- **Success criteria**: All operations accessible within 2 clicks, zero technical jargon in primary UI, clear status indicators (Connected/Weak/System Confirmed/Likely/Unconfirmed), instant visual feedback on actions
+### Bobby's Workshop Hub
+- **Functionality**: Main landing page with graffiti-style navigation cards linking to Repair Library, Tool Registry, Device Diagnostics, and Community Resources
+- **Purpose**: Provide immediate access to educational repair content and legitimate diagnostic tools in an authentic workshop aesthetic
+- **Trigger**: App loads, user sees spray-painted menu on concrete-textured background
+- **Progression**: App opens → Bobby's logo animates in → Navigation cards appear → User selects category → Content loads
+- **Success criteria**: Page loads <2 seconds, all navigation cards interactive, authentic hip-hop aesthetic maintained, links functional
 
-### Flash Operations Panel
-- **Functionality**: Start demo flash operations, view active operations queue with progress bars and transfer speeds, access operation history
-- **Purpose**: Provide simple flash management without complexity of batch configurations
-- **Trigger**: User navigates to Flash tab, clicks "Start Demo Flash"
-- **Progression**: Click Start → Operation queued → Progress bar updates → Speed displayed → Completion notification → Added to history
-- **Success criteria**: Operation starts within 500ms, progress updates every second, completion detected accurately, history persists
+### Repair Library (Educational Resources)
+- **Functionality**: Curated collection of legal repair guides, iFixit-style teardowns, battery replacement tutorials, screen repair instructions, and community-submitted techniques
+- **Purpose**: Democratize repair knowledge with free, accessible tutorials for common device issues
+- **Trigger**: User clicks "Repair Library" card from hub
+- **Progression**: Click card → Category selector appears → User picks device type → Guides listed → User selects guide → Step-by-step instructions shown
+- **Success criteria**: 20+ repair guides available, guides include images/diagrams, difficulty ratings clear, legal disclaimer present
 
-### Performance Monitor Panel
-- **Functionality**: Real-time metrics display (Transfer Speed, CPU Usage, Memory Usage, USB Utilization, Disk I/O) with start/stop controls and export capability
-- **Purpose**: Enable quick performance checks during operations without complex analysis
-- **Trigger**: User navigates to Monitor tab, clicks "Start Monitoring"
-- **Progression**: Click Start → Metrics stream in → Color-coded status (Good/Warning/Critical) → Visual updates → Export data if needed
-- **Success criteria**: Metrics update every second, status thresholds accurate, export generates valid JSON
+### Tool Registry (Private & Public)
+- **Functionality**: Organized directory of legitimate open-source repair tools (ADB, Fastboot, libimobiledevice, scrcpy, etc.) with descriptions, installation guides, and documentation links
+- **Purpose**: Help technicians discover and learn about legal diagnostic and repair utilities
+- **Trigger**: User clicks "Tool Registry" card, can toggle between Public Tools and Private Workspace
+- **Progression**: Click card → Tool categories shown → User filters by platform → Tool cards displayed → Click tool for details → Installation instructions provided
+- **Success criteria**: 30+ tools catalogued, clear legal status indicators, working documentation links, installation commands copy-to-clipboard
 
-### Automated Tests Panel
-- **Functionality**: Run comprehensive test suite with clear pass/fail results, duration tracking, and test history
-- **Purpose**: Validate system health with one-click testing
-- **Trigger**: User navigates to Tests tab, clicks "Run All Tests"
-- **Progression**: Click Run → Tests execute sequentially → Progress shown → Results displayed → Pass/fail status clear
-- **Success criteria**: All tests complete in <30 seconds, clear error messages, pass rate >85% on healthy systems
+### Device Diagnostics Dashboard
+- **Functionality**: Real USB device detection (ADB/Fastboot/iOS), battery health checks, storage diagnostics, sensor tests - all using legitimate system tools
+- **Purpose**: Provide technicians with quick diagnostic capabilities for common hardware issues
+- **Trigger**: User clicks "Diagnostics" card, connects device via USB
+- **Progression**: Click card → Device detection runs → Connected devices shown → User selects device → Test suite options appear → User runs tests → Results displayed
+- **Success criteria**: Detects Android/iOS devices correctly, battery health % accurate, storage info correct, test results clear
 
-### Benchmark Standards Panel
-- **Functionality**: Display industry-standard performance criteria across categories (Flash Speed, USB Bandwidth, CPU Efficiency, Memory Usage, Latency) with Optimal/Good/Acceptable/Poor ratings
-- **Purpose**: Provide reference benchmarks for evaluating device performance
-- **Trigger**: User navigates to Standards tab
-- **Progression**: Tab opens → Standards displayed → Clear rating levels → Reference sources shown
-- **Success criteria**: All standards accurately reflect USB-IF/JEDEC/Android specifications, ratings clearly explained
+### Community Resources Hub
+- **Functionality**: Links to legal repair advocacy groups (Right to Repair movement), forum communities, YouTube repair channels, and local repair shop directories
+- **Purpose**: Connect technicians with broader repair community and advocacy resources
+- **Trigger**: User clicks "Community" card
+- **Progression**: Click card → Resource categories shown → User browses links → External sites open in new tabs
+- **Success criteria**: 15+ quality resource links, organized by category, all links functional, descriptions clear
 
-### Live Hotplug Monitor Panel
-- **Functionality**: WebSocket-based real-time device connection/disconnection notifications with event stream, statistics counters, and audio alerts
-- **Purpose**: Instant awareness of device state changes
-- **Trigger**: User navigates to Hotplug tab, clicks "Connect to WebSocket"
-- **Progression**: Click Connect → WebSocket establishes → Events stream in → Audio notifications play → Statistics update → Event history shown
-- **Success criteria**: Connection within 1 second, events <200ms latency, auto-reconnect on disconnect, event history to 100 items
-
-### BootForge USB Scanner Panel (Real Device Detection)
-- **Functionality**: Scan real USB devices connected to the system using BootForgeUSB CLI, detect Android/iOS platforms, correlate with system tools (ADB/Fastboot/idevice_id), display device evidence and confidence scores
-- **Purpose**: Enable real-time USB device detection and classification with automatic fallback to demo data when CLI not installed
-- **Trigger**: User navigates to BootForge USB tab, system auto-checks CLI status on mount, user clicks "Scan Real Devices" or "View Demo Data"
-- **Progression**: Page loads → Status check → CLI availability shown → User clicks scan → USB devices enumerated → Platform classification → Tool correlation → Results displayed with badges → User expands device for detailed evidence
-- **Success criteria**: Status check within 500ms, scan completes within 10 seconds, all connected USB devices detected, platform classification >85% confidence for known devices, correlation badges accurate, demo mode clearly indicated, installation guide accessible
-
-### BootForgeUSB Installation Guide
-- **Functionality**: Step-by-step dialog with copy-paste commands for installing Rust, building CLI, installing optional tools (ADB, Fastboot, libimobiledevice), troubleshooting tips
-- **Purpose**: Remove friction from CLI installation with clear instructions and clipboard integration
-- **Trigger**: User clicks "Installation Guide" button when CLI not installed
-- **Progression**: Click Guide → Dialog opens → Steps displayed → User copies commands → Executes in terminal → Refreshes status → CLI detected → Real scanning enabled
-- **Success criteria**: All commands copy successfully, instructions accurate for Linux/macOS, troubleshooting covers common issues, guide accessible without CLI installed
+### Bobby's Private Workspace
+- **Functionality**: Personal tool bookmarks, custom repair notes, device history log - all stored locally in browser using useKV
+- **Purpose**: Let individual technicians organize their personal workflow and track repair jobs
+- **Trigger**: User clicks "My Workspace" from menu, data persists between sessions
+- **Progression**: Click workspace → Saved tools/notes appear → User adds/edits content → Changes auto-save → Persist on reload
+- **Success criteria**: Data persists correctly using useKV, no data loss, export/import functionality works, clear organizational structure
 
 ## Edge Case Handling
 
-- **BootForgeUSB CLI Not Installed**: Show installation guide button, display demo data with clear "DEMO MODE" badge, provide step-by-step setup instructions
-- **CLI Installed But No Devices**: Show helpful connection instructions for Android (USB debugging) and iOS (trust computer), display empty state with clear guidance
-- **Real Scan vs Demo Mode**: Use distinct badges and colors (emerald for "LIVE USB SCAN", amber for "DEMO MODE"), clear messaging about data source
-- **USB Permission Denied**: Show Linux-specific udev rules setup in installation guide, link to troubleshooting documentation
-- **Scan Timeout**: Display timeout error with retry button, suggest disconnecting unnecessary USB devices
-- **WebSocket Connection Failed**: Show clear error with reconnect button, degrade to manual refresh, display connection status
-- **WebSocket Disconnected Mid-Stream**: Auto-reconnect with exponential backoff, preserve event history, show status indicator
-- **No Test Data Available**: Display empty state with clear call-to-action to run tests
-- **Monitoring Not Started**: Show placeholder metrics encouraging user to start monitoring
-- **Flash Operation Fails**: Clear error message, preserve partial history, allow retry
-- **Export With No Data**: Prevent export action, show toast explaining no data available
-- **Rapid Sequential Operations**: Queue operations properly, maintain separate progress tracking
-- **Browser Tab Backgrounded**: Continue operations but warn about potential timer throttling
-- **Multiple Matched IDs**: Display all IDs clearly in correlation view
-- **Audio Unavailable**: Gracefully degrade to visual-only notifications
-- **Standards Data Loading**: Show skeleton loaders during initial data fetch
-- **Event Stream Overflow**: Maintain only last 100 events, auto-prune oldest entries
+- **No Devices Connected**: Show friendly empty state with connection instructions, avoid technical jargon
+- **Legal Disclaimer Not Accepted**: Block access to advanced diagnostic tools until disclaimer acknowledged
+- **External Links Broken**: Show error toast, provide alternative resource suggestions
+- **Browser Storage Full**: Gracefully handle useKV storage limits, prompt user to export/clear old data
+- **Unsupported Device Detected**: Show "Unknown Device" with generic diagnostic options
+- **Installation Commands Fail**: Troubleshooting section in guides with common error solutions
+- **Mobile Browser Access**: Responsive layout maintains functionality, diagnostic features may have limited capability warnings
 
 ## Design Direction
 
-The interface should feel like a professional device management tool (3uTools, SamFW Tool) - technical yet approachable, with clear labels and simple actions. No enterprise jargon, just straightforward buttons and status indicators. The "repair utility" aesthetic prioritizes immediate clarity over sophistication, with one-click operations and instant visual feedback. Color-coded status badges (green for connected, yellow for weak, red for unconfirmed) provide at-a-glance understanding. The overall feel should be efficient and trustworthy, like a well-designed system utility.
+The interface should feel like you stepped into Bobby's apartment workshop in the Bronx circa 2005 - concrete textures, spray-paint graffiti accents, vintage boom-box aesthetics, cassette tape UI elements. Think old-school hip-hop album covers mixed with street art murals. Color palette inspired by subway graffiti, urban decay, and classic sneaker colorways. Typography should mix bold graffiti-style headers with clean technical fonts for readability. The vibe: authentic, gritty, community-focused, and unapologetically DIY. Every element should scream "built by the community, for the community."
 
 ## Color Selection
 
-A clean tool-style theme with high contrast and clear status indicators.
+A raw urban palette with spray-paint inspired accents and concrete industrial tones.
 
-- **Primary Color**: `oklch(0.65 0.25 250)` - Electric blue for primary actions and healthy states, conveying reliability
-- **Secondary Colors**: `oklch(0.30 0.08 250)` - Deep navy for card backgrounds, `oklch(0.25 0.04 250)` - Muted backgrounds for secondary areas
-- **Accent Color**: `oklch(0.75 0.20 150)` - Vibrant cyan for connected status and positive indicators
+- **Primary Color**: `oklch(0.85 0.20 50)` - Spray-paint orange/gold, representing creativity and street art culture
+- **Secondary Colors**: `oklch(0.25 0.02 250)` - Concrete gray backgrounds, `oklch(0.15 0.01 260)` - Dark asphalt tones
+- **Accent Color**: `oklch(0.70 0.25 150)` - Fresh mint/jade green, classic sneaker accent color
 - **Foreground/Background Pairings**: 
-  - Background (Deep Navy #252847): White text (#FFFFFF) - Ratio 13.2:1 ✓
-  - Primary (Electric Blue #4A9EFF): White text (#FFFFFF) - Ratio 5.2:1 ✓
-  - Accent (Cyan #3DD68C): Dark text (#0F1117) - Ratio 9.8:1 ✓
-  - Warning (Yellow #FFA940): Dark text (#0F1117) - Ratio 8.7:1 ✓
-  - Destructive (Red #FF5C5C): White text (#FFFFFF) - Ratio 4.9:1 ✓
+  - Background (Concrete #3A3A3F): White text (#FFFFFF) - Ratio 10.8:1 ✓
+  - Primary (Spray Gold #FFB84D): Dark text (#1A1A1D) - Ratio 9.2:1 ✓
+  - Accent (Mint Jade #4ADE80): Dark text (#1A1A1D) - Ratio 11.5:1 ✓
+  - Warning (Hot Pink #FF3B7F): White text (#FFFFFF) - Ratio 5.4:1 ✓
+  - Concrete Light (#52525B): White text (#FFFFFF) - Ratio 7.2:1 ✓
 
 ## Font Selection
 
-Clear, readable typefaces for technical information and metrics.
+Mix of graffiti-inspired display fonts and clean technical monospace for readability.
 
-- **Primary**: Source Code Pro for metrics, device IDs, and technical data
-- **Secondary**: Montserrat for labels, buttons, and body text
+- **Primary**: Outfit (bold, geometric) for headers and navigation - street-style meets readability
+- **Secondary**: Space Mono for technical data, device IDs, and code
+- **Accent**: Bebas Neue for large impact text and hero sections
 - **Typographic Hierarchy**: 
-  - Panel Titles: Montserrat Bold/20px/normal spacing
-  - Metric Values: Source Code Pro Bold/24px/tight spacing
-  - Button Labels: Montserrat Medium/14px/normal spacing
-  - Status Labels: Montserrat Medium/11px/wide spacing/uppercase
-  - Device IDs: Source Code Pro Regular/12px/normal spacing
-  - Body Text: Montserrat Regular/14px/normal spacing
+  - Hero Title: Bebas Neue Bold/48px/tight spacing
+  - Section Headers: Outfit Bold/28px/normal spacing  
+  - Card Titles: Outfit SemiBold/18px/normal spacing
+  - Body Text: Outfit Regular/15px/relaxed spacing (1.6)
+  - Technical Data: Space Mono Regular/13px/normal spacing
+  - Labels: Outfit Medium/12px/wide spacing/uppercase
 
 ## Animations
 
-Purposeful, utility-style animations focused on feedback. Button clicks should feel immediate. Progress bars should update smoothly. Status indicators should pulse when active. Metric values should update with subtle transitions (not counting animations). Connection status changes should be instant. The overall feel should be responsive and snappy, like a native desktop utility.
+Raw, impactful animations inspired by street culture - spray-paint reveals, cassette tape loading animations, vinyl scratch transitions. Cards should feel like they're being slapped onto a wall with a slight bounce. Hover states should have subtle graffiti-style glow effects. Page transitions should feel snappy and urban, not corporate. Key moments (successful repairs, device connections) should celebrate with spray-paint burst animations or old-school boom-box visual effects.
 
 ## Component Selection
 
 - **Components**: 
-  - Card for all main panels with clear borders
-  - Button for all actions (Start, Stop, Connect, Export, etc.)
-  - Badge for status indicators (Pass/Fail, Connected/Disconnected, rating levels)
-  - Tabs for top-level navigation between function areas
-  - Progress for operation status tracking
-  - ScrollArea for event logs and history
-  - Separator for visual grouping within panels
+  - Card with concrete texture backgrounds and spray-paint borders
+  - Button styled like cassette tape buttons or boom-box controls
+  - Badge shaped like price tags or graffiti tags
+  - Custom navigation cards styled like vinyl record covers or cassette cases
+  - Tooltip styled like sticky notes or torn paper
   
 - **Customizations**: 
-  - Larger, more prominent action buttons
-  - Color-coded status badges matching semantic meaning
-  - Grid layouts for metric cards with clear borders
-  - Simple progress bars without complexity
+  - Graffiti-style border treatments using SVG spray effects
+  - Concrete texture overlays on major containers
+  - Custom scrollbars styled like spray-paint drips
+  - Icon buttons styled like old-school boom-box controls
   
 - **States**: 
-  - Buttons: Enabled (blue), Disabled (gray), Active (darker blue), Hover (lighter blue)
-  - Status: Good (green border/bg), Warning (yellow), Critical (red), Neutral (gray)
-  - Connection: Connected (green pulse), Disconnected (gray), Connecting (blue pulse)
+  - Buttons: Rest (cassette button), Hover (slight glow), Active (pressed in), Disabled (faded)
+  - Cards: Rest (concrete texture), Hover (spray-paint glow), Active (lifted with shadow)
+  - Status: Success (mint jade glow), Warning (hot pink), Error (rust red), Info (spray gold)
   
 - **Icon Selection**: 
-  - Lightning for Flash operations
-  - Gauge for Performance monitoring  
-  - Flask for Tests
-  - Book for Standards reference
-  - Broadcast for Hotplug monitoring
-  - Play/Stop for start/stop actions
-  - PlugsConnected/Plug for device events
-  - CheckCircle/XCircle for pass/fail
-  - FileArrowDown for export
-  - Wrench for tools/settings
-  - ClockCounterClockwise for history
+  - Wrench, Hammer, Screwdriver for tool references
+  - Books, GraduationCap for educational content
+  - Users, Heart for community features
+  - Lightning, Cpu for diagnostics
+  - Bookmarks, FolderOpen for workspace
+  - Link, Download for external resources
   
-- **Spacing**: Standard spacing (gap-4) between elements, generous padding (p-4) on cards, tight spacing (gap-2) within button groups
-- **Mobile**: Single column layout, full-width cards, larger touch targets, collapsible sections for space efficiency
+- **Spacing**: Generous spacing (gap-6) between major sections, standard padding (p-5) on cards, tight clustering (gap-2) for related controls
+- **Mobile**: Single column stacking, larger touch targets (min 48px), collapsible sections with accordion behavior, bottom-sticky navigation

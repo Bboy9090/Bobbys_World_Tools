@@ -7,48 +7,50 @@
   }
   
   body {
-    font-family: var(--font-sans), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+    font-family: 'Outfit', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
   }
   
   .font-mono {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: 'Space Mono', monospace;
+  }
+
+  .font-display {
+    font-family: 'Bebas Neue', sans-serif;
   }
 }
 
 :root {
-  --background: oklch(0.15 0.02 250);
+  --background: oklch(0.15 0.01 260);
   --foreground: oklch(0.98 0 0);
 
-  --card: oklch(0.20 0.04 250);
+  --card: oklch(0.20 0.02 260);
   --card-foreground: oklch(0.98 0 0);
-  --popover: oklch(0.20 0.04 250);
+  --popover: oklch(0.22 0.02 260);
   --popover-foreground: oklch(0.98 0 0);
 
-  --primary: oklch(0.65 0.25 250);
-  --primary-foreground: oklch(0.98 0 0);
-  --secondary: oklch(0.30 0.08 250);
+  --primary: oklch(0.85 0.20 50);
+  --primary-foreground: oklch(0.10 0.01 260);
+  --secondary: oklch(0.32 0.02 250);
   --secondary-foreground: oklch(0.98 0 0);
 
-  --muted: oklch(0.25 0.04 250);
+  --muted: oklch(0.28 0.02 260);
   --muted-foreground: oklch(0.65 0.02 250);
 
-  --accent: oklch(0.75 0.20 150);
-  --accent-foreground: oklch(0.08 0.01 250);
+  --accent: oklch(0.70 0.25 150);
+  --accent-foreground: oklch(0.10 0.01 260);
 
   --destructive: oklch(0.65 0.25 20);
   --destructive-foreground: oklch(0.98 0 0);
 
-  --border: oklch(0.30 0.05 250);
-  --input: oklch(0.30 0.05 250);
-  --ring: oklch(0.65 0.25 250);
+  --border: oklch(0.32 0.03 260);
+  --input: oklch(0.32 0.03 260);
+  --ring: oklch(0.85 0.20 50);
 
-  --radius: 0.625rem;
+  --radius: 0.5rem;
 
-  --font-mono: Source Code Pro;
-
-  --font-serif: Playfair Display;
-
-  --font-sans: "Montserrat";
+  --font-mono: 'Space Mono';
+  --font-display: 'Bebas Neue';
+  --font-sans: 'Outfit';
 }
 
 @theme {
