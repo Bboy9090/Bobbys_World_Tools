@@ -40,6 +40,13 @@ This is a curated resource hub and diagnostic toolkit for legitimate device repa
 - **Progression**: Click card → Device detection runs → Connected devices shown → User selects device → Test suite options appear → User runs tests → Results displayed OR User initiates flash → WebSocket connects → Live progress updates stream → Flash completes
 - **Success criteria**: Detects Android/iOS devices correctly, battery health % accurate, storage info correct, test results clear, WebSocket connection stable, progress updates real-time (<500ms latency), flash completion notifications work
 
+### Multi-Brand Flash Station
+- **Functionality**: Comprehensive flashing support for all major phone brands and emergency modes - iOS DFU (checkra1n/palera1n jailbreak support), Xiaomi EDL (emergency download for bricked devices), Samsung Odin (official protocol), and Universal Fastboot (Google, OnePlus, Motorola, etc.)
+- **Purpose**: Provide one unified interface for flashing any brand of phone with appropriate protocols, including emergency recovery for deeply bricked devices
+- **Trigger**: User clicks "Multi-Brand Flash" card from hub, selects brand-specific tab
+- **Progression**: Click card → Tab interface loads → User selects iOS/Samsung/Xiaomi/Universal tab → Device scan runs → User selects detected device → Protocol-specific options appear → User configures flash settings → Start flash → Real-time progress with pause/resume → Flash completes with verification
+- **Success criteria**: iOS DFU mode detection works, checkra1n/palera1n jailbreak instructions accurate, Xiaomi EDL mode scanning functional, Samsung Odin download mode recognition correct, partition selection for all brands, real-time progress tracking <500ms latency, pause/resume controls work, error handling shows helpful messages, legal disclaimers present
+
 ### Community Resources Hub
 - **Functionality**: Links to legal repair advocacy groups (Right to Repair movement), forum communities, YouTube repair channels, and local repair shop directories
 - **Purpose**: Connect technicians with broader repair community and advocacy resources

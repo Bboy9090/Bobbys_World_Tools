@@ -64,6 +64,12 @@ export function BobbysWorldHub({ onNavigate }: BobbysWorldHubProps) {
             onClick={() => onNavigate('diagnostics')}
           />
           <HubCard
+            icon={<Lightning size={32} weight="fill" className="animate-pulse" />}
+            title="Multi-Brand Flash"
+            description="iOS DFU, Xiaomi EDL, Samsung Odin, Universal Fastboot - All in One"
+            onClick={() => onNavigate('multi-brand-flash')}
+          />
+          <HubCard
             icon={<Lightning size={32} weight="duotone" />}
             title="Universal Flash"
             description="Multi-brand phone flashing with pause/resume control and live progress"
