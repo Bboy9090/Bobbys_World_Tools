@@ -16,11 +16,12 @@ import { IOSDFUFlashPanel } from "./components/IOSDFUFlashPanel";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { BootForgeUSBSupportMatrix } from "./components/BootForgeUSBSupportMatrix";
 import { BobbysVault } from "./components/BobbysVault";
+import { AuthorityDashboard } from "./components/AuthorityDashboard";
 import { Toaster } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from '@phosphor-icons/react';
 
-type Section = 'hub' | 'repair-library' | 'tool-registry' | 'diagnostics' | 'flashing' | 'universal-flash' | 'multi-brand-flash' | 'mtk-flash' | 'ios-dfu' | 'security-edu' | 'pandora-codex' | 'support-matrix' | 'community' | 'workspace' | 'about' | 'settings' | 'vault';
+type Section = 'hub' | 'repair-library' | 'tool-registry' | 'diagnostics' | 'flashing' | 'universal-flash' | 'multi-brand-flash' | 'mtk-flash' | 'ios-dfu' | 'security-edu' | 'pandora-codex' | 'support-matrix' | 'community' | 'workspace' | 'about' | 'settings' | 'vault' | 'authority';
 
 function App() {
     const [currentSection, setCurrentSection] = useState<Section>('hub');
@@ -65,6 +66,7 @@ function App() {
                     {currentSection === 'about' && <AboutBobby />}
                     {currentSection === 'settings' && <SettingsPanel />}
                     {currentSection === 'vault' && <BobbysVault />}
+                    {currentSection === 'authority' && <AuthorityDashboard />}
                 </div>
             </div>
             <Toaster />

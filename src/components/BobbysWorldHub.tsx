@@ -51,6 +51,13 @@ export function BobbysWorldHub({ onNavigate }: BobbysWorldHubProps) {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           <HubCard
+            icon={<ShieldCheck size={28} weight="duotone" />}
+            title="Authority Dashboard"
+            description="Evidence signing, correlation tracking, plugin ecosystem"
+            onClick={() => onNavigate('authority')}
+            featured
+          />
+          <HubCard
             icon={<DeviceMobile size={28} weight="duotone" />}
             title="iOS DFU Flash"
             description="checkra1n/palera1n jailbreak support with DFU mode detection"
@@ -71,7 +78,7 @@ export function BobbysWorldHub({ onNavigate }: BobbysWorldHubProps) {
             onClick={() => onNavigate('mtk-flash')}
           />
           <HubCard
-            icon={<ShieldCheck size={28} weight="duotone" />}
+            icon={<LockKey size={28} weight="duotone" />}
             title="Security Lock Guide"
             description="FRP/MDM detection and legitimate recovery resources"
             onClick={() => onNavigate('security-edu')}
