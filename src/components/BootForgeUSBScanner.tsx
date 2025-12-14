@@ -72,6 +72,7 @@ interface ScanResponse {
   available: boolean;
   error?: string;
   message?: string;
+  demo?: boolean;
 }
 
 interface StatusResponse {
@@ -160,6 +161,7 @@ export function BootForgeUSBScanner() {
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null);
+  const [isDemoMode, setIsDemoMode] = useState(false);
 
   useEffect(() => {
     checkStatus();
@@ -189,17 +191,23 @@ export function BootForgeUSBScanner() {
   async function scanDevices() {
     setScanning(true);
     setError(null);
+    setIsDemoMode(false);
     try {
-      const res = await fetch(`${API_BASE}/api/bootforgeusb/scan`);
+      const res = await fetch(`${API_BASE}/api/bootforgeusb/scan?demo=true`);
       const data: ScanResponse = await res.json();
       
       if (!res.ok) {
         if (res.status === 503) {
-          setError(data.message || 'BootForgeUSB not available');
+          setError(data.message || 'BootForgeUSB not available - using demo data');
           setDevices([]);
           return;
         }
         throw new Error(data.error || `HTTP ${res.status}`);
+      }
+      
+      if (data.demo) {
+        setIsDemoMode(true);
+        setError('⚠️ Demo Mode: BootForgeUSB CLI not installed. Install it to scan real USB devices.');
       }
       
       setDevices(data.devices || []);
@@ -256,9 +264,9 @@ export function BootForgeUSBScanner() {
         </div>
 
         {error && (
-          <Alert className="mb-4 border-rose-500/30 bg-rose-600/10">
-            <Warning className="w-4 h-4 text-rose-400" />
-            <AlertDescription className="text-rose-300">
+          <Alert className={`mb-4 ${isDemoMode ? 'border-amber-500/30 bg-amber-600/10' : 'border-rose-500/30 bg-rose-600/10'}`}>
+            <Warning className={`w-4 h-4 ${isDemoMode ? 'text-amber-400' : 'text-rose-400'}`} />
+            <AlertDescription className={isDemoMode ? 'text-amber-300' : 'text-rose-300'}>
               {error}
             </AlertDescription>
           </Alert>
@@ -330,6 +338,11 @@ export function BootForgeUSBScanner() {
           <h3 className="text-lg font-medium text-foreground flex items-center gap-2">
             <DeviceMobile className="w-5 h-5 text-primary" weight="duotone" />
             Detected Devices ({devices.length})
+            {isDemoMode && (
+              <Badge variant="outline" className="text-xs bg-amber-600/20 text-amber-300 border-amber-500/30">
+                DEMO MODE
+              </Badge>
+            )}
           </h3>
           {devices.length > 0 && (
             <Badge variant="outline" className="text-xs">
