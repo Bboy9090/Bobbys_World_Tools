@@ -6,6 +6,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { LiveDeviceSelector } from './LiveDeviceSelector';
 import {
   BatteryCharging,
   HardDrive,
@@ -17,6 +19,7 @@ import {
   ShieldCheck,
   Thermometer,
   Database,
+  DeviceMobile,
 } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import {
@@ -41,7 +44,24 @@ interface DiagnosticDashboardProps {
   platform?: 'android' | 'ios';
 }
 
-export function DiagnosticPluginsDashboard({ deviceId = 'demo-device-001', platform = 'android' }: DiagnosticDashboardProps) {
+interface ConnectedDevice {
+  device_uid: string;
+  platform_hint: string;
+  mode: string;
+  confidence: number;
+  evidence: {
+    usb: any;
+    tools: any;
+  };
+  matched_tool_ids: string[];
+  correlation_badge?: any;
+  display_name?: string;
+}
+
+export function DiagnosticPluginsDashboard({ deviceId: initialDeviceId = 'demo-device-001', platform: initialPlatform = 'android' }: DiagnosticDashboardProps) {
+  const [selectedDevice, setSelectedDevice] = useState<ConnectedDevice | null>(null);
+  const [deviceId, setDeviceId] = useState<string>(initialDeviceId);
+  const [platform, setPlatform] = useState<'android' | 'ios'>(initialPlatform);
   const [batteryData, setBatteryData] = useState<BatteryHealthData | null>(null);
   const [storageData, setStorageData] = useState<StorageHealthData | null>(null);
   const [thermalData, setThermalData] = useState<ThermalHealthData | null>(null);
@@ -144,7 +164,30 @@ export function DiagnosticPluginsDashboard({ deviceId = 'demo-device-001', platf
     }
   };
 
+  const handleDeviceSelected = (device: ConnectedDevice | null) => {
+    setSelectedDevice(device);
+    if (device) {
+      setDeviceId(device.device_uid);
+      const detectedPlatform = device.platform_hint.toLowerCase();
+      if (detectedPlatform.includes('android')) {
+        setPlatform('android');
+      } else if (detectedPlatform.includes('ios') || detectedPlatform.includes('apple')) {
+        setPlatform('ios');
+      }
+      toast.success('Device selected', {
+        description: `Running diagnostics on ${device.display_name || device.device_uid}`,
+      });
+    }
+  };
+
   const runAllDiagnostics = async () => {
+    if (!selectedDevice) {
+      toast.error('No device selected', {
+        description: 'Please select a device before running diagnostics',
+      });
+      return;
+    }
+    
     await Promise.all([
       runBatteryDiagnostics(),
       runStorageDiagnostics(),
@@ -182,11 +225,31 @@ export function DiagnosticPluginsDashboard({ deviceId = 'demo-device-001', platf
           <h1 className="text-3xl font-display font-bold text-primary">Certified Diagnostic Plugins</h1>
           <p className="text-muted-foreground mt-1">Official Bobby diagnostics suite - Battery, Storage, Thermal</p>
         </div>
-        <Button onClick={runAllDiagnostics} size="lg" disabled={batteryLoading || storageLoading || thermalLoading}>
+        <Button 
+          onClick={runAllDiagnostics} 
+          size="lg" 
+          disabled={batteryLoading || storageLoading || thermalLoading || !selectedDevice}
+        >
           <Play className="mr-2" />
           Run All Diagnostics
         </Button>
       </div>
+
+      <LiveDeviceSelector
+        onDeviceSelected={handleDeviceSelected}
+        selectedDeviceId={selectedDevice?.device_uid}
+        autoRefresh={true}
+        refreshInterval={5000}
+      />
+
+      {!selectedDevice && (
+        <Alert>
+          <DeviceMobile className="w-4 h-4" />
+          <AlertDescription>
+            Please select a connected device above to run diagnostics.
+          </AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="border-primary/20">
