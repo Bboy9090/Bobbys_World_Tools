@@ -310,7 +310,7 @@ export function AutomatedTestingDashboard() {
       }
     };
 
-    setTestRuns(prev => [completedRun, ...prev]);
+    setTestRuns(prev => [completedRun, ...(prev || [])]);
     setCurrentRun(null);
     setIsRunning(false);
     setProgress(0);
@@ -337,7 +337,7 @@ export function AutomatedTestingDashboard() {
           ...currentRun.summary,
           duration: Date.now() - currentRun.startTime
         }
-      }, ...prev]);
+      }, ...(prev || [])]);
     }
     setCurrentRun(null);
     setIsRunning(false);

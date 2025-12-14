@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 
 export type CorrelationBadge = 'CORRELATED' | 'SYSTEM-CONFIRMED' | 'LIKELY' | 'UNCONFIRMED' | 'CORRELATED (WEAK)';
 
+export type CorrelatedDevice = DeviceCorrelation;
+
 export interface CorrelationData {
   badge: CorrelationBadge;
   matchedIds: string[];
@@ -17,8 +19,17 @@ export interface CorrelationData {
 
 export interface DeviceCorrelation {
   deviceId: string;
+  id?: string;
   platform: string;
   mode: string;
+  serial?: string;
+  vendorId?: number;
+  productId?: number;
+  correlationBadge?: CorrelationBadge;
+  matchedIds?: string[];
+  correlationNotes?: string[];
+  confidence?: number;
+  timestamp?: number;
   correlation: CorrelationData;
 }
 
@@ -32,6 +43,8 @@ export function useCorrelationTracking(wsUrl: string = 'ws://localhost:3001/corr
   const [devices, setDevices] = useState<Map<string, DeviceCorrelation>>(new Map());
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isTracking, setIsTracking] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState<string | null>(null);
 
   useEffect(() => {
     let ws: WebSocket | null = null;
@@ -146,10 +159,74 @@ export function useCorrelationTracking(wsUrl: string = 'ws://localhost:3001/corr
     return Array.from(devices.values());
   };
 
+  const updateDevice = (deviceId: string, updates: Partial<DeviceCorrelation>) => {
+    setDevices(prev => {
+      const updated = new Map(prev);
+      const existing = updated.get(deviceId);
+      if (existing) {
+        updated.set(deviceId, { ...existing, ...updates });
+      }
+      return updated;
+    });
+    setLastUpdate(new Date().toISOString());
+  };
+
+  const removeDevice = (deviceId: string) => {
+    setDevices(prev => {
+      const updated = new Map(prev);
+      updated.delete(deviceId);
+      return updated;
+    });
+  };
+
+  const clearAllDevices = () => {
+    setDevices(new Map());
+  };
+
+  const getStats = () => {
+    const allDevices = getAllDevices();
+    const correlatedCount = allDevices.filter(d => d.correlationBadge === 'CORRELATED' || d.correlation.badge === 'CORRELATED').length;
+    const weakCorrelatedCount = allDevices.filter(d => d.correlationBadge === 'CORRELATED (WEAK)' || d.correlation.badge === 'CORRELATED (WEAK)').length;
+    const systemConfirmedCount = allDevices.filter(d => d.correlationBadge === 'SYSTEM-CONFIRMED' || d.correlation.badge === 'SYSTEM-CONFIRMED').length;
+    const likelyCount = allDevices.filter(d => d.correlationBadge === 'LIKELY' || d.correlation.badge === 'LIKELY').length;
+    const unconfirmedCount = allDevices.filter(d => d.correlationBadge === 'UNCONFIRMED' || d.correlation.badge === 'UNCONFIRMED').length;
+    
+    const confidences = allDevices.map(d => d.confidence || d.correlation.confidenceScore || 0);
+    const averageConfidence = confidences.length > 0
+      ? confidences.reduce((a, b) => a + b, 0) / confidences.length
+      : 0;
+    
+    return {
+      total: allDevices.length,
+      correlated: correlatedCount,
+      weakCorrelated: weakCorrelatedCount,
+      systemConfirmed: systemConfirmedCount,
+      likely: likelyCount,
+      unconfirmed: unconfirmedCount,
+      averageConfidence,
+    };
+  };
+
+  const startTracking = () => {
+    setIsTracking(true);
+  };
+
+  const stopTracking = () => {
+    setIsTracking(false);
+  };
+
   return {
     devices: getAllDevices(),
     getDeviceCorrelation,
     connected,
     error,
+    isTracking,
+    lastUpdate,
+    updateDevice,
+    removeDevice,
+    clearAllDevices,
+    getStats,
+    startTracking,
+    stopTracking,
   };
 }

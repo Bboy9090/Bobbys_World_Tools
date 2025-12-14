@@ -267,7 +267,7 @@ export function RealTimeCorrelationTracker() {
           </CardHeader>
           <CardContent>
             <div className="text-xs text-muted-foreground">
-              Last update: {new Date(lastUpdate).toLocaleTimeString()}
+              Last update: {lastUpdate ? new Date(lastUpdate).toLocaleTimeString() : 'Never'}
             </div>
           </CardContent>
         </Card>
@@ -367,17 +367,17 @@ export function RealTimeCorrelationTracker() {
           ) : (
             <div className="space-y-3">
               {deviceList
-                .sort((a, b) => b.timestamp - a.timestamp)
+                .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
                 .map((device) => (
                   <Card
-                    key={device.id}
+                    key={device.id || device.deviceId}
                     className="p-4 bg-muted/30 border-border hover:border-primary/50 transition-all"
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex-1 space-y-3">
                         <div className="flex items-center gap-3 flex-wrap">
                           <Badge variant="outline" className="font-mono text-xs">
-                            {device.id}
+                            {device.id || device.deviceId}
                           </Badge>
                           {device.serial && (
                             <Badge variant="secondary" className="font-mono text-xs">
@@ -406,36 +406,36 @@ export function RealTimeCorrelationTracker() {
 
                         <div className="flex items-center gap-4 flex-wrap">
                           <CorrelationBadgeDisplay
-                            badge={device.correlationBadge}
-                            matchedIds={device.matchedIds}
+                            badge={(device.correlationBadge || device.correlation.badge)!}
+                            matchedIds={device.matchedIds || device.correlation.matchedIds}
                           />
                           <div className="flex items-center gap-2">
                             <TrendUp className="w-3 h-3 text-muted-foreground" />
                             <span className="text-xs text-muted-foreground">
-                              Confidence: {(device.confidence * 100).toFixed(0)}%
+                              Confidence: {((device.confidence || device.correlation.confidenceScore || 0) * 100).toFixed(0)}%
                             </span>
                             <Progress
-                              value={device.confidence * 100}
+                              value={(device.confidence || device.correlation.confidenceScore || 0) * 100}
                               className="h-1 w-20"
                             />
                           </div>
                         </div>
 
-                        {device.matchedIds.length > 0 && (
+                        {(device.matchedIds || device.correlation.matchedIds || []).length > 0 && (
                           <div className="flex items-start gap-2 text-xs">
                             <Link className="w-3 h-3 text-accent mt-0.5" weight="bold" />
                             <div className="flex-1">
                               <span className="text-muted-foreground">Matched Tool IDs: </span>
                               <span className="font-mono text-foreground">
-                                {device.matchedIds.join(', ')}
+                                {(device.matchedIds || device.correlation.matchedIds).join(', ')}
                               </span>
                             </div>
                           </div>
                         )}
 
-                        {device.correlationNotes.length > 0 && (
+                        {(device.correlationNotes || device.correlation.correlationNotes || []).length > 0 && (
                           <div className="space-y-1">
-                            {device.correlationNotes.map((note, idx) => (
+                            {(device.correlationNotes || device.correlation.correlationNotes).map((note, idx) => (
                               <div key={idx} className="text-xs text-muted-foreground flex items-start gap-2">
                                 <span className="text-accent">•</span>
                                 <span>{note}</span>
@@ -446,13 +446,13 @@ export function RealTimeCorrelationTracker() {
 
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           <Clock className="w-3 h-3" />
-                          Updated: {new Date(device.timestamp).toLocaleString()}
+                          Updated: {new Date(device.timestamp || Date.now()).toLocaleString()}
                         </div>
                       </div>
 
                       <Button
                         onClick={() => {
-                          removeDevice(device.id);
+                          removeDevice(device.id || device.deviceId);
                           toast.success('Device removed from tracking');
                         }}
                         variant="ghost"

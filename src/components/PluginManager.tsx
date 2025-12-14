@@ -135,7 +135,7 @@ export function PluginManager({ onNavigate }: PluginManagerProps) {
 
   const enablePlugin = (pluginId: string) => {
     setPlugins((current) =>
-      current.map((p) =>
+      (current || []).map((p) =>
         p.plugin.manifest.id === pluginId ? { ...p, enabled: true } : p
       )
     );
@@ -144,7 +144,7 @@ export function PluginManager({ onNavigate }: PluginManagerProps) {
 
   const disablePlugin = (pluginId: string) => {
     setPlugins((current) =>
-      current.map((p) =>
+      (current || []).map((p) =>
         p.plugin.manifest.id === pluginId ? { ...p, enabled: false } : p
       )
     );
@@ -152,7 +152,7 @@ export function PluginManager({ onNavigate }: PluginManagerProps) {
   };
 
   const uninstallPlugin = (pluginId: string) => {
-    setPlugins((current) => current.filter((p) => p.plugin.manifest.id !== pluginId));
+    setPlugins((current) => (current || []).filter((p) => p.plugin.manifest.id !== pluginId));
     setSelectedPlugin(null);
     toast.success('Plugin uninstalled');
   };
@@ -180,7 +180,7 @@ export function PluginManager({ onNavigate }: PluginManagerProps) {
     toast.success(`Executing plugin: ${plugin.plugin.manifest.name}`);
     
     setPlugins((current) =>
-      current.map((p) =>
+      (current || []).map((p) =>
         p.plugin.manifest.id === pluginId
           ? {
               ...p,
@@ -194,7 +194,7 @@ export function PluginManager({ onNavigate }: PluginManagerProps) {
 
   const certifyPlugin = (pluginId: string) => {
     setPlugins((current) =>
-      current.map((p) =>
+      (current || []).map((p) =>
         p.plugin.manifest.id === pluginId
           ? {
               ...p,
@@ -220,7 +220,7 @@ export function PluginManager({ onNavigate }: PluginManagerProps) {
 
   const revokePlugin = (pluginId: string) => {
     setPlugins((current) =>
-      current.map((p) =>
+      (current || []).map((p) =>
         p.plugin.manifest.id === pluginId
           ? {
               ...p,
@@ -728,3 +728,5 @@ export function PluginManager({ onNavigate }: PluginManagerProps) {
     </div>
   );
 }
+
+export type { Plugin } from '@/types/plugin-sdk';
