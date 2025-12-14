@@ -37,6 +37,7 @@ import {
   Gear,
   MagnifyingGlass,
   Funnel,
+  ArrowCounterClockwise,
 } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { useKV } from '@github/spark/hooks';
@@ -261,6 +262,14 @@ export function PluginManager({ onNavigate }: PluginManagerProps) {
           </p>
         </div>
         <div className="flex gap-3">
+          <Button variant="outline" size="sm" onClick={() => onNavigate?.('plugin-install-demo')}>
+            <Play />
+            Installation Demo
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => onNavigate?.('plugin-rollback')}>
+            <ArrowCounterClockwise />
+            Rollback System
+          </Button>
           <Button variant="outline" size="sm">
             <Upload />
             Install Plugin
