@@ -14,11 +14,12 @@ import { SecurityLockEducationPanel } from "./components/SecurityLockEducationPa
 import { PandoraCodexControlRoom } from "./components/PandoraCodexControlRoom";
 import { IOSDFUFlashPanel } from "./components/IOSDFUFlashPanel";
 import { SettingsPanel } from "./components/SettingsPanel";
+import { BootForgeUSBSupportMatrix } from "./components/BootForgeUSBSupportMatrix";
 import { Toaster } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from '@phosphor-icons/react';
 
-type Section = 'hub' | 'repair-library' | 'tool-registry' | 'diagnostics' | 'flashing' | 'universal-flash' | 'multi-brand-flash' | 'mtk-flash' | 'ios-dfu' | 'security-edu' | 'pandora-codex' | 'community' | 'workspace' | 'about' | 'settings';
+type Section = 'hub' | 'repair-library' | 'tool-registry' | 'diagnostics' | 'flashing' | 'universal-flash' | 'multi-brand-flash' | 'mtk-flash' | 'ios-dfu' | 'security-edu' | 'pandora-codex' | 'support-matrix' | 'community' | 'workspace' | 'about' | 'settings';
 
 function App() {
     const [currentSection, setCurrentSection] = useState<Section>('hub');
@@ -57,6 +58,7 @@ function App() {
                     {currentSection === 'ios-dfu' && <IOSDFUFlashPanel />}
                     {currentSection === 'security-edu' && <SecurityLockEducationPanel />}
                     {currentSection === 'pandora-codex' && <PandoraCodexControlRoom />}
+                    {currentSection === 'support-matrix' && <BootForgeUSBSupportMatrix />}
                     {currentSection === 'community' && <CommunityResources />}
                     {currentSection === 'workspace' && <MyWorkspace />}
                     {currentSection === 'about' && <AboutBobby />}

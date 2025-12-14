@@ -1,4 +1,5 @@
 import { AudioNotificationSettings } from "./AudioNotificationSettings";
+import { AtmosphereSettings } from "./AtmosphereSettings";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Gear } from "@phosphor-icons/react";
@@ -15,6 +16,8 @@ export function SettingsPanel() {
       </div>
 
       <AudioNotificationSettings />
+      
+      <AtmosphereSettings />
 
       <Card className="bg-card border-border">
         <CardHeader>

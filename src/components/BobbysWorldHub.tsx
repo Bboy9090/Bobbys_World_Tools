@@ -1,4 +1,4 @@
-import { Books, Wrench, Cpu, Users, FolderOpen, Heart, Lightning, ShieldCheck, ChartLine, DeviceMobile, Gear } from '@phosphor-icons/react';
+import { Books, Wrench, Cpu, Users, FolderOpen, Heart, Lightning, ShieldCheck, ChartLine, DeviceMobile, Gear, ListChecks } from '@phosphor-icons/react';
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
 interface HubCardProps {
@@ -87,6 +87,12 @@ export function BobbysWorldHub({ onNavigate }: BobbysWorldHubProps) {
             title="Pandora Codex"
             description="Flash monitoring, benchmarking, and correlation tracking"
             onClick={() => onNavigate('pandora-codex')}
+          />
+          <HubCard
+            icon={<ListChecks size={28} weight="duotone" />}
+            title="Support Matrix"
+            description="Official BootForge device modes and tooling specs"
+            onClick={() => onNavigate('support-matrix')}
           />
           <HubCard
             icon={<Books size={28} weight="duotone" />}
