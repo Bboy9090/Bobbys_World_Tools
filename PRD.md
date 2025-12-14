@@ -75,6 +75,13 @@ This is a sophisticated monitoring system that tracks multiple real-time metrics
 - **Progression**: Operation starts → Metrics collected → Real-time comparison to standards → Performance rated (Optimal/Good/Acceptable/Poor) → Percentile calculated → Recommendations generated → User views detailed comparisons → Session saved → Historical tracking → Export for analysis
 - **Success criteria**: Accurate benchmark evaluation (<2% error vs standards), ratings reflect industry specifications (USB-IF, JEDEC, etc.), actionable recommendations provided for sub-optimal metrics, complete session history maintained, export includes all relevant data
 
+### Live Device Benchmarking During Flash Operations
+- **Functionality**: Real-time performance benchmarking that runs automatically during actual flash operations, capturing comprehensive metrics (write/read speeds, CPU usage/temperature, memory usage/bandwidth, USB bandwidth/latency, disk IOPS/latency, buffer utilization, thermal throttling, power draw) and calculating performance scores, efficiency ratings, and letter grades (A+ to F)
+- **Purpose**: Provide instant performance feedback during live operations, automatically detect and diagnose bottlenecks as they occur, generate optimization recommendations based on actual operation data, build comprehensive device performance history, and enable performance comparison across devices and time
+- **Trigger**: Automatically activates when any flash operation begins, collects metrics at 10Hz throughout operation, completes analysis when operation finishes
+- **Progression**: Flash operation starts → Benchmark session initialized → Metrics collected continuously (100ms intervals) → Live graph displays real-time performance → Bottleneck alerts appear immediately when detected → Operation completes → Final analysis calculated → Performance grade assigned → Optimization recommendations generated → Results saved to history → Trends analyzed across sessions
+- **Success criteria**: Zero-overhead benchmarking (no impact on flash performance), metrics captured at 10Hz with <50ms latency, bottlenecks detected within 500ms of occurrence, final analysis completes within 2 seconds, accurate grade assignment (validated against manual evaluation), actionable recommendations (>85% user satisfaction), complete history tracking with trend analysis, cross-device performance comparison, exportable benchmark data
+
 ## Edge Case Handling
 
 - **No Historical Data**: Display real-time metrics only, disable comparison features gracefully

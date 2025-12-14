@@ -3,16 +3,21 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RealTimeFlashMonitor } from "./components/RealTimeFlashMonitor";
 import { AutomatedTestingDashboard } from "./components/AutomatedTestingDashboard";
 import { BenchmarkStandardsGuide } from "./components/BenchmarkStandardsGuide";
+import { BenchmarkedFlashingPanel } from "./components/BenchmarkedFlashingPanel";
 import { Toaster } from "@/components/ui/sonner";
-import { Pulse, Flask, Book } from '@phosphor-icons/react';
+import { Pulse, Flask, Book, Gauge } from '@phosphor-icons/react';
 
 function App() {
     return (
         <>
             <div className="min-h-screen bg-background p-4 md:p-6">
                 <div className="max-w-7xl mx-auto">
-                    <Tabs defaultValue="monitor" className="w-full">
-                        <TabsList className="grid w-full grid-cols-3 mb-6">
+                    <Tabs defaultValue="live-benchmark" className="w-full">
+                        <TabsList className="grid w-full grid-cols-4 mb-6">
+                            <TabsTrigger value="live-benchmark" className="gap-2">
+                                <Gauge className="w-4 h-4" weight="duotone" />
+                                Live Benchmark
+                            </TabsTrigger>
                             <TabsTrigger value="monitor" className="gap-2">
                                 <Pulse className="w-4 h-4" weight="duotone" />
                                 Performance Monitor
@@ -26,6 +31,10 @@ function App() {
                                 Benchmark Standards
                             </TabsTrigger>
                         </TabsList>
+
+                        <TabsContent value="live-benchmark">
+                            <BenchmarkedFlashingPanel />
+                        </TabsContent>
 
                         <TabsContent value="monitor">
                             <RealTimeFlashMonitor />
