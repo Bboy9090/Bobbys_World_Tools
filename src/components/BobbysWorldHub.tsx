@@ -1,4 +1,4 @@
-import { Books, Wrench, Cpu, Users, FolderOpen, Heart, Lightning, ShieldCheck, ChartLine, DeviceMobile, Gear, ListChecks } from '@phosphor-icons/react';
+import { Books, Wrench, Cpu, Users, FolderOpen, Heart, Lightning, ShieldCheck, ChartLine, DeviceMobile, Gear, ListChecks, LockKey } from '@phosphor-icons/react';
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
 interface HubCardProps {
@@ -117,6 +117,13 @@ export function BobbysWorldHub({ onNavigate }: BobbysWorldHubProps) {
             title="My Workspace"
             description="Personal notes and repair history"
             onClick={() => onNavigate('workspace')}
+          />
+          <HubCard
+            icon={<LockKey size={28} weight="duotone" />}
+            title="Bobby's Vault"
+            description="Private tool registry and educational resources"
+            onClick={() => onNavigate('vault')}
+            featured
           />
           <HubCard
             icon={<Heart size={28} weight="duotone" />}

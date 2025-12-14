@@ -15,11 +15,12 @@ import { PandoraCodexControlRoom } from "./components/PandoraCodexControlRoom";
 import { IOSDFUFlashPanel } from "./components/IOSDFUFlashPanel";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { BootForgeUSBSupportMatrix } from "./components/BootForgeUSBSupportMatrix";
+import { BobbysVault } from "./components/BobbysVault";
 import { Toaster } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from '@phosphor-icons/react';
 
-type Section = 'hub' | 'repair-library' | 'tool-registry' | 'diagnostics' | 'flashing' | 'universal-flash' | 'multi-brand-flash' | 'mtk-flash' | 'ios-dfu' | 'security-edu' | 'pandora-codex' | 'support-matrix' | 'community' | 'workspace' | 'about' | 'settings';
+type Section = 'hub' | 'repair-library' | 'tool-registry' | 'diagnostics' | 'flashing' | 'universal-flash' | 'multi-brand-flash' | 'mtk-flash' | 'ios-dfu' | 'security-edu' | 'pandora-codex' | 'support-matrix' | 'community' | 'workspace' | 'about' | 'settings' | 'vault';
 
 function App() {
     const [currentSection, setCurrentSection] = useState<Section>('hub');
@@ -63,6 +64,7 @@ function App() {
                     {currentSection === 'workspace' && <MyWorkspace />}
                     {currentSection === 'about' && <AboutBobby />}
                     {currentSection === 'settings' && <SettingsPanel />}
+                    {currentSection === 'vault' && <BobbysVault />}
                 </div>
             </div>
             <Toaster />

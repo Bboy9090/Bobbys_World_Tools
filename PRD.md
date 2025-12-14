@@ -82,26 +82,33 @@ This is a curated resource hub and diagnostic toolkit for legitimate device repa
 
 ## Design Direction
 
-Industrial Operator aesthetic - the interface should feel like operator-grade field equipment. Think military-spec hardware consoles, avionics displays, and professional technician toolkits. Clean graphite surfaces, cyan signal accents, and no-nonsense typography. The UI says "I know what I'm doing." This is Bobby's professional workshop interface - authoritative, capable, and honest about what it can and cannot do.
+**Bronx Workshop Soul** - This interface channels Bobby's apartment workshop in the 20s: fluorescent lights flickering, oil on concrete floors, cigarette smoke in the air, tools older than the city. A line outside the roll-up gate - a dealer with a cracked screen, a sex worker scrolling on shattered glass, a thug waiting respectfully, a smart kid with hope, a businessman who doesn't belong but needs it done. Different lives, same problem. When Bobby shows up, shit gets fixed.
+
+The UI captures this energy: raw authenticity meets professional capability. Not polished corporate design, not hacker aesthetics - this is *workshop reality*. Fluorescent cyan like overhead lights. Amber like sodium streetlamps. Asphalt black and oil-stained surfaces. The app feels like field equipment that's seen real work. No speeches, no promises - just results.
+
+This is operator-grade infrastructure with street soul. Industrial credibility that knows where it came from.
 
 ## Color Selection
 
-Industrial Operator colorway - clean, professional, and field-ready.
+**Bronx Workshop Aesthetic** - Raw, authentic, street-level repair culture with industrial credibility.
 
-- **Background**: `#0B0F14` - Deep graphite black, operator console base
-- **Card/Panel**: `#141922` - Elevated surface tone
-- **Border**: `#1F2632` - Subtle divisions
-- **Primary Color**: `#2FD3FF` - Signal cyan, attention-commanding accent
-- **Secondary Colors**: `#9AA4B2` - Neutral technical gray, `#6B7380` - Muted tones
-- **Success**: `#2ECC71` - Clean green for positive states
-- **Warning**: `#F1C40F` - Amber for caution
-- **Error**: `#E74C3C` - Red for critical states
+The colorway evokes Bobby's apartment workshop: fluorescent lights, oil-stained concrete, cold winter nights, and tools older than the city itself. This is the soul of the street technician - not polished, not corporate, just real.
+
+- **Background**: `#0A0A0A` - Asphalt black, apartment floor
+- **Card/Panel**: `#121212` - Oil-stained charcoal surfaces
+- **Border**: `#1F2632` - Worn metal divisions
+- **Primary Color**: `#1ECAD3` - Fluorescent shop cyan, that bright overhead light
+- **Accent**: `#CFA24D` - Sodium light amber, streetlamp warmth
+- **Rust Red** (rare/critical): `#8B2E2E` - Old tool patina, use sparingly
+- **Success**: `#2ECC71` - Clean fix confirmation
+- **Muted**: `#8C8C8C` - Dust gray for secondary text
+- **Foreground**: `#EDEDED` - Chalk white, written-on-concrete clarity
 - **Foreground/Background Pairings**: 
-  - Background (#0B0F14): White text (#E6EAF0) - Ratio 12.5:1 ✓
-  - Primary Cyan (#2FD3FF): Dark text (#0B0F14) - Ratio 11.2:1 ✓
-  - Success Green (#2ECC71): Dark text (#0B0F14) - Ratio 8.8:1 ✓
-  - Warning Amber (#F1C40F): Dark text (#0B0F14) - Ratio 13.1:1 ✓
-  - Card Surface (#141922): White text (#E6EAF0) - Ratio 11.3:1 ✓
+  - Background (#0A0A0A): Chalk white (#EDEDED) - Ratio 18.2:1 ✓
+  - Primary Cyan (#1ECAD3): Dark text (#0A0A0A) - Ratio 10.8:1 ✓
+  - Accent Amber (#CFA24D): Dark text (#0A0A0A) - Ratio 7.2:1 ✓
+  - Rust Red (#8B2E2E): Chalk white (#EDEDED) - Ratio 6.1:1 ✓
+  - Card Surface (#121212): Chalk white (#EDEDED) - Ratio 16.5:1 ✓
 
 ## Font Selection
 
