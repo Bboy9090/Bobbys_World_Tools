@@ -27,11 +27,11 @@ This is a comprehensive repair utility dashboard with real-time device monitorin
 - **Success criteria**: All diagnostic modules accessible, flash progress real-time, WebSocket connection stable, benchmarking metrics accurate, multi-brand protocols working
 
 ### Reports Tab (Evidence & Backups)
-- **Functionality**: Three sub-sections: Evidence Bundles (signed reports with chain-of-custody), Backups (snapshot retention with auto-cleanup), Evidence Dashboard (authority signing, correlation tracking)
-- **Purpose**: Consolidate all reporting and evidence management - simpler naming, clearer purpose
+- **Functionality**: Four sub-sections: Evidence Bundles (signed reports with chain-of-custody), Backups (snapshot retention with auto-cleanup), Evidence Dashboard (authority signing, correlation tracking), Repair Library (teardown guides, tutorials)
+- **Purpose**: Consolidate all reporting, evidence management, and repair documentation - simpler naming, clearer purpose
 - **Trigger**: User clicks Reports tab
-- **Progression**: Click tab → Sub-tabs show → User views/creates evidence bundles → Automatic snapshots visible → Authority dashboard accessible
-- **Success criteria**: Evidence bundles exportable, snapshots auto-created during operations, retention policies enforced, signing/verification working
+- **Progression**: Click tab → Sub-tabs show → User views/creates evidence bundles → Automatic snapshots visible → Authority dashboard accessible → Repair guides browsable
+- **Success criteria**: Evidence bundles exportable, snapshots auto-created during operations, retention policies enforced, signing/verification working, repair guides organized by device type
 
 ### Tests Tab (Test Suite & Performance)
 - **Functionality**: Three sub-sections: Test Suite (automated security scans, quality checks, compatibility validation), Performance (CPU/memory/execution benchmarking), Plugin Map (dependency graph, conflict detection)
@@ -48,11 +48,11 @@ This is a comprehensive repair utility dashboard with real-time device monitorin
 - **Success criteria**: Plugin marketplace searchable/filterable, installation works, certification badges visible, installed plugins manageable, submission form validates
 
 ### Community Tab
-- **Functionality**: Four sub-sections: Forums (advocacy, repair network), Repair Library (teardown guides), My Workspace (personal notes, repair history), Bobby's Vault (educational resources)
-- **Purpose**: Group all community and educational content together
+- **Functionality**: Three sub-sections: Forums (advocacy, repair network), My Workspace (personal notes, repair history), Bobby's Vault (educational resources)
+- **Purpose**: Group all community engagement and educational content together
 - **Trigger**: User clicks Community tab
-- **Progression**: Click tab → Sub-tabs show → User accesses forums → Views repair guides → Manages workspace → Explores vault
-- **Success criteria**: All community resources accessible, workspace data persists, guides organized by device type
+- **Progression**: Click tab → Sub-tabs show → User accesses forums → Manages workspace → Explores vault
+- **Success criteria**: All community resources accessible, workspace data persists, forum discussions organized by topic
 
 ### Settings Tab
 - **Functionality**: Four sub-sections: Preferences (audio notifications, workshop atmosphere), Device Modes (BootForge support matrix), Legal Notice (authorized repair compliance), About (mission, right-to-repair advocacy)

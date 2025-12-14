@@ -1,11 +1,13 @@
 import { EvidenceBundleManager } from "../EvidenceBundleManager";
 import { SnapshotRetentionPanel } from "../SnapshotRetentionPanel";
 import { AuthorityDashboard } from "../AuthorityDashboard";
+import { RepairLibrary } from "../RepairLibrary";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { 
     Archive, 
     ClockCounterClockwise, 
-    ShieldCheck 
+    ShieldCheck,
+    Books
 } from '@phosphor-icons/react';
 
 export function ReportsTab() {
@@ -16,12 +18,12 @@ export function ReportsTab() {
                     REPORTS
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                    Evidence bundles, automatic backups, and signed reports with chain-of-custody
+                    Evidence bundles, automatic backups, signed reports, and repair library
                 </p>
             </div>
 
             <Tabs defaultValue="evidence" className="w-full">
-                <TabsList className="grid w-full grid-cols-3 bg-muted/30">
+                <TabsList className="grid w-full grid-cols-4 bg-muted/30">
                     <TabsTrigger value="evidence" className="gap-2">
                         <Archive weight="duotone" />
                         Evidence Bundles
@@ -33,6 +35,10 @@ export function ReportsTab() {
                     <TabsTrigger value="dashboard" className="gap-2">
                         <ShieldCheck weight="duotone" />
                         Evidence Dashboard
+                    </TabsTrigger>
+                    <TabsTrigger value="library" className="gap-2">
+                        <Books weight="duotone" />
+                        Repair Library
                     </TabsTrigger>
                 </TabsList>
 
@@ -46,6 +52,10 @@ export function ReportsTab() {
 
                 <TabsContent value="dashboard" className="mt-6">
                     <AuthorityDashboard />
+                </TabsContent>
+
+                <TabsContent value="library" className="mt-6">
+                    <RepairLibrary />
                 </TabsContent>
             </Tabs>
         </div>
