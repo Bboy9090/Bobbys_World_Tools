@@ -96,6 +96,13 @@ This is a sophisticated monitoring system that tracks multiple real-time metrics
 - **Progression**: Critical event occurs → Audio settings checked → If enabled and event type active → Synthesized sound plays through Web Audio API → User acknowledges event audibly → Can test sounds from settings panel
 - **Success criteria**: Audio plays within 100ms of event trigger, sounds are distinct and recognizable per event type, user preferences persist between sessions, volume control from 0-100%, individual event type toggles work correctly, no audio glitches or overlapping sounds, graceful degradation if Web Audio API unavailable
 
+### Device Correlation Tracking & Policy Gates
+- **Functionality**: Per-device correlation system that matches USB device records with tool IDs (adb serial, fastboot serial, UDID), generates correlation badges (CORRELATED, CORRELATED (WEAK), SYSTEM-CONFIRMED, LIKELY, UNCONFIRMED), calculates confidence scores, enforces policy gates for allowed/blocked actions, and tracks detection evidence (USB VIDs/PIDs, tool serials, matched IDs)
+- **Purpose**: Provide honest, transparent device identification with clear correlation status, enable intelligent policy decisions based on correlation confidence, prevent destructive actions on uncertain devices, and give operators complete visibility into device detection quality
+- **Trigger**: Automatically runs when devices are detected, updated in real-time as new evidence becomes available
+- **Progression**: Device detected → USB evidence collected (VID/PID) → Tool evidence collected (serial numbers) → Correlation matching attempted → Confidence calculated → Badge assigned → Policy gates evaluated → Dossier generated → Display in dashboard → User reviews correlation status → Can drill down into evidence → Policy gates show allowed/blocked actions → Warnings surface if confidence low
+- **Success criteria**: Correlation matching completes within 100ms, badge assignment is conservative and honest (no false CORRELATED badges), policy gates correctly block destructive actions when confidence below threshold (0.90 default, 0.87 if correlated), matched IDs displayed accurately, correlation notes explain reasoning clearly, dossier includes all relevant evidence, warnings appear for system-confirmed-but-not-correlated cases, dashboard provides overview of correlation distribution across all devices
+
 ## Edge Case Handling
 
 - **No Historical Data**: Display real-time metrics only, disable comparison features gracefully
@@ -117,6 +124,11 @@ This is a sophisticated monitoring system that tracks multiple real-time metrics
 - **Audio Unavailable**: Gracefully degrade when Web Audio API is not supported, continue showing visual notifications
 - **Rapid Event Succession**: Queue audio notifications to prevent overlapping sounds, maintain event order
 - **User Has Audio Muted**: Respect system/browser audio settings, show visual-only notifications
+- **Device Without Matched IDs**: Assign appropriate correlation badge (SYSTEM-CONFIRMED if confident, UNCONFIRMED otherwise), show clear policy gates based on system-level detection only
+- **Multiple Matched IDs for Single Device**: Display all matched IDs in UI, use highest confidence for badge assignment
+- **Correlation Confidence at Threshold**: Use conservative approach, require exact >= threshold for promotion to higher badge level
+- **System-Confirmed But Not Correlated**: Show clear warning that confirmation is system-level, not device-specific, inform user that per-device actions require explicit selection
+- **Platform Unknown**: Assign UNCONFIRMED badge, block all destructive actions, allow only safe read-only operations
 
 ## Design Direction
 
@@ -199,6 +211,11 @@ Real-time monitoring demands smooth, purposeful animations. Metric values should
   - DeviceMobile for device indicators
   - SpeakerHigh/SpeakerSlash for audio settings
   - Gear for settings panel
+  - LinkSimple for correlation tracking
+  - Shield for security/policy gates
+  - CheckCircle/XCircle for allowed/blocked actions
+  - Eye for detection evidence
+  - LockKey for policy enforcement
   
 - **Spacing**: Tight spacing (gap-3) within metric groups, standard spacing (gap-6) between major sections, generous padding (p-6) on cards
 - **Mobile**: Single column layout, collapse graphs to simple bar charts, prioritize current metrics and top recommendations over historical data, full-width cards, larger touch targets for export buttons and recommendation actions

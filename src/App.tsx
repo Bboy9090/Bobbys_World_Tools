@@ -7,16 +7,21 @@ import { BenchmarkedFlashingPanel } from "./components/BenchmarkedFlashingPanel"
 import { BootForgeUSBScanner } from "./components/BootForgeUSBScanner";
 import { LiveDeviceHotplugMonitor } from "./components/LiveDeviceHotplugMonitor";
 import { AudioNotificationSettings } from "./components/AudioNotificationSettings";
+import { CorrelationDashboard } from "./components/CorrelationDashboard";
 import { Toaster } from "@/components/ui/sonner";
-import { Pulse, Flask, Book, Gauge, Lightning, Broadcast, Gear } from '@phosphor-icons/react';
+import { Pulse, Flask, Book, Gauge, Lightning, Broadcast, Gear, LinkSimple } from '@phosphor-icons/react';
 
 function App() {
     return (
         <>
             <div className="min-h-screen bg-background p-4 md:p-6">
                 <div className="max-w-7xl mx-auto">
-                    <Tabs defaultValue="live-benchmark" className="w-full">
-                        <TabsList className="grid w-full grid-cols-7 mb-6">
+                    <Tabs defaultValue="correlation" className="w-full">
+                        <TabsList className="grid w-full grid-cols-8 mb-6">
+                            <TabsTrigger value="correlation" className="gap-2">
+                                <LinkSimple className="w-4 h-4" weight="duotone" />
+                                Correlation
+                            </TabsTrigger>
                             <TabsTrigger value="live-benchmark" className="gap-2">
                                 <Gauge className="w-4 h-4" weight="duotone" />
                                 Live Benchmark
@@ -46,6 +51,10 @@ function App() {
                                 Settings
                             </TabsTrigger>
                         </TabsList>
+
+                        <TabsContent value="correlation">
+                            <CorrelationDashboard />
+                        </TabsContent>
 
                         <TabsContent value="live-benchmark">
                             <BenchmarkedFlashingPanel />
