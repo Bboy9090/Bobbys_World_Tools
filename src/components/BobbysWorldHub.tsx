@@ -1,4 +1,4 @@
-import { Books, Wrench, Cpu, Users, FolderOpen, Heart, Lightning } from '@phosphor-icons/react';
+import { Books, Wrench, Cpu, Users, FolderOpen, Heart, Lightning, ShieldCheck, ChartLine } from '@phosphor-icons/react';
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -68,6 +68,24 @@ export function BobbysWorldHub({ onNavigate }: BobbysWorldHubProps) {
             title="Multi-Brand Flash"
             description="iOS DFU, Xiaomi EDL, Samsung Odin, Universal Fastboot - All in One"
             onClick={() => onNavigate('multi-brand-flash')}
+          />
+          <HubCard
+            icon={<Cpu size={32} weight="duotone" />}
+            title="MediaTek Flash"
+            description="SP Flash Tool integration for MediaTek chipsets with scatter-based flashing"
+            onClick={() => onNavigate('mtk-flash')}
+          />
+          <HubCard
+            icon={<ShieldCheck size={32} weight="duotone" />}
+            title="Security Lock Guide"
+            description="Educational resources for FRP, MDM, and carrier locks - legitimate recovery only"
+            onClick={() => onNavigate('security-edu')}
+          />
+          <HubCard
+            icon={<ChartLine size={32} weight="duotone" />}
+            title="Pandora Codex"
+            description="Control room for flash operations, monitoring, benchmarks, and device hotplug"
+            onClick={() => onNavigate('pandora-codex')}
           />
           <HubCard
             icon={<Lightning size={32} weight="duotone" />}
