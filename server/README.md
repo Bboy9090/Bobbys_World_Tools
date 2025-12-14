@@ -5,6 +5,7 @@ Real-time system tool detection and device monitoring API for the Bobby Dev Arse
 ## Features
 
 - ✅ **Real System Tool Detection** - Detects actually installed tools (no fake data)
+- ⚡ **BootForgeUSB Integration** - Advanced USB device scanning and classification
 - 🔧 **Rust Toolchain Detection** - rustc, cargo, rustup versions
 - 📱 **Android Tools** - ADB and Fastboot detection with connected device listing
 - 🐍 **Python Environment** - Python 3, pip versions
@@ -205,6 +206,84 @@ Returns parsed list of ADB-connected devices.
   ]
 }
 ```
+
+---
+
+### BootForgeUSB Endpoints
+
+#### Scan USB Devices
+```
+GET /api/bootforgeusb/scan
+```
+Scans all connected USB devices and classifies them as iOS/Android/unknown with confidence scoring.
+
+**Response:**
+```json
+{
+  "success": true,
+  "count": 2,
+  "devices": [
+    {
+      "device_uid": "usb:18d1:4ee7:bus1:addr5",
+      "platform_hint": "android",
+      "mode": "android_adb_confirmed",
+      "confidence": 0.94,
+      "evidence": { /* USB and tool evidence */ },
+      "notes": ["Correlated: adb device id matches USB serial."],
+      "matched_tool_ids": ["ABC123456"]
+    }
+  ],
+  "timestamp": "2024-01-15T10:30:45.123Z",
+  "available": true
+}
+```
+
+#### Check BootForgeUSB Status
+```
+GET /api/bootforgeusb/status
+```
+Returns installation status and tool availability.
+
+**Response:**
+```json
+{
+  "available": true,
+  "cli": {
+    "installed": true,
+    "command": "bootforgeusb-cli"
+  },
+  "buildEnvironment": {
+    "rust": true,
+    "cargo": true,
+    "canBuild": true
+  },
+  "systemTools": {
+    "adb": true,
+    "fastboot": true,
+    "idevice_id": false
+  }
+}
+```
+
+#### Get Device by UID
+```
+GET /api/bootforgeusb/devices/:uid
+```
+Returns detailed information about a specific device.
+
+#### Get Correlation Analysis
+```
+GET /api/bootforgeusb/correlate
+```
+Returns device correlation analysis showing matching quality and methods.
+
+#### Build BootForgeUSB CLI
+```
+POST /api/bootforgeusb/build
+```
+Builds and installs the BootForgeUSB CLI from source (requires Rust toolchain).
+
+**See [BootForgeUSB API Documentation](/BOOTFORGEUSB_API.md) for complete details.**
 
 ---
 

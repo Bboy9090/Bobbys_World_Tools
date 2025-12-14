@@ -1,0 +1,462 @@
+import { useState, useEffect } from 'react';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { 
+  MagnifyingGlass, 
+  CheckCircle, 
+  XCircle, 
+  Warning, 
+  DeviceMobile,
+  Lightning,
+  CircleNotch,
+  Gauge,
+  ArrowsClockwise
+} from '@phosphor-icons/react';
+
+const API_BASE = 'http://localhost:3001';
+
+interface USBEvidence {
+  vid: string;
+  pid: string;
+  manufacturer: string | null;
+  product: string | null;
+  serial: string | null;
+  bus: number;
+  address: number;
+  interface_hints: Array<{
+    class: number;
+    subclass: number;
+    protocol: number;
+  }>;
+}
+
+interface ToolProbe {
+  present: boolean;
+  seen: boolean;
+  raw: string;
+  device_ids: string[];
+}
+
+interface ToolsEvidence {
+  adb: ToolProbe;
+  fastboot: ToolProbe;
+  idevice_id: ToolProbe;
+}
+
+interface DeviceRecord {
+  device_uid: string;
+  platform_hint: string;
+  mode: string;
+  confidence: number;
+  evidence: {
+    usb: USBEvidence;
+    tools: ToolsEvidence;
+  };
+  notes: string[];
+  matched_tool_ids: string[];
+}
+
+interface ScanResponse {
+  success: boolean;
+  count: number;
+  devices: DeviceRecord[];
+  timestamp: string;
+  available: boolean;
+  error?: string;
+  message?: string;
+}
+
+interface StatusResponse {
+  available: boolean;
+  cli: {
+    installed: boolean;
+    command: string;
+  };
+  buildEnvironment: {
+    rust: boolean;
+    cargo: boolean;
+    canBuild: boolean;
+  };
+  library: {
+    path: string;
+    version: string;
+  } | null;
+  systemTools: {
+    adb: boolean;
+    fastboot: boolean;
+    idevice_id: boolean;
+  };
+  timestamp: string;
+}
+
+function getPlatformColor(platform: string): string {
+  switch (platform.toLowerCase()) {
+    case 'ios':
+      return 'bg-blue-600/20 text-blue-300 border-blue-500/30';
+    case 'android':
+      return 'bg-green-600/20 text-green-300 border-green-500/30';
+    default:
+      return 'bg-gray-600/20 text-gray-300 border-gray-500/30';
+  }
+}
+
+function getModeColor(mode: string): string {
+  if (mode.includes('confirmed')) {
+    return 'bg-emerald-600/20 text-emerald-300 border-emerald-500/30';
+  } else if (mode.includes('likely')) {
+    return 'bg-amber-600/20 text-amber-300 border-amber-500/30';
+  }
+  return 'bg-gray-600/20 text-gray-300 border-gray-500/30';
+}
+
+function getConfidenceBadge(confidence: number) {
+  if (confidence >= 0.90) {
+    return <Badge className="bg-emerald-600/20 text-emerald-300 border-emerald-500/30">High Confidence</Badge>;
+  } else if (confidence >= 0.75) {
+    return <Badge className="bg-amber-600/20 text-amber-300 border-amber-500/30">Medium Confidence</Badge>;
+  }
+  return <Badge className="bg-rose-600/20 text-rose-300 border-rose-500/30">Low Confidence</Badge>;
+}
+
+export function BootForgeUSBScanner() {
+  const [status, setStatus] = useState<StatusResponse | null>(null);
+  const [devices, setDevices] = useState<DeviceRecord[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedDevice, setSelectedDevice] = useState<string | null>(null);
+
+  useEffect(() => {
+    checkStatus();
+  }, []);
+
+  async function checkStatus() {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`${API_BASE}/api/bootforgeusb/status`);
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+      const data: StatusResponse = await res.json();
+      setStatus(data);
+      
+      if (data.available) {
+        await scanDevices();
+      }
+    } catch (err: any) {
+      setError(`Backend API unavailable: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function scanDevices() {
+    setScanning(true);
+    setError(null);
+    try {
+      const res = await fetch(`${API_BASE}/api/bootforgeusb/scan`);
+      const data: ScanResponse = await res.json();
+      
+      if (!res.ok) {
+        if (res.status === 503) {
+          setError(data.message || 'BootForgeUSB not available');
+          setDevices([]);
+          return;
+        }
+        throw new Error(data.error || `HTTP ${res.status}`);
+      }
+      
+      setDevices(data.devices || []);
+    } catch (err: any) {
+      setError(`Scan failed: ${err.message}`);
+      setDevices([]);
+    } finally {
+      setScanning(false);
+    }
+  }
+
+  const selectedDeviceData = devices.find(d => d.device_uid === selectedDevice);
+
+  return (
+    <div className="grid gap-6">
+      <Card className="bg-card border-border p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
+              <Lightning className="w-5 h-5 text-primary" weight="duotone" />
+              BootForgeUSB Device Scanner
+            </h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              Advanced USB device detection with iOS/Android classification
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={checkStatus}
+              disabled={loading}
+              variant="outline"
+              size="sm"
+            >
+              {loading ? (
+                <CircleNotch className="w-4 h-4 animate-spin" />
+              ) : (
+                <ArrowsClockwise className="w-4 h-4" />
+              )}
+              Refresh Status
+            </Button>
+            <Button
+              onClick={scanDevices}
+              disabled={scanning || !status?.available}
+              size="sm"
+            >
+              {scanning ? (
+                <CircleNotch className="w-4 h-4 animate-spin" />
+              ) : (
+                <MagnifyingGlass className="w-4 h-4" />
+              )}
+              Scan Devices
+            </Button>
+          </div>
+        </div>
+
+        {error && (
+          <Alert className="mb-4 border-rose-500/30 bg-rose-600/10">
+            <Warning className="w-4 h-4 text-rose-400" />
+            <AlertDescription className="text-rose-300">
+              {error}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {status && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div className="p-3 rounded-lg border border-border bg-muted/20">
+              <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">CLI Status</div>
+              <div className="flex items-center gap-2">
+                {status.cli.installed ? (
+                  <CheckCircle className="w-4 h-4 text-emerald-400" weight="fill" />
+                ) : (
+                  <XCircle className="w-4 h-4 text-rose-400" weight="fill" />
+                )}
+                <span className="text-sm font-medium text-foreground">
+                  {status.cli.installed ? 'Installed' : 'Not Found'}
+                </span>
+              </div>
+            </div>
+
+            <div className="p-3 rounded-lg border border-border bg-muted/20">
+              <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Rust Toolchain</div>
+              <div className="flex items-center gap-2">
+                {status.buildEnvironment.rust ? (
+                  <CheckCircle className="w-4 h-4 text-emerald-400" weight="fill" />
+                ) : (
+                  <XCircle className="w-4 h-4 text-rose-400" weight="fill" />
+                )}
+                <span className="text-sm font-medium text-foreground">
+                  {status.buildEnvironment.rust ? 'Ready' : 'Missing'}
+                </span>
+              </div>
+            </div>
+
+            <div className="p-3 rounded-lg border border-border bg-muted/20">
+              <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">ADB</div>
+              <div className="flex items-center gap-2">
+                {status.systemTools.adb ? (
+                  <CheckCircle className="w-4 h-4 text-emerald-400" weight="fill" />
+                ) : (
+                  <XCircle className="w-4 h-4 text-rose-400" weight="fill" />
+                )}
+                <span className="text-sm font-medium text-foreground">
+                  {status.systemTools.adb ? 'Available' : 'Not Found'}
+                </span>
+              </div>
+            </div>
+
+            <div className="p-3 rounded-lg border border-border bg-muted/20">
+              <div className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Fastboot</div>
+              <div className="flex items-center gap-2">
+                {status.systemTools.fastboot ? (
+                  <CheckCircle className="w-4 h-4 text-emerald-400" weight="fill" />
+                ) : (
+                  <XCircle className="w-4 h-4 text-rose-400" weight="fill" />
+                )}
+                <span className="text-sm font-medium text-foreground">
+                  {status.systemTools.fastboot ? 'Available' : 'Not Found'}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <Separator className="my-4" />
+
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-lg font-medium text-foreground flex items-center gap-2">
+            <DeviceMobile className="w-5 h-5 text-primary" weight="duotone" />
+            Detected Devices ({devices.length})
+          </h3>
+          {devices.length > 0 && (
+            <Badge variant="outline" className="text-xs">
+              Last scan: {new Date().toLocaleTimeString()}
+            </Badge>
+          )}
+        </div>
+
+        {devices.length === 0 && !scanning && (
+          <div className="text-center py-12 text-muted-foreground">
+            <DeviceMobile className="w-12 h-12 mx-auto mb-3 opacity-50" />
+            <p>No devices detected</p>
+            <p className="text-xs mt-1">Connect a device and click "Scan Devices"</p>
+          </div>
+        )}
+
+        <div className="grid gap-3">
+          {devices.map((device) => (
+            <Card
+              key={device.device_uid}
+              className={`p-4 border transition-all cursor-pointer hover:border-primary/50 ${
+                selectedDevice === device.device_uid ? 'border-primary bg-primary/5' : 'border-border'
+              }`}
+              onClick={() => setSelectedDevice(device.device_uid === selectedDevice ? null : device.device_uid)}
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Badge className={getPlatformColor(device.platform_hint)}>
+                      {device.platform_hint.toUpperCase()}
+                    </Badge>
+                    <Badge className={getModeColor(device.mode)}>
+                      {device.mode.replace(/_/g, ' ').toUpperCase()}
+                    </Badge>
+                    {getConfidenceBadge(device.confidence)}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">VID:PID:</span>{' '}
+                      <span className="font-mono text-foreground">{device.evidence.usb.vid}:{device.evidence.usb.pid}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Bus:</span>{' '}
+                      <span className="font-mono text-foreground">{device.evidence.usb.bus}</span>{' '}
+                      <span className="text-muted-foreground">Addr:</span>{' '}
+                      <span className="font-mono text-foreground">{device.evidence.usb.address}</span>
+                    </div>
+                    {device.evidence.usb.manufacturer && (
+                      <div>
+                        <span className="text-muted-foreground">Manufacturer:</span>{' '}
+                        <span className="text-foreground">{device.evidence.usb.manufacturer}</span>
+                      </div>
+                    )}
+                    {device.evidence.usb.product && (
+                      <div>
+                        <span className="text-muted-foreground">Product:</span>{' '}
+                        <span className="text-foreground">{device.evidence.usb.product}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-2 flex items-center gap-2">
+                    <Gauge className="w-3 h-3 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">
+                      Confidence: {(device.confidence * 100).toFixed(0)}%
+                    </span>
+                    {device.matched_tool_ids.length > 0 && (
+                      <>
+                        <Separator orientation="vertical" className="h-3" />
+                        <CheckCircle className="w-3 h-3 text-emerald-400" weight="fill" />
+                        <span className="text-xs text-emerald-400">
+                          Correlated via {device.matched_tool_ids.length} tool ID(s)
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {selectedDevice === device.device_uid && (
+                <>
+                  <Separator className="my-4" />
+                  <ScrollArea className="h-[300px]">
+                    <div className="space-y-4">
+                      <div>
+                        <h4 className="text-sm font-medium text-foreground mb-2">Classification Notes</h4>
+                        <ul className="space-y-1">
+                          {device.notes.map((note, idx) => (
+                            <li key={idx} className="text-xs text-muted-foreground flex items-start gap-2">
+                              <span className="text-primary">•</span>
+                              <span>{note}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      <div>
+                        <h4 className="text-sm font-medium text-foreground mb-2">Tool Evidence</h4>
+                        <div className="grid gap-2">
+                          {Object.entries(device.evidence.tools).map(([tool, probe]) => (
+                            <div key={tool} className="p-2 rounded border border-border bg-muted/10">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-xs font-medium text-foreground uppercase">{tool}</span>
+                                <div className="flex items-center gap-2">
+                                  {probe.present ? (
+                                    <Badge className="text-xs bg-emerald-600/20 text-emerald-300 border-emerald-500/30">
+                                      Present
+                                    </Badge>
+                                  ) : (
+                                    <Badge className="text-xs bg-gray-600/20 text-gray-300 border-gray-500/30">
+                                      Missing
+                                    </Badge>
+                                  )}
+                                  {probe.seen && (
+                                    <Badge className="text-xs bg-blue-600/20 text-blue-300 border-blue-500/30">
+                                      Device Seen
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                              {probe.device_ids.length > 0 && (
+                                <div className="text-xs text-muted-foreground mt-1">
+                                  IDs: {probe.device_ids.join(', ')}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <h4 className="text-sm font-medium text-foreground mb-2">USB Interfaces</h4>
+                        <div className="space-y-1">
+                          {device.evidence.usb.interface_hints.map((iface, idx) => (
+                            <div key={idx} className="text-xs font-mono text-muted-foreground">
+                              Class: {iface.class.toString(16).padStart(2, '0')} | 
+                              Subclass: {iface.subclass.toString(16).padStart(2, '0')} | 
+                              Protocol: {iface.protocol.toString(16).padStart(2, '0')}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <h4 className="text-sm font-medium text-foreground mb-2">Device UID</h4>
+                        <code className="text-xs font-mono text-muted-foreground bg-muted/20 px-2 py-1 rounded">
+                          {device.device_uid}
+                        </code>
+                      </div>
+                    </div>
+                  </ScrollArea>
+                </>
+              )}
+            </Card>
+          ))}
+        </div>
+      </Card>
+    </div>
+  );
+}

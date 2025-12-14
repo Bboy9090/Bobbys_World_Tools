@@ -726,6 +726,282 @@ app.post('/api/fastboot/erase', (req, res) => {
   }
 });
 
+app.get('/api/bootforgeusb/scan', (req, res) => {
+  if (!commandExists("bootforgeusb-cli")) {
+    return res.status(503).json({ 
+      error: "BootForgeUSB not available",
+      message: "BootForgeUSB CLI tool is not installed or not in PATH",
+      installInstructions: "Build and install from libs/bootforgeusb: cargo build --release && cargo install --path .",
+      available: false
+    });
+  }
+
+  try {
+    const output = execSync('bootforgeusb-cli', { 
+      encoding: 'utf-8', 
+      timeout: 10000,
+      maxBuffer: 10 * 1024 * 1024
+    });
+    
+    const devices = JSON.parse(output);
+    
+    res.json({
+      success: true,
+      count: devices.length,
+      devices,
+      timestamp: new Date().toISOString(),
+      available: true
+    });
+  } catch (error) {
+    if (error.code === 'ETIMEDOUT') {
+      return res.status(504).json({
+        error: 'BootForgeUSB scan timeout',
+        message: 'Device scan took too long to complete',
+        available: true
+      });
+    }
+    
+    console.error('BootForgeUSB scan error:', error);
+    res.status(500).json({
+      error: 'BootForgeUSB scan failed',
+      details: error.message,
+      stderr: error.stderr?.toString() || null,
+      available: true
+    });
+  }
+});
+
+app.get('/api/bootforgeusb/status', (req, res) => {
+  const cliAvailable = commandExists("bootforgeusb-cli");
+  const rustcAvailable = commandExists("rustc");
+  const cargoAvailable = commandExists("cargo");
+  
+  let buildPath = null;
+  let libInfo = null;
+  
+  if (rustcAvailable && cargoAvailable) {
+    try {
+      const manifestPath = '../libs/bootforgeusb/Cargo.toml';
+      const fs = require('fs');
+      if (fs.existsSync(manifestPath)) {
+        buildPath = '../libs/bootforgeusb';
+        const manifest = fs.readFileSync(manifestPath, 'utf-8');
+        const versionMatch = manifest.match(/version\s*=\s*"([^"]+)"/);
+        libInfo = {
+          path: buildPath,
+          version: versionMatch ? versionMatch[1] : null
+        };
+      }
+    } catch (e) {
+    }
+  }
+  
+  const adbAvailable = commandExists("adb");
+  const fastbootAvailable = commandExists("fastboot");
+  const ideviceAvailable = commandExists("idevice_id");
+  
+  res.json({
+    available: cliAvailable,
+    cli: {
+      installed: cliAvailable,
+      command: 'bootforgeusb-cli'
+    },
+    buildEnvironment: {
+      rust: rustcAvailable,
+      cargo: cargoAvailable,
+      canBuild: rustcAvailable && cargoAvailable
+    },
+    library: libInfo,
+    systemTools: {
+      adb: adbAvailable,
+      fastboot: fastbootAvailable,
+      idevice_id: ideviceAvailable
+    },
+    timestamp: new Date().toISOString()
+  });
+});
+
+app.get('/api/bootforgeusb/devices/:uid', (req, res) => {
+  if (!commandExists("bootforgeusb-cli")) {
+    return res.status(503).json({ 
+      error: "BootForgeUSB not available",
+      available: false
+    });
+  }
+
+  try {
+    const output = execSync('bootforgeusb-cli', { 
+      encoding: 'utf-8', 
+      timeout: 10000 
+    });
+    
+    const devices = JSON.parse(output);
+    const device = devices.find(d => d.device_uid === req.params.uid);
+    
+    if (!device) {
+      return res.status(404).json({
+        error: 'Device not found',
+        uid: req.params.uid
+      });
+    }
+    
+    res.json({
+      success: true,
+      device,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('BootForgeUSB device lookup error:', error);
+    res.status(500).json({
+      error: 'Failed to look up device',
+      details: error.message
+    });
+  }
+});
+
+app.get('/api/bootforgeusb/correlate', (req, res) => {
+  if (!commandExists("bootforgeusb-cli")) {
+    return res.status(503).json({ 
+      error: "BootForgeUSB not available",
+      available: false
+    });
+  }
+
+  const adbAvailable = commandExists("adb");
+  const fastbootAvailable = commandExists("fastboot");
+
+  try {
+    const bootforgeOutput = execSync('bootforgeusb-cli', { 
+      encoding: 'utf-8', 
+      timeout: 10000 
+    });
+    
+    const devices = JSON.parse(bootforgeOutput);
+    
+    const correlationResults = devices.map(device => {
+      const result = {
+        device_uid: device.device_uid,
+        platform: device.platform_hint,
+        mode: device.mode,
+        confidence: device.confidence,
+        correlation: {
+          method: 'none',
+          confidence_boost: 0,
+          matched_ids: device.matched_tool_ids || [],
+          details: []
+        }
+      };
+      
+      if (device.matched_tool_ids && device.matched_tool_ids.length > 0) {
+        result.correlation.method = 'tool_confirmed';
+        result.correlation.confidence_boost = 0.15;
+        result.correlation.details.push(`Correlated via ${device.matched_tool_ids.length} tool ID(s)`);
+      } else if (device.mode.includes('likely')) {
+        result.correlation.method = 'usb_heuristic';
+        result.correlation.details.push('USB-only classification, tool confirmation unavailable');
+      } else if (device.mode.includes('confirmed')) {
+        result.correlation.method = 'system_level';
+        result.correlation.details.push('System-level tool confirmation');
+      }
+      
+      return result;
+    });
+    
+    res.json({
+      success: true,
+      count: correlationResults.length,
+      devices: correlationResults,
+      tools_available: {
+        adb: adbAvailable,
+        fastboot: fastbootAvailable
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('BootForgeUSB correlation error:', error);
+    res.status(500).json({
+      error: 'Correlation analysis failed',
+      details: error.message
+    });
+  }
+});
+
+app.post('/api/bootforgeusb/build', async (req, res) => {
+  if (!commandExists("cargo")) {
+    return res.status(503).json({
+      error: "Rust toolchain not available",
+      message: "cargo command not found in PATH"
+    });
+  }
+
+  const buildPath = '../libs/bootforgeusb';
+  const fs = require('fs');
+  
+  if (!fs.existsSync(buildPath)) {
+    return res.status(404).json({
+      error: "BootForgeUSB source not found",
+      message: `Expected path: ${buildPath}`
+    });
+  }
+
+  try {
+    res.writeHead(200, {
+      'Content-Type': 'application/json',
+      'Transfer-Encoding': 'chunked'
+    });
+
+    res.write(JSON.stringify({ 
+      status: 'starting',
+      message: 'Building BootForgeUSB CLI...',
+      timestamp: new Date().toISOString()
+    }) + '\n');
+
+    const buildOutput = execSync(
+      'cargo build --release --bin bootforgeusb-cli',
+      {
+        cwd: buildPath,
+        encoding: 'utf-8',
+        timeout: 300000,
+        maxBuffer: 50 * 1024 * 1024
+      }
+    );
+
+    res.write(JSON.stringify({
+      status: 'installing',
+      message: 'Installing CLI tool...',
+      timestamp: new Date().toISOString()
+    }) + '\n');
+
+    const installOutput = execSync(
+      'cargo install --path . --bin bootforgeusb-cli',
+      {
+        cwd: buildPath,
+        encoding: 'utf-8',
+        timeout: 60000
+      }
+    );
+
+    res.write(JSON.stringify({
+      status: 'complete',
+      message: 'BootForgeUSB CLI built and installed successfully',
+      buildOutput: buildOutput.trim(),
+      installOutput: installOutput.trim(),
+      timestamp: new Date().toISOString()
+    }) + '\n');
+
+    res.end();
+  } catch (error) {
+    res.write(JSON.stringify({
+      status: 'failed',
+      error: 'Build failed',
+      details: error.message,
+      stderr: error.stderr?.toString() || null,
+      timestamp: new Date().toISOString()
+    }) + '\n');
+    res.end();
+  }
+});
+
 
 app.use((err, req, res, next) => {
   console.error(err.stack);
