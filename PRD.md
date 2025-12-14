@@ -34,11 +34,11 @@ This is a curated resource hub and diagnostic toolkit for legitimate device repa
 - **Success criteria**: 30+ tools catalogued, clear legal status indicators, working documentation links, installation commands copy-to-clipboard
 
 ### Device Diagnostics Dashboard
-- **Functionality**: Real USB device detection (ADB/Fastboot/iOS), battery health checks, storage diagnostics, sensor tests - all using legitimate system tools
-- **Purpose**: Provide technicians with quick diagnostic capabilities for common hardware issues
-- **Trigger**: User clicks "Diagnostics" card, connects device via USB
-- **Progression**: Click card → Device detection runs → Connected devices shown → User selects device → Test suite options appear → User runs tests → Results displayed
-- **Success criteria**: Detects Android/iOS devices correctly, battery health % accurate, storage info correct, test results clear
+- **Functionality**: Real USB device detection (ADB/Fastboot/iOS), battery health checks, storage diagnostics, sensor tests, device flashing with live progress tracking via WebSocket - all using legitimate system tools
+- **Purpose**: Provide technicians with quick diagnostic capabilities for common hardware issues and live monitoring of flash operations
+- **Trigger**: User clicks "Diagnostics" or "Flashing" card, connects device via USB
+- **Progression**: Click card → Device detection runs → Connected devices shown → User selects device → Test suite options appear → User runs tests → Results displayed OR User initiates flash → WebSocket connects → Live progress updates stream → Flash completes
+- **Success criteria**: Detects Android/iOS devices correctly, battery health % accurate, storage info correct, test results clear, WebSocket connection stable, progress updates real-time (<500ms latency), flash completion notifications work
 
 ### Community Resources Hub
 - **Functionality**: Links to legal repair advocacy groups (Right to Repair movement), forum communities, YouTube repair channels, and local repair shop directories

@@ -20,12 +20,14 @@ import {
   HardDrive,
   Usb,
   Timer,
-  Info
+  Info,
+  PlugsConnected
 } from '@phosphor-icons/react';
 import { useKV } from '@github/spark/hooks';
 import { toast } from 'sonner';
 import { FlashProgressMonitor, useFlashProgressSimulator } from './FlashProgressMonitor';
 import type { FlashProgress } from './FlashProgressMonitor';
+import { LiveProgressMonitor } from './LiveProgressMonitor';
 
 interface Device {
   serial: string;
@@ -421,8 +423,12 @@ export function DeviceFlashingDashboard() {
       )}
 
       <Tabs defaultValue="flash" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="flash">Flash Device</TabsTrigger>
+          <TabsTrigger value="live">
+            <PlugsConnected className="w-4 h-4 mr-2" weight="duotone" />
+            Live Progress
+          </TabsTrigger>
           <TabsTrigger value="devices">Connected Devices</TabsTrigger>
           <TabsTrigger value="history">Flash History</TabsTrigger>
         </TabsList>
@@ -533,6 +539,10 @@ export function DeviceFlashingDashboard() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="live" className="space-y-4 mt-6">
+          <LiveProgressMonitor />
         </TabsContent>
 
         <TabsContent value="devices" className="space-y-4 mt-6">
