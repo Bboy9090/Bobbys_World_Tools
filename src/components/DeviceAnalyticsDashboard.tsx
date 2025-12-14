@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress';
+import { CorrelationBadgeDisplay } from './CorrelationBadgeDisplay';
+import type { CorrelationBadge } from '@/types/correlation';
 import { 
   ChartBar, 
   Clock, 
@@ -34,6 +36,11 @@ interface ConnectionEvent {
     serialNumber?: string;
     deviceClass?: number;
   };
+  matchedToolIds?: string[];
+  correlationBadge?: CorrelationBadge;
+  platformHint?: string;
+  mode?: string;
+  confidence?: number;
 }
 
 interface DeviceSessionStats {
@@ -47,6 +54,10 @@ interface DeviceSessionStats {
   lastConnected: number;
   firstConnected: number;
   averageSessionDuration: number;
+  matchedToolIds?: string[];
+  correlationBadge?: CorrelationBadge;
+  lastMode?: string;
+  lastConfidence?: number;
 }
 
 export function DeviceAnalyticsDashboard() {
@@ -75,6 +86,10 @@ export function DeviceAnalyticsDashboard() {
           lastConnected: event.timestamp,
           firstConnected: event.timestamp,
           averageSessionDuration: 0,
+          matchedToolIds: event.matchedToolIds,
+          correlationBadge: event.correlationBadge,
+          lastMode: event.mode,
+          lastConfidence: event.confidence,
         });
       }
       
@@ -84,6 +99,13 @@ export function DeviceAnalyticsDashboard() {
         stats.totalConnections++;
         stats.lastConnected = Math.max(stats.lastConnected, event.timestamp);
         stats.firstConnected = Math.min(stats.firstConnected, event.timestamp);
+        
+        if (event.timestamp === stats.lastConnected) {
+          stats.matchedToolIds = event.matchedToolIds;
+          stats.correlationBadge = event.correlationBadge;
+          stats.lastMode = event.mode;
+          stats.lastConfidence = event.confidence;
+        }
       }
       
       if (event.duration) {
@@ -431,9 +453,18 @@ export function DeviceAnalyticsDashboard() {
                                 <span>VID: 0x{stats.vendorId.toString(16).padStart(4, '0')}</span>
                                 <span>PID: 0x{stats.productId.toString(16).padStart(4, '0')}</span>
                               </div>
-                              <Badge variant="outline" className="mt-2">
-                                {vendorName}
-                              </Badge>
+                              <div className="flex gap-2 mt-2 flex-wrap">
+                                <Badge variant="outline">
+                                  {vendorName}
+                                </Badge>
+                                {stats.correlationBadge && (
+                                  <CorrelationBadgeDisplay 
+                                    badge={stats.correlationBadge}
+                                    matchedIds={stats.matchedToolIds}
+                                    className="text-xs"
+                                  />
+                                )}
+                              </div>
                             </div>
                           </div>
                           
@@ -528,13 +559,20 @@ export function DeviceAnalyticsDashboard() {
                             )}
                           </div>
                         </div>
-                        <div className="flex gap-2 mt-2">
+                        <div className="flex gap-2 mt-2 flex-wrap">
                           <Badge variant="outline" className="text-xs">
                             {vendorName}
                           </Badge>
                           <Badge variant="secondary" className="text-xs">
                             {className}
                           </Badge>
+                          {event.correlationBadge && (
+                            <CorrelationBadgeDisplay 
+                              badge={event.correlationBadge}
+                              matchedIds={event.matchedToolIds}
+                              className="text-xs"
+                            />
+                          )}
                         </div>
                       </div>
                     </div>

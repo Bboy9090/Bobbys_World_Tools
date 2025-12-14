@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import { useAudioNotifications } from './use-audio-notifications';
+import type { CorrelationBadge } from '@/types/correlation';
 
 export type DeviceEventType = 'connected' | 'disconnected';
 
@@ -12,6 +13,9 @@ export interface DeviceHotplugEvent {
   confidence: number;
   timestamp: string;
   display_name: string;
+  matched_tool_ids?: string[];
+  correlation_badge?: CorrelationBadge;
+  correlation_notes?: string[];
 }
 
 export interface HotplugStats {

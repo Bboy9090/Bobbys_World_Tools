@@ -4,6 +4,8 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { CorrelationBadgeDisplay } from './CorrelationBadgeDisplay';
+import type { CorrelationBadge } from '@/types/correlation';
 import {
   Broadcast,
   CheckCircle,
@@ -64,19 +66,47 @@ function getConfidenceBadge(confidence: number) {
   );
 }
 
+function deriveCorrelationBadge(event: DeviceHotplugEvent): CorrelationBadge {
+  if (event.correlation_badge) {
+    return event.correlation_badge;
+  }
+  
+  const hasMatchedIds = event.matched_tool_ids && event.matched_tool_ids.length > 0;
+  const mode = event.mode.toLowerCase();
+  const confidence = event.confidence;
+  
+  if (hasMatchedIds) {
+    if (mode.includes('confirmed') && confidence >= 0.90) {
+      return 'CORRELATED';
+    }
+    return 'CORRELATED (WEAK)';
+  }
+  
+  if (mode.includes('confirmed') && confidence >= 0.90) {
+    return 'SYSTEM-CONFIRMED';
+  }
+  
+  if (mode.includes('likely')) {
+    return 'LIKELY';
+  }
+  
+  return 'UNCONFIRMED';
+}
+
 interface HotplugEventItemProps {
   event: DeviceHotplugEvent;
 }
 
 function HotplugEventItem({ event }: HotplugEventItemProps) {
   const timeAgo = formatDistanceToNow(new Date(event.timestamp), { addSuffix: true });
+  const correlationBadge = deriveCorrelationBadge(event);
 
   return (
     <div className="flex items-start gap-3 p-3 rounded-lg border border-border bg-muted/10 hover:bg-muted/20 transition-colors">
       <div className="mt-0.5">{getEventIcon(event.type)}</div>
       
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1">
+        <div className="flex items-center gap-2 mb-2 flex-wrap">
           <Badge variant="outline" className={getEventBadgeClass(event.type)}>
             {event.type}
           </Badge>
@@ -84,6 +114,14 @@ function HotplugEventItem({ event }: HotplugEventItemProps) {
             {event.platform_hint}
           </Badge>
           {getConfidenceBadge(event.confidence)}
+        </div>
+        
+        <div className="mb-2">
+          <CorrelationBadgeDisplay 
+            badge={correlationBadge}
+            matchedIds={event.matched_tool_ids}
+            className="text-xs"
+          />
         </div>
         
         <div className="text-sm font-medium text-foreground mb-1 truncate">
@@ -97,6 +135,19 @@ function HotplugEventItem({ event }: HotplugEventItemProps) {
         <div className="text-xs text-muted-foreground mt-1">
           {event.mode.replace(/_/g, ' ')} • {timeAgo}
         </div>
+        
+        {event.correlation_notes && event.correlation_notes.length > 0 && (
+          <div className="mt-2 pt-2 border-t border-border">
+            <div className="text-xs text-muted-foreground space-y-1">
+              {event.correlation_notes.map((note, idx) => (
+                <div key={idx} className="flex items-start gap-1">
+                  <span className="text-accent">•</span>
+                  <span>{note}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -5,6 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { CorrelationBadgeDisplay } from './CorrelationBadgeDisplay';
+import type { CorrelationBadge } from '@/types/correlation';
 import { 
   MagnifyingGlass, 
   CheckCircle, 
@@ -58,6 +60,8 @@ interface DeviceRecord {
   };
   notes: string[];
   matched_tool_ids: string[];
+  correlation_badge?: CorrelationBadge;
+  correlation_notes?: string[];
 }
 
 interface ScanResponse {
@@ -120,6 +124,33 @@ function getConfidenceBadge(confidence: number) {
     return <Badge className="bg-amber-600/20 text-amber-300 border-amber-500/30">Medium Confidence</Badge>;
   }
   return <Badge className="bg-rose-600/20 text-rose-300 border-rose-500/30">Low Confidence</Badge>;
+}
+
+function deriveCorrelationBadge(device: DeviceRecord): CorrelationBadge {
+  if (device.correlation_badge) {
+    return device.correlation_badge;
+  }
+  
+  const hasMatchedIds = device.matched_tool_ids.length > 0;
+  const mode = device.mode.toLowerCase();
+  const confidence = device.confidence;
+  
+  if (hasMatchedIds) {
+    if (mode.includes('confirmed') && confidence >= 0.90) {
+      return 'CORRELATED';
+    }
+    return 'CORRELATED (WEAK)';
+  }
+  
+  if (mode.includes('confirmed') && confidence >= 0.90) {
+    return 'SYSTEM-CONFIRMED';
+  }
+  
+  if (mode.includes('likely')) {
+    return 'LIKELY';
+  }
+  
+  return 'UNCONFIRMED';
 }
 
 export function BootForgeUSBScanner() {
@@ -316,7 +347,10 @@ export function BootForgeUSBScanner() {
         )}
 
         <div className="grid gap-3">
-          {devices.map((device) => (
+          {devices.map((device) => {
+            const correlationBadge = deriveCorrelationBadge(device);
+            
+            return (
             <Card
               key={device.device_uid}
               className={`p-4 border transition-all cursor-pointer hover:border-primary/50 ${
@@ -326,7 +360,7 @@ export function BootForgeUSBScanner() {
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-center gap-2 mb-2 flex-wrap">
                     <Badge className={getPlatformColor(device.platform_hint)}>
                       {device.platform_hint.toUpperCase()}
                     </Badge>
@@ -334,6 +368,14 @@ export function BootForgeUSBScanner() {
                       {device.mode.replace(/_/g, ' ').toUpperCase()}
                     </Badge>
                     {getConfidenceBadge(device.confidence)}
+                  </div>
+                  
+                  <div className="mb-3">
+                    <CorrelationBadgeDisplay 
+                      badge={correlationBadge}
+                      matchedIds={device.matched_tool_ids}
+                      className="text-xs"
+                    />
                   </div>
 
                   <div className="grid grid-cols-2 gap-3 text-sm">
@@ -384,6 +426,20 @@ export function BootForgeUSBScanner() {
                   <Separator className="my-4" />
                   <ScrollArea className="h-[300px]">
                     <div className="space-y-4">
+                      {device.correlation_notes && device.correlation_notes.length > 0 && (
+                        <div>
+                          <h4 className="text-sm font-medium text-foreground mb-2">Correlation Analysis</h4>
+                          <ul className="space-y-1">
+                            {device.correlation_notes.map((note, idx) => (
+                              <li key={idx} className="text-xs text-muted-foreground flex items-start gap-2">
+                                <span className="text-accent">•</span>
+                                <span>{note}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      
                       <div>
                         <h4 className="text-sm font-medium text-foreground mb-2">Classification Notes</h4>
                         <ul className="space-y-1">
@@ -454,7 +510,8 @@ export function BootForgeUSBScanner() {
                 </>
               )}
             </Card>
-          ))}
+          );
+          })}
         </div>
       </Card>
     </div>
