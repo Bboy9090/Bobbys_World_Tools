@@ -25,6 +25,8 @@ import {
 import { Plugin, PluginSearchFilters, InstalledPlugin, PluginSubmission } from '@/types/plugin';
 import { toast } from 'sonner';
 import { pluginAPI, PluginDownloadProgress } from '@/lib/plugin-api';
+import { PluginRegistrySync } from './PluginRegistrySync';
+import { PluginRegistryBrowser } from './PluginRegistryBrowser';
 
 const MOCK_PLUGINS_FALLBACK: Plugin[] = [
   {
@@ -455,6 +457,10 @@ export function PluginMarketplace() {
         </TabsList>
 
         <TabsContent value="browse" className="space-y-6 mt-6">
+          <PluginRegistrySync />
+          
+          <PluginRegistryBrowser />
+          
           <div className="flex gap-4">
             <div className="relative flex-1">
               <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />

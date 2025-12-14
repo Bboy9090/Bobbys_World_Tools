@@ -28,6 +28,7 @@ import { ArrowLeft } from '@phosphor-icons/react';
 import { DiagnosticPluginsDashboard } from "./components/DiagnosticPluginsDashboard";
 import { BatchDiagnosticsPanel } from "./components/BatchDiagnosticsPanel";
 import { MockBatchDiagnosticsWebSocket } from "./lib/mock-batch-diagnostics-websocket";
+import { setupMockRegistryAPI } from "./lib/mock-plugin-registry-server";
 
 type Section = 'hub' | 'repair-library' | 'tool-registry' | 'diagnostics' | 'flashing' | 'universal-flash' | 'multi-brand-flash' | 'mtk-flash' | 'ios-dfu' | 'security-edu' | 'pandora-codex' | 'support-matrix' | 'community' | 'workspace' | 'about' | 'settings' | 'vault' | 'authority' | 'plugins' | 'marketplace' | 'testing' | 'evidence' | 'diagnostic-plugins' | 'batch-diagnostics';
 
@@ -36,7 +37,9 @@ function App() {
 
     useEffect(() => {
         MockBatchDiagnosticsWebSocket.initialize();
+        setupMockRegistryAPI();
         console.log('[App] Mock Batch Diagnostics Server initialized');
+        console.log('[App] Mock Plugin Registry API initialized');
 
         return () => {
             MockBatchDiagnosticsWebSocket.cleanup();
