@@ -13,11 +13,12 @@ import { MediaTekFlashPanel } from "./components/MediaTekFlashPanel";
 import { SecurityLockEducationPanel } from "./components/SecurityLockEducationPanel";
 import { PandoraCodexControlRoom } from "./components/PandoraCodexControlRoom";
 import { IOSDFUFlashPanel } from "./components/IOSDFUFlashPanel";
+import { SettingsPanel } from "./components/SettingsPanel";
 import { Toaster } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from '@phosphor-icons/react';
 
-type Section = 'hub' | 'repair-library' | 'tool-registry' | 'diagnostics' | 'flashing' | 'universal-flash' | 'multi-brand-flash' | 'mtk-flash' | 'ios-dfu' | 'security-edu' | 'pandora-codex' | 'community' | 'workspace' | 'about';
+type Section = 'hub' | 'repair-library' | 'tool-registry' | 'diagnostics' | 'flashing' | 'universal-flash' | 'multi-brand-flash' | 'mtk-flash' | 'ios-dfu' | 'security-edu' | 'pandora-codex' | 'community' | 'workspace' | 'about' | 'settings';
 
 function App() {
     const [currentSection, setCurrentSection] = useState<Section>('hub');
@@ -59,6 +60,7 @@ function App() {
                     {currentSection === 'community' && <CommunityResources />}
                     {currentSection === 'workspace' && <MyWorkspace />}
                     {currentSection === 'about' && <AboutBobby />}
+                    {currentSection === 'settings' && <SettingsPanel />}
                 </div>
             </div>
             <Toaster />

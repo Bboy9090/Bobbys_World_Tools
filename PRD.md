@@ -61,6 +61,13 @@ This is a curated resource hub and diagnostic toolkit for legitimate device repa
 - **Progression**: Click workspace → Saved tools/notes appear → User adds/edits content → Changes auto-save → Persist on reload
 - **Success criteria**: Data persists correctly using useKV, no data loss, export/import functionality works, clear organizational structure
 
+### Workshop Atmosphere System
+- **Functionality**: Optional background audio atmosphere for focused work - instrumental (80-92 BPM boom-bap), ambient (vinyl hiss/city hum), or external (user's own audio). Hard capped at 15% volume, never auto-plays, starts only when work begins, fades out on errors/completion
+- **Purpose**: Create authentic workshop vibe without distraction - feels like music in the next room, not a soundtrack
+- **Trigger**: User enables in Settings → Atmosphere panel, audio plays when flash/diagnostic operations start
+- **Progression**: User enables atmosphere → Selects mode → Adjusts intensity (0-15%) → Enables auto-mute/pause options → Starts work → Audio fades in → Job completes → Audio fades out
+- **Success criteria**: Never auto-plays on launch, volume hard-capped at 15%, smooth fade in/out (200-300ms), respects user preferences via useKV persistence, works with all flash/diagnostic operations, gracefully handles missing audio files, External mode does nothing (BYO audio), legal/license-clean audio only
+
 ## Edge Case Handling
 
 - **No Devices Connected**: Show friendly empty state with connection instructions, avoid technical jargon
@@ -70,6 +77,8 @@ This is a curated resource hub and diagnostic toolkit for legitimate device repa
 - **Unsupported Device Detected**: Show "Unknown Device" with generic diagnostic options
 - **Installation Commands Fail**: Troubleshooting section in guides with common error solutions
 - **Mobile Browser Access**: Responsive layout maintains functionality, diagnostic features may have limited capability warnings
+- **Audio Files Missing**: Workshop Atmosphere system continues to function (settings UI works), audio simply doesn't play - no errors shown to user
+- **Atmosphere During Errors**: Auto-mute kicks in immediately (200ms fade), never competes with error notifications or diagnostic output
 
 ## Design Direction
 

@@ -1,178 +1,155 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Switch } from '@/components/ui/switch';
-import { Slider } from '@/components/ui/slider';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
-import { useAudioNotifications } from '@/hooks/use-audio-notifications';
-import { 
-  SpeakerHigh, 
-  SpeakerSlash, 
-  PlugsConnected, 
-  Plug,
-  Lightning,
-  WarningCircle,
-  XCircle,
-  CheckCircle,
-  ArrowCounterClockwise
-} from '@phosphor-icons/react';
-import { NotificationType } from '@/lib/audio-notifications';
-
-interface NotificationTypeConfig {
-  key: NotificationType;
-  label: string;
-  description: string;
-  icon: React.ReactNode;
-  settingKey: 'deviceConnected' | 'deviceDisconnected' | 'bottleneckDetected' | 'performanceCritical' | 'testFailed' | 'benchmarkComplete';
-}
-
-const notificationTypes: NotificationTypeConfig[] = [
-  {
-    key: 'device-connected',
-    label: 'Device Connected',
-    description: 'Play sound when a device is connected',
-    icon: <PlugsConnected className="w-4 h-4" weight="fill" />,
-    settingKey: 'deviceConnected',
-  },
-  {
-    key: 'device-disconnected',
-    label: 'Device Disconnected',
-    description: 'Play sound when a device is disconnected',
-    icon: <Plug className="w-4 h-4" weight="fill" />,
-    settingKey: 'deviceDisconnected',
-  },
-  {
-    key: 'bottleneck-detected',
-    label: 'Bottleneck Detected',
-    description: 'Alert when performance bottleneck is detected',
-    icon: <Lightning className="w-4 h-4" weight="fill" />,
-    settingKey: 'bottleneckDetected',
-  },
-  {
-    key: 'performance-critical',
-    label: 'Critical Performance',
-    description: 'Alert for critical performance issues',
-    icon: <WarningCircle className="w-4 h-4" weight="fill" />,
-    settingKey: 'performanceCritical',
-  },
-  {
-    key: 'test-failed',
-    label: 'Test Failed',
-    description: 'Notify when automated tests fail',
-    icon: <XCircle className="w-4 h-4" weight="fill" />,
-    settingKey: 'testFailed',
-  },
-  {
-    key: 'benchmark-complete',
-    label: 'Benchmark Complete',
-    description: 'Sound when benchmark completes',
-    icon: <CheckCircle className="w-4 h-4" weight="fill" />,
-    settingKey: 'benchmarkComplete',
-  },
-];
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Separator } from "@/components/ui/separator";
+import { SpeakerHigh, SpeakerX } from "@phosphor-icons/react";
+import { useKV } from "@github/spark/hooks";
+import { AtmosphereMode } from "@/hooks/use-atmosphere";
 
 export function AudioNotificationSettings() {
-  const { settings, toggleEnabled, setVolume, toggleNotificationType, resetToDefaults, play } = useAudioNotifications();
+  const [atmosphereEnabled, setAtmosphereEnabled] = useKV<boolean>("atmosphere-enabled", false);
+  const [atmosphereMode, setAtmosphereMode] = useKV<AtmosphereMode>("atmosphere-mode", "instrumental");
+  const [atmosphereIntensity, setAtmosphereIntensity] = useKV<number>("atmosphere-intensity", 0.08);
+  const [autoMuteOnErrors, setAutoMuteOnErrors] = useKV<boolean>("atmosphere-auto-mute", true);
+  const [pauseOnComplete, setPauseOnComplete] = useKV<boolean>("atmosphere-pause-complete", true);
 
   return (
-    <Card>
+    <Card className="bg-card border-border">
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          {atmosphereEnabled ? <SpeakerHigh className="w-5 h-5 text-primary" /> : <SpeakerX className="w-5 h-5 text-muted-foreground" />}
           <div>
-            <CardTitle className="flex items-center gap-2">
-              {settings.enabled ? (
-                <SpeakerHigh className="w-5 h-5 text-primary" weight="fill" />
-              ) : (
-                <SpeakerSlash className="w-5 h-5 text-muted-foreground" weight="fill" />
-              )}
-              Audio Notifications
-            </CardTitle>
-            <CardDescription>
-              Configure audio alerts for critical device events
-            </CardDescription>
-          </div>
-          <div className="flex items-center gap-3">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={resetToDefaults}
-            >
-              <ArrowCounterClockwise className="w-4 h-4 mr-2" />
-              Reset
-            </Button>
+            <CardTitle>Workshop Atmosphere</CardTitle>
+            <CardDescription>Low-key background atmosphere for focused work</CardDescription>
           </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="flex items-center justify-between">
           <div className="space-y-0.5">
-            <Label htmlFor="audio-enabled" className="text-base">Enable Audio Notifications</Label>
+            <Label htmlFor="atmosphere-toggle" className="text-base font-medium">
+              Enable Workshop Atmosphere
+            </Label>
             <p className="text-sm text-muted-foreground">
-              Master control for all audio alerts
+              Never auto-plays on launch. Starts only when work begins.
             </p>
           </div>
           <Switch
-            id="audio-enabled"
-            checked={settings.enabled}
-            onCheckedChange={toggleEnabled}
+            id="atmosphere-toggle"
+            checked={atmosphereEnabled}
+            onCheckedChange={setAtmosphereEnabled}
           />
         </div>
 
         <Separator />
 
-        <div className="space-y-3">
-          <Label htmlFor="volume-slider" className="text-base">Volume</Label>
-          <div className="flex items-center gap-4">
-            <Slider
-              id="volume-slider"
-              value={[settings.volume * 100]}
-              onValueChange={(value) => setVolume(value[0] / 100)}
-              max={100}
-              step={5}
-              disabled={!settings.enabled}
-              className="flex-1"
-            />
-            <span className="text-sm font-mono text-muted-foreground w-12 text-right">
-              {Math.round(settings.volume * 100)}%
-            </span>
-          </div>
+        <div className="space-y-4">
+          <Label className="text-base font-medium">Mode</Label>
+          <RadioGroup
+            value={atmosphereMode}
+            onValueChange={(value) => setAtmosphereMode(value as AtmosphereMode)}
+            disabled={!atmosphereEnabled}
+            className="space-y-3"
+          >
+            <div className="flex items-start space-x-3">
+              <RadioGroupItem value="instrumental" id="mode-instrumental" />
+              <div className="grid gap-1.5 leading-none">
+                <Label htmlFor="mode-instrumental" className="font-medium">
+                  Instrumental
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Rhythmic, unobtrusive, vocal-free.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start space-x-3">
+              <RadioGroupItem value="ambient" id="mode-ambient" />
+              <div className="grid gap-1.5 leading-none">
+                <Label htmlFor="mode-ambient" className="font-medium">
+                  Ambient
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Texture only. No beat.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start space-x-3">
+              <RadioGroupItem value="external" id="mode-external" />
+              <div className="grid gap-1.5 leading-none">
+                <Label htmlFor="mode-external" className="font-medium">
+                  External
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Use your system audio.
+                </p>
+              </div>
+            </div>
+          </RadioGroup>
         </div>
 
         <Separator />
 
         <div className="space-y-4">
-          <Label className="text-base">Notification Types</Label>
-          <div className="space-y-3">
-            {notificationTypes.map((type) => (
-              <div key={type.key} className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3 flex-1">
-                  <div className="text-primary">{type.icon}</div>
-                  <div className="space-y-0.5 flex-1">
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor={type.key} className="text-sm font-medium">
-                        {type.label}
-                      </Label>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 px-2 text-xs"
-                        onClick={() => play(type.key)}
-                        disabled={!settings.enabled || !settings[type.settingKey]}
-                      >
-                        Test
-                      </Button>
-                    </div>
-                    <p className="text-xs text-muted-foreground">{type.description}</p>
-                  </div>
-                </div>
-                <Switch
-                  id={type.key}
-                  checked={settings[type.settingKey]}
-                  onCheckedChange={() => toggleNotificationType(type.key)}
-                  disabled={!settings.enabled}
-                />
-              </div>
-            ))}
+          <div className="flex items-center justify-between">
+            <Label htmlFor="intensity-slider" className="text-base font-medium">
+              Intensity
+            </Label>
+            <span className="text-sm text-muted-foreground">
+              {Math.round((atmosphereIntensity ?? 0.08) * 100)}% (max 15%)
+            </span>
+          </div>
+          <Slider
+            id="intensity-slider"
+            value={[atmosphereIntensity ?? 0.08]}
+            onValueChange={([value]) => setAtmosphereIntensity(value)}
+            min={0}
+            max={0.15}
+            step={0.01}
+            disabled={!atmosphereEnabled || atmosphereMode === "external"}
+            className="w-full"
+          />
+          <p className="text-xs text-muted-foreground">
+            Hard capped at 15% volume for safety and focus.
+          </p>
+        </div>
+
+        <Separator />
+
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="auto-mute" className="text-base font-medium">
+                Auto-mute on Errors
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Silence atmosphere when errors occur
+              </p>
+            </div>
+            <Switch
+              id="auto-mute"
+              checked={autoMuteOnErrors}
+              onCheckedChange={setAutoMuteOnErrors}
+              disabled={!atmosphereEnabled}
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="pause-complete" className="text-base font-medium">
+                Pause on Job Complete
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Fade out when operations finish
+              </p>
+            </div>
+            <Switch
+              id="pause-complete"
+              checked={pauseOnComplete}
+              onCheckedChange={setPauseOnComplete}
+              disabled={!atmosphereEnabled}
+            />
           </div>
         </div>
       </CardContent>

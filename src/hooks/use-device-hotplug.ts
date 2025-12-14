@@ -44,8 +44,6 @@ export function useDeviceHotplug(options: UseDeviceHotplugOptions = {}) {
     onError,
   } = options;
 
-  const { play: playAudio } = useAudioNotifications();
-
   const [isConnected, setIsConnected] = useState(false);
   const [events, setEvents] = useState<DeviceHotplugEvent[]>([]);
   const [stats, setStats] = useState<HotplugStats>({
@@ -77,8 +75,6 @@ export function useDeviceHotplug(options: UseDeviceHotplugOptions = {}) {
         newStats.currentDevices += 1;
         onConnect?.(event);
         
-        playAudio('device-connected');
-        
         if (showToasts) {
           toast.success('Device Connected', {
             description: event.display_name || event.device_uid,
@@ -88,8 +84,6 @@ export function useDeviceHotplug(options: UseDeviceHotplugOptions = {}) {
         newStats.totalDisconnections += 1;
         newStats.currentDevices = Math.max(0, newStats.currentDevices - 1);
         onDisconnect?.(event);
-        
-        playAudio('device-disconnected');
         
         if (showToasts) {
           toast.info('Device Disconnected', {
@@ -101,7 +95,7 @@ export function useDeviceHotplug(options: UseDeviceHotplugOptions = {}) {
       newStats.lastEventTime = event.timestamp;
       return newStats;
     });
-  }, [onConnect, onDisconnect, showToasts, playAudio]);
+  }, [onConnect, onDisconnect, showToasts]);
 
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN || 

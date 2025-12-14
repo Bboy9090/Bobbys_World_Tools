@@ -1,115 +1,66 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useKV } from '@github/spark/hooks';
-import { audioNotificationManager, NotificationType } from '@/lib/audio-notifications';
-
-interface AudioSettings {
-  enabled: boolean;
-  volume: number;
-  deviceConnected: boolean;
-  deviceDisconnected: boolean;
-  bottleneckDetected: boolean;
-  performanceCritical: boolean;
-  testFailed: boolean;
-  benchmarkComplete: boolean;
-}
-
-const DEFAULT_SETTINGS: AudioSettings = {
-  enabled: true,
-  volume: 0.3,
-  deviceConnected: true,
-  deviceDisconnected: true,
-  bottleneckDetected: true,
-  performanceCritical: true,
-  testFailed: true,
-  benchmarkComplete: true,
-};
+import { useAtmosphere, AtmosphereMode } from './use-atmosphere';
 
 export function useAudioNotifications() {
-  const [settings, setSettings] = useKV<AudioSettings>('audio-notification-settings', DEFAULT_SETTINGS);
-  const hasInitialized = useRef(false);
+  const [enabled] = useKV<boolean>("atmosphere-enabled", false);
+  const [mode] = useKV<AtmosphereMode>("atmosphere-mode", "instrumental");
+  const [intensity] = useKV<number>("atmosphere-intensity", 0.08);
+  const [autoMuteOnErrors] = useKV<boolean>("atmosphere-auto-mute", true);
+  const [pauseOnComplete] = useKV<boolean>("atmosphere-pause-complete", true);
+
+  const atmosphere = useAtmosphere();
+  const currentJobRef = useRef<string | null>(null);
+
+  const pickTrack = (selectedMode: AtmosphereMode): string => {
+    if (selectedMode === "external") return "";
+    
+    const base = selectedMode === "instrumental" ? "/audio/instrumental" : "/audio/ambient";
+    const n = 1 + Math.floor(Math.random() * 6);
+    return `${base}/loop_${n}.mp3`;
+  };
+
+  const handleJobStart = (jobId?: string) => {
+    if (!enabled || mode === "external") return;
+    
+    currentJobRef.current = jobId || `job-${Date.now()}`;
+    const track = pickTrack(mode || "instrumental");
+    if (track) {
+      atmosphere.playLoop(track, intensity || 0.08);
+    }
+  };
+
+  const handleJobError = () => {
+    if (!enabled || !autoMuteOnErrors) return;
+    atmosphere.fadeOutAndStop(200);
+  };
+
+  const handleJobComplete = () => {
+    if (!enabled || !pauseOnComplete) return;
+    atmosphere.fadeOutAndStop(300);
+    currentJobRef.current = null;
+  };
+
+  const handleJobProgress = () => {
+  };
 
   useEffect(() => {
-    if (!hasInitialized.current && settings) {
-      audioNotificationManager.setEnabled(settings.enabled);
-      audioNotificationManager.setVolume(settings.volume);
-      hasInitialized.current = true;
+    if (enabled && mode !== "external") {
+      atmosphere.setVolume(intensity || 0.08);
     }
-  }, [settings]);
+  }, [intensity, enabled, mode]);
 
-  const play = useCallback(async (type: NotificationType) => {
-    if (!settings) return;
-    
-    if (!settings.enabled) return;
-
-    const typeMap: Record<NotificationType, keyof AudioSettings> = {
-      'device-connected': 'deviceConnected',
-      'device-disconnected': 'deviceDisconnected',
-      'bottleneck-detected': 'bottleneckDetected',
-      'performance-critical': 'performanceCritical',
-      'test-failed': 'testFailed',
-      'benchmark-complete': 'benchmarkComplete',
+  useEffect(() => {
+    return () => {
+      atmosphere.stop();
     };
-
-    const settingKey = typeMap[type];
-    if (!settings[settingKey]) return;
-
-    await audioNotificationManager.play(type);
-  }, [settings]);
-
-  const updateSettings = useCallback((updates: Partial<AudioSettings>) => {
-    setSettings((current) => {
-      const base = current || DEFAULT_SETTINGS;
-      const newSettings: AudioSettings = { ...base, ...updates };
-      
-      if ('enabled' in updates && updates.enabled !== undefined) {
-        audioNotificationManager.setEnabled(updates.enabled);
-      }
-      
-      if ('volume' in updates && updates.volume !== undefined) {
-        audioNotificationManager.setVolume(updates.volume);
-      }
-      
-      return newSettings;
-    });
-  }, [setSettings]);
-
-  const toggleEnabled = useCallback(() => {
-    updateSettings({ enabled: !settings?.enabled });
-  }, [settings, updateSettings]);
-
-  const setVolume = useCallback((volume: number) => {
-    updateSettings({ volume });
-  }, [updateSettings]);
-
-  const toggleNotificationType = useCallback((type: NotificationType) => {
-    const typeMap: Record<NotificationType, keyof AudioSettings> = {
-      'device-connected': 'deviceConnected',
-      'device-disconnected': 'deviceDisconnected',
-      'bottleneck-detected': 'bottleneckDetected',
-      'performance-critical': 'performanceCritical',
-      'test-failed': 'testFailed',
-      'benchmark-complete': 'benchmarkComplete',
-    };
-
-    const settingKey = typeMap[type];
-    if (settings) {
-      updateSettings({ [settingKey]: !settings[settingKey] });
-    }
-  }, [settings, updateSettings]);
-
-  const resetToDefaults = useCallback(() => {
-    setSettings(DEFAULT_SETTINGS);
-    audioNotificationManager.setEnabled(DEFAULT_SETTINGS.enabled);
-    audioNotificationManager.setVolume(DEFAULT_SETTINGS.volume);
-  }, [setSettings]);
+  }, []);
 
   return {
-    settings: settings || DEFAULT_SETTINGS,
-    play,
-    updateSettings,
-    toggleEnabled,
-    setVolume,
-    toggleNotificationType,
-    resetToDefaults,
+    handleJobStart,
+    handleJobError,
+    handleJobComplete,
+    handleJobProgress,
+    stopAtmosphere: atmosphere.stop,
   };
 }
