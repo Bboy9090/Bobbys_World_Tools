@@ -316,19 +316,54 @@ export function BatchDiagnosticsPanel() {
     },
     adb: {
       shell: async (deviceId: string, command: string) => {
-        await new Promise(resolve => setTimeout(resolve, 100));
-        return `Simulated output for: ${command}`;
+        try {
+          const response = await fetch('http://localhost:3001/api/adb/shell', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ deviceId, command }),
+          });
+          const data = await response.json();
+          if (!response.ok) {
+            throw new Error(data.error || 'ADB command failed');
+          }
+          return data.output || '';
+        } catch (error) {
+          console.error('ADB shell error:', error);
+          throw error;
+        }
       },
       execute: async (deviceId: string, command: string) => {
-        await new Promise(resolve => setTimeout(resolve, 100));
-        return `Simulated output for: ${command}`;
+        try {
+          const response = await fetch('http://localhost:3001/api/adb/execute', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ deviceId, command }),
+          });
+          const data = await response.json();
+          if (!response.ok) {
+            throw new Error(data.error || 'ADB command failed');
+          }
+          return data.output || '';
+        } catch (error) {
+          console.error('ADB execute error:', error);
+          throw error;
+        }
       },
     },
     kv: {
-      get: async () => undefined,
-      set: async () => {},
-      delete: async () => {},
-      keys: async () => [],
+      get: async <T,>(key: string): Promise<T | undefined> => {
+        const value = await window.spark.kv.get<T>(key);
+        return value;
+      },
+      set: async (key: string, value: any) => {
+        await window.spark.kv.set(key, value);
+      },
+      delete: async (key: string) => {
+        await window.spark.kv.delete(key);
+      },
+      keys: async () => {
+        return await window.spark.kv.keys();
+      },
     },
     logger: {
       info: (msg: string) => console.log(`[${pluginId}] INFO:`, msg),
