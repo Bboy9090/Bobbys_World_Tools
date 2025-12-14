@@ -6,11 +6,12 @@ import { CommunityResources } from "./components/CommunityResources";
 import { MyWorkspace } from "./components/MyWorkspace";
 import { AboutBobby } from "./components/AboutBobby";
 import { RealTimeUSBDiagnostics } from "./components/RealTimeUSBDiagnostics";
+import { DeviceFlashingDashboard } from "./components/DeviceFlashingDashboard";
 import { Toaster } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from '@phosphor-icons/react';
 
-type Section = 'hub' | 'repair-library' | 'tool-registry' | 'diagnostics' | 'community' | 'workspace' | 'about';
+type Section = 'hub' | 'repair-library' | 'tool-registry' | 'diagnostics' | 'flashing' | 'community' | 'workspace' | 'about';
 
 function App() {
     const [currentSection, setCurrentSection] = useState<Section>('hub');
@@ -42,6 +43,7 @@ function App() {
                     {currentSection === 'repair-library' && <RepairLibrary />}
                     {currentSection === 'tool-registry' && <ToolRegistry />}
                     {currentSection === 'diagnostics' && <RealTimeUSBDiagnostics />}
+                    {currentSection === 'flashing' && <DeviceFlashingDashboard />}
                     {currentSection === 'community' && <CommunityResources />}
                     {currentSection === 'workspace' && <MyWorkspace />}
                     {currentSection === 'about' && <AboutBobby />}

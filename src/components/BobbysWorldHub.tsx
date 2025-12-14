@@ -1,4 +1,4 @@
-import { Books, Wrench, Cpu, Users, FolderOpen, Heart } from '@phosphor-icons/react';
+import { Books, Wrench, Cpu, Users, FolderOpen, Heart, Lightning } from '@phosphor-icons/react';
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -62,6 +62,12 @@ export function BobbysWorldHub({ onNavigate }: BobbysWorldHubProps) {
             title="Diagnostics"
             description="Real device detection and health checks using legitimate system tools"
             onClick={() => onNavigate('diagnostics')}
+          />
+          <HubCard
+            icon={<Lightning size={32} weight="duotone" />}
+            title="Device Flashing"
+            description="Flash firmware with real-time progress tracking and performance monitoring"
+            onClick={() => onNavigate('flashing')}
           />
           <HubCard
             icon={<Users size={32} weight="duotone" />}
