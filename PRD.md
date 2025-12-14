@@ -83,11 +83,18 @@ This is a sophisticated monitoring system that tracks multiple real-time metrics
 - **Success criteria**: Zero-overhead benchmarking (no impact on flash performance), metrics captured at 10Hz with <50ms latency, bottlenecks detected within 500ms of occurrence, final analysis completes within 2 seconds, accurate grade assignment (validated against manual evaluation), actionable recommendations (>85% user satisfaction), complete history tracking with trend analysis, cross-device performance comparison, exportable benchmark data
 
 ### WebSocket Live Device Hotplug Notifications
-- **Functionality**: Real-time USB device connection and disconnection event notifications via WebSocket connections, with automatic reconnection, event history buffering, and live statistics tracking
+- **Functionality**: Real-time USB device connection and disconnection event notifications via WebSocket connections, with automatic reconnection, event history buffering, live statistics tracking, and audio notifications
 - **Purpose**: Enable instant awareness of device state changes without manual polling, provide developers and operators with immediate feedback on device connections for rapid diagnostics and workflow optimization
 - **Trigger**: WebSocket connection established on component mount, events received automatically when devices connect or disconnect
-- **Progression**: Component mounts → WebSocket connects to backend → Connection confirmed → Device plugged in → Event broadcast from server → Client receives event → UI updates instantly → Toast notification shown → Event added to history → Statistics updated → Device unplugged → Disconnect event received → UI updates → Process repeats
-- **Success criteria**: WebSocket connection establishes within 1 second, events received with <200ms latency from actual device state change, automatic reconnection with exponential backoff succeeds within 30 seconds, zero events lost during normal operation, event history maintains last 100 events, statistics accurately reflect device state, toast notifications appear within 500ms of event
+- **Progression**: Component mounts → WebSocket connects to backend → Connection confirmed → Device plugged in → Event broadcast from server → Client receives event → Audio notification plays → UI updates instantly → Toast notification shown → Event added to history → Statistics updated → Device unplugged → Disconnect event received → Audio notification plays → UI updates → Process repeats
+- **Success criteria**: WebSocket connection establishes within 1 second, events received with <200ms latency from actual device state change, automatic reconnection with exponential backoff succeeds within 30 seconds, zero events lost during normal operation, event history maintains last 100 events, statistics accurately reflect device state, toast notifications appear within 500ms of event, audio notifications play within 100ms of event
+
+### Audio Notification System
+- **Functionality**: Synthesized audio alerts for critical device events including device connections/disconnections, bottleneck detection, performance issues, test failures, and benchmark completion, with per-event-type configuration and volume control
+- **Purpose**: Provide immediate auditory feedback for critical events enabling developers to monitor system health without constant visual attention, especially useful during long operations or when working with multiple devices
+- **Trigger**: Automatically triggered when critical events occur, user can configure which event types play sounds
+- **Progression**: Critical event occurs → Audio settings checked → If enabled and event type active → Synthesized sound plays through Web Audio API → User acknowledges event audibly → Can test sounds from settings panel
+- **Success criteria**: Audio plays within 100ms of event trigger, sounds are distinct and recognizable per event type, user preferences persist between sessions, volume control from 0-100%, individual event type toggles work correctly, no audio glitches or overlapping sounds, graceful degradation if Web Audio API unavailable
 
 ## Edge Case Handling
 
@@ -107,6 +114,9 @@ This is a sophisticated monitoring system that tracks multiple real-time metrics
 - **WebSocket Disconnected Mid-Stream**: Automatically attempt reconnection with exponential backoff, preserve event history, show connection status indicator
 - **Duplicate Device Events**: Deduplicate events by device UID and timestamp, maintain event integrity
 - **Malformed WebSocket Messages**: Validate JSON schema, log parsing errors, continue processing valid events
+- **Audio Unavailable**: Gracefully degrade when Web Audio API is not supported, continue showing visual notifications
+- **Rapid Event Succession**: Queue audio notifications to prevent overlapping sounds, maintain event order
+- **User Has Audio Muted**: Respect system/browser audio settings, show visual-only notifications
 
 ## Design Direction
 
@@ -187,6 +197,8 @@ Real-time monitoring demands smooth, purposeful animations. Metric values should
   - PlugsConnected for device connections
   - Plug for device disconnections
   - DeviceMobile for device indicators
+  - SpeakerHigh/SpeakerSlash for audio settings
+  - Gear for settings panel
   
 - **Spacing**: Tight spacing (gap-3) within metric groups, standard spacing (gap-6) between major sections, generous padding (p-6) on cards
 - **Mobile**: Single column layout, collapse graphs to simple bar charts, prioritize current metrics and top recommendations over historical data, full-width cards, larger touch targets for export buttons and recommendation actions

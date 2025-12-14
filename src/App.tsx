@@ -6,8 +6,9 @@ import { BenchmarkStandardsGuide } from "./components/BenchmarkStandardsGuide";
 import { BenchmarkedFlashingPanel } from "./components/BenchmarkedFlashingPanel";
 import { BootForgeUSBScanner } from "./components/BootForgeUSBScanner";
 import { LiveDeviceHotplugMonitor } from "./components/LiveDeviceHotplugMonitor";
+import { AudioNotificationSettings } from "./components/AudioNotificationSettings";
 import { Toaster } from "@/components/ui/sonner";
-import { Pulse, Flask, Book, Gauge, Lightning, Broadcast } from '@phosphor-icons/react';
+import { Pulse, Flask, Book, Gauge, Lightning, Broadcast, Gear } from '@phosphor-icons/react';
 
 function App() {
     return (
@@ -15,7 +16,7 @@ function App() {
             <div className="min-h-screen bg-background p-4 md:p-6">
                 <div className="max-w-7xl mx-auto">
                     <Tabs defaultValue="live-benchmark" className="w-full">
-                        <TabsList className="grid w-full grid-cols-6 mb-6">
+                        <TabsList className="grid w-full grid-cols-7 mb-6">
                             <TabsTrigger value="live-benchmark" className="gap-2">
                                 <Gauge className="w-4 h-4" weight="duotone" />
                                 Live Benchmark
@@ -39,6 +40,10 @@ function App() {
                             <TabsTrigger value="hotplug" className="gap-2">
                                 <Broadcast className="w-4 h-4" weight="duotone" />
                                 Live Hotplug
+                            </TabsTrigger>
+                            <TabsTrigger value="settings" className="gap-2">
+                                <Gear className="w-4 h-4" weight="duotone" />
+                                Settings
                             </TabsTrigger>
                         </TabsList>
 
@@ -64,6 +69,10 @@ function App() {
 
                         <TabsContent value="hotplug">
                             <LiveDeviceHotplugMonitor />
+                        </TabsContent>
+
+                        <TabsContent value="settings">
+                            <AudioNotificationSettings />
                         </TabsContent>
                     </Tabs>
                 </div>
