@@ -7,6 +7,7 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { CorrelationBadgeDisplay } from './CorrelationBadgeDisplay';
 import { BootForgeUSBInstallGuide } from './BootForgeUSBInstallGuide';
+import { useCorrelationTracking } from '@/hooks/use-correlation-tracking';
 import type { CorrelationBadge } from '@/types/correlation';
 import { 
   MagnifyingGlass, 
@@ -19,6 +20,7 @@ import {
   Gauge,
   ArrowsClockwise
 } from '@phosphor-icons/react';
+import { toast } from 'sonner';
 
 const API_BASE = 'http://localhost:3001';
 
@@ -163,6 +165,8 @@ export function BootForgeUSBScanner() {
   const [error, setError] = useState<string | null>(null);
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null);
   const [isDemoMode, setIsDemoMode] = useState(false);
+  
+  const { updateDevice, isTracking } = useCorrelationTracking();
 
   useEffect(() => {
     checkStatus();
@@ -213,6 +217,25 @@ export function BootForgeUSBScanner() {
       }
       
       setDevices(data.devices || []);
+      
+      if (isTracking && data.devices && data.devices.length > 0) {
+        data.devices.forEach((device) => {
+          const correlationBadge = deriveCorrelationBadge(device);
+          updateDevice(device.device_uid, {
+            id: device.device_uid,
+            serial: device.evidence.usb.serial || undefined,
+            platform: device.platform_hint,
+            mode: device.mode,
+            confidence: device.confidence,
+            correlationBadge,
+            matchedIds: device.matched_tool_ids || [],
+            correlationNotes: device.correlation_notes || [],
+            vendorId: parseInt(device.evidence.usb.vid, 16),
+            productId: parseInt(device.evidence.usb.pid, 16),
+          });
+        });
+        toast.success(`Updated ${data.devices.length} devices in correlation tracker`);
+      }
     } catch (err: any) {
       setError(`Scan failed: ${err.message}`);
       setDevices([]);
@@ -231,9 +254,15 @@ export function BootForgeUSBScanner() {
             <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
               <Lightning className="w-5 h-5 text-primary" weight="duotone" />
               BootForgeUSB Device Scanner
+              {isTracking && (
+                <Badge className="bg-accent/20 text-accent border-accent/30">
+                  Live Tracking Active
+                </Badge>
+              )}
             </h2>
             <p className="text-sm text-muted-foreground mt-1">
               Advanced USB device detection with iOS/Android classification
+              {isTracking && ' • Feeding correlation tracker'}
             </p>
           </div>
           <div className="flex items-center gap-2">

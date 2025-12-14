@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DeviceDossierPanel } from './DeviceDossierPanel';
 import { CorrelationBadgeDisplay } from './CorrelationBadgeDisplay';
+import { useCorrelationTracking } from '@/hooks/use-correlation-tracking';
 import { normalizeScan, normalizeBootForgeUSBRecord } from '@/lib/dossier-normalizer';
 import type { DeviceRecord } from '@/types/correlation';
 import { 
@@ -11,14 +12,17 @@ import {
   DeviceMobile, 
   Sparkle, 
   ArrowsClockwise,
-  ChartBar
+  ChartBar,
+  Link
 } from '@phosphor-icons/react';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { toast } from 'sonner';
 
 export function CorrelationDashboard() {
   const [mockDevices, setMockDevices] = useState<DeviceRecord[]>([]);
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null);
+  const { updateDevice, isTracking } = useCorrelationTracking();
 
   useEffect(() => {
     generateMockDevices();
@@ -90,6 +94,25 @@ export function CorrelationDashboard() {
     if (devices.length > 0) {
       setSelectedDevice(devices[0].id);
     }
+    
+    if (isTracking) {
+      const { devices: normalizedDevices } = normalizeScan(devices);
+      normalizedDevices.forEach((device) => {
+        updateDevice(device.id, {
+          id: device.id,
+          serial: device.detection_evidence.usb_evidence.find(e => e.includes('Serial'))?.split(': ')[1],
+          platform: device.platform,
+          mode: device.device_mode,
+          confidence: device.confidence,
+          correlationBadge: device.correlation_badge,
+          matchedIds: device.matched_ids,
+          correlationNotes: device.correlation_notes,
+          vendorId: mockDevices.find(d => d.id === device.id)?.vendorId,
+          productId: mockDevices.find(d => d.id === device.id)?.productId,
+        });
+      });
+      toast.success(`Pushed ${normalizedDevices.length} devices to correlation tracker`);
+    }
   };
 
   const { devices: normalizedDevices, summary } = normalizeScan(mockDevices);
@@ -103,6 +126,12 @@ export function CorrelationDashboard() {
           <h2 className="text-3xl font-bold tracking-tight flex items-center gap-3">
             <Sparkle className="w-8 h-8 text-accent" weight="duotone" />
             Correlation Tracking Dashboard
+            {isTracking && (
+              <Badge className="bg-accent/20 text-accent border-accent/30">
+                <Link className="w-3 h-3 mr-1" weight="bold" />
+                Feeding Live Tracker
+              </Badge>
+            )}
           </h2>
           <p className="text-muted-foreground mt-1">
             Per-device correlation with enhanced policy gates

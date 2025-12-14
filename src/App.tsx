@@ -8,9 +8,10 @@ import { BootForgeUSBScanner } from "./components/BootForgeUSBScanner";
 import { LiveDeviceHotplugMonitor } from "./components/LiveDeviceHotplugMonitor";
 import { AudioNotificationSettings } from "./components/AudioNotificationSettings";
 import { CorrelationDashboard } from "./components/CorrelationDashboard";
+import { RealTimeCorrelationTracker } from "./components/RealTimeCorrelationTracker";
 import { PandoraCodexControlRoom } from "./components/PandoraCodexControlRoom";
 import { Toaster } from "@/components/ui/sonner";
-import { Pulse, Flask, Book, Gauge, Lightning, Broadcast, Gear, LinkSimple, Wrench } from '@phosphor-icons/react';
+import { Pulse, Flask, Book, Gauge, Lightning, Broadcast, Gear, LinkSimple, Wrench, ChartLineUp } from '@phosphor-icons/react';
 
 function App() {
     return (
@@ -18,10 +19,14 @@ function App() {
             <div className="min-h-screen bg-background p-4 md:p-6">
                 <div className="max-w-7xl mx-auto">
                     <Tabs defaultValue="pandora" className="w-full">
-                        <TabsList className="grid w-full grid-cols-9 mb-6">
+                        <TabsList className="grid w-full grid-cols-10 mb-6">
                             <TabsTrigger value="pandora" className="gap-2">
                                 <Wrench className="w-4 h-4" weight="duotone" />
                                 Pandora Codex
+                            </TabsTrigger>
+                            <TabsTrigger value="realtime-correlation" className="gap-2">
+                                <ChartLineUp className="w-4 h-4" weight="duotone" />
+                                Live Tracking
                             </TabsTrigger>
                             <TabsTrigger value="correlation" className="gap-2">
                                 <LinkSimple className="w-4 h-4" weight="duotone" />
@@ -59,6 +64,10 @@ function App() {
 
                         <TabsContent value="pandora">
                             <PandoraCodexControlRoom />
+                        </TabsContent>
+
+                        <TabsContent value="realtime-correlation">
+                            <RealTimeCorrelationTracker />
                         </TabsContent>
 
                         <TabsContent value="correlation">
