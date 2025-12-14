@@ -20,11 +20,12 @@ import { AuthorityDashboard } from "./components/AuthorityDashboard";
 import { PluginManager } from "./components/PluginManager";
 import { PluginMarketplace } from "./components/PluginMarketplace";
 import { AutomatedTestingDashboard } from "./components/AutomatedTestingDashboard";
+import { EvidenceBundleManager } from "./components/EvidenceBundleManager";
 import { Toaster } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from '@phosphor-icons/react';
 
-type Section = 'hub' | 'repair-library' | 'tool-registry' | 'diagnostics' | 'flashing' | 'universal-flash' | 'multi-brand-flash' | 'mtk-flash' | 'ios-dfu' | 'security-edu' | 'pandora-codex' | 'support-matrix' | 'community' | 'workspace' | 'about' | 'settings' | 'vault' | 'authority' | 'plugins' | 'marketplace' | 'testing';
+type Section = 'hub' | 'repair-library' | 'tool-registry' | 'diagnostics' | 'flashing' | 'universal-flash' | 'multi-brand-flash' | 'mtk-flash' | 'ios-dfu' | 'security-edu' | 'pandora-codex' | 'support-matrix' | 'community' | 'workspace' | 'about' | 'settings' | 'vault' | 'authority' | 'plugins' | 'marketplace' | 'testing' | 'evidence';
 
 function App() {
     const [currentSection, setCurrentSection] = useState<Section>('hub');
@@ -73,6 +74,7 @@ function App() {
                     {currentSection === 'plugins' && <PluginManager onNavigate={navigateToSection} />}
                     {currentSection === 'marketplace' && <PluginMarketplace />}
                     {currentSection === 'testing' && <AutomatedTestingDashboard />}
+                    {currentSection === 'evidence' && <EvidenceBundleManager />}
                 </div>
             </div>
             <Toaster />
