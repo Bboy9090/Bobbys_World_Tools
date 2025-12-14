@@ -1,8 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
 import { 
   CheckCircle, 
   XCircle, 
@@ -10,7 +13,12 @@ import {
   ArrowsClockwise, 
   Download,
   Package,
-  Tree
+  Tree,
+  ArrowRight,
+  GitBranch,
+  Shield,
+  Lightning,
+  Clock
 } from '@phosphor-icons/react';
 import { usePluginDependencies } from '@/hooks/use-plugin-dependencies';
 import { toast } from 'sonner';
@@ -40,32 +48,41 @@ export function PluginDependencyInstaller({
 
   const [step, setStep] = useState<'resolve' | 'confirm' | 'install' | 'complete'>('resolve');
 
-  const handleResolve = async () => {
-    try {
-      await resolveDependencies(pluginId, version);
-      setStep('confirm');
-    } catch (error) {
-      toast.error('Failed to resolve dependencies');
-      console.error(error);
+  useEffect(() => {
+    resolveDependencies(pluginId, version).catch((error) => {
+      toast.error('Dependency Resolution Failed', {
+        description: error.message,
+      });
+    });
+  }, [pluginId, version, resolveDependencies]);
+
+  useEffect(() => {
+    if (dependencyStatus.resolution && step === 'resolve' && !dependencyStatus.isResolving) {
+      if (dependencyStatus.resolution.conflicts.length === 0 && 
+          dependencyStatus.resolution.circularDependencies.length === 0) {
+        setStep('confirm');
+      }
     }
-  };
+  }, [dependencyStatus, step]);
+
+  useEffect(() => {
+    if (installStatus.success && step === 'install') {
+      setStep('complete');
+      toast.success('Installation Complete', {
+        description: `Successfully installed ${installStatus.installed.length} plugin(s)`,
+      });
+      onInstallComplete?.(true);
+    }
+  }, [installStatus, step, onInstallComplete]);
 
   const handleInstall = async () => {
     setStep('install');
     try {
-      const result = await installWithDependencies(pluginId, version);
-      setStep('complete');
-      
-      if (result.success) {
-        toast.success(`${pluginName} and dependencies installed successfully`);
-        onInstallComplete?.(true);
-      } else {
-        toast.error(`Installation completed with errors`);
-        onInstallComplete?.(false);
-      }
+      await installWithDependencies(pluginId, version);
     } catch (error) {
-      toast.error('Installation failed');
-      setStep('complete');
+      toast.error('Installation Failed', {
+        description: error instanceof Error ? error.message : 'Unknown error',
+      });
       onInstallComplete?.(false);
     }
   };
@@ -88,10 +105,38 @@ export function PluginDependencyInstaller({
           <div className="flex items-center gap-3">
             <Tree className="text-primary" size={24} />
             <div>
-              <h3 className="text-lg font-semibold">Resolve Dependencies</h3>
+              <h3 className="text-lg font-semibold">Resolving Dependencies</h3>
               <p className="text-sm text-muted-foreground">
-                Checking dependencies for {pluginName}
+                Analyzing dependency tree for {pluginName}
               </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className={`flex items-center justify-center w-8 h-8 rounded-full ${
+              dependencyStatus.isResolving ? 'bg-primary text-primary-foreground animate-pulse' : 
+              dependencyStatus.error ? 'bg-destructive text-destructive-foreground' :
+              'bg-success/20 text-success'
+            }`}>
+              {dependencyStatus.isResolving ? (
+                <Clock className="w-4 h-4 animate-pulse" />
+              ) : dependencyStatus.error ? (
+                <XCircle className="w-4 h-4" />
+              ) : (
+                <CheckCircle className="w-4 h-4" />
+              )}
+            </div>
+            <ArrowRight className="w-4 h-4 text-muted-foreground" />
+            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-muted text-muted-foreground">
+              <GitBranch className="w-4 h-4" />
+            </div>
+            <ArrowRight className="w-4 h-4 text-muted-foreground" />
+            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-muted text-muted-foreground">
+              <Download className="w-4 h-4" />
+            </div>
+            <ArrowRight className="w-4 h-4 text-muted-foreground" />
+            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-muted text-muted-foreground">
+              <CheckCircle className="w-4 h-4" />
             </div>
           </div>
 
@@ -103,20 +148,50 @@ export function PluginDependencyInstaller({
           )}
 
           {dependencyStatus.error && (
-            <div className="flex items-center gap-3 p-4 bg-destructive/10 rounded-lg">
-              <XCircle className="text-destructive" size={20} />
-              <div className="flex-1">
-                <p className="text-sm font-medium text-destructive">Resolution failed</p>
-                <p className="text-xs text-destructive/80 mt-1">{dependencyStatus.error}</p>
-              </div>
-            </div>
+            <Alert variant="destructive">
+              <XCircle className="h-4 w-4" />
+              <AlertTitle>Resolution Failed</AlertTitle>
+              <AlertDescription>{dependencyStatus.error}</AlertDescription>
+            </Alert>
+          )}
+
+          {dependencyStatus.resolution && (
+            <>
+              {dependencyStatus.resolution.conflicts.length > 0 && (
+                <Alert variant="destructive">
+                  <Warning className="h-4 w-4" />
+                  <AlertTitle>Dependency Conflicts Detected</AlertTitle>
+                  <AlertDescription>
+                    <ul className="mt-2 space-y-1 text-sm">
+                      {dependencyStatus.resolution.conflicts.map((conflict, idx) => (
+                        <li key={idx}>
+                          <span className="font-mono">{conflict.pluginId}</span> required by{' '}
+                          <span className="font-mono">{conflict.requiredBy.join(', ')}</span>
+                          {' '}(versions: {conflict.versions.join(', ')})
+                        </li>
+                      ))}
+                    </ul>
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {dependencyStatus.resolution.circularDependencies.length > 0 && (
+                <Alert variant="destructive">
+                  <Warning className="h-4 w-4" />
+                  <AlertTitle>Circular Dependencies Detected</AlertTitle>
+                  <AlertDescription>
+                    <ul className="mt-2 space-y-1 text-sm font-mono">
+                      {dependencyStatus.resolution.circularDependencies.map((cycle, idx) => (
+                        <li key={idx}>{cycle.join(' → ')}</li>
+                      ))}
+                    </ul>
+                  </AlertDescription>
+                </Alert>
+              )}
+            </>
           )}
 
           <div className="flex gap-2">
-            <Button onClick={handleResolve} disabled={dependencyStatus.isResolving}>
-              <Tree className="mr-2" size={16} />
-              Resolve Dependencies
-            </Button>
             <Button variant="outline" onClick={handleCancel}>
               Cancel
             </Button>
@@ -144,67 +219,107 @@ export function PluginDependencyInstaller({
             </div>
           </div>
 
-          <div className="space-y-4">
-            <div className="p-4 bg-muted/50 rounded-lg">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Installation Plan</span>
-                <Badge variant="outline">{resolution.installOrder.length} plugins</Badge>
-              </div>
-              <div className="space-y-1">
-                {resolution.installOrder.map((plugin, idx) => (
-                  <div key={`${plugin.pluginId}-${idx}`} className="flex items-center gap-2 text-sm">
-                    <span className="text-muted-foreground">{idx + 1}.</span>
-                    <span className="font-mono">{plugin.pluginId}</span>
-                    <Badge variant="secondary" className="text-xs">{plugin.version}</Badge>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-3 pt-3 border-t border-border">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Total download size:</span>
-                  <span className="font-medium">{formatSize(resolution.totalSize)}</span>
-                </div>
-              </div>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-success/20 text-success">
+              <CheckCircle className="w-4 h-4" />
             </div>
-
-            {hasConflicts && (
-              <div className="flex items-start gap-3 p-4 bg-destructive/10 rounded-lg">
-                <Warning className="text-destructive mt-0.5" size={20} />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-destructive mb-2">Dependency Conflicts</p>
-                  {resolution.conflicts.map((conflict, idx) => (
-                    <div key={idx} className="text-xs text-destructive/80 mb-1">
-                      <span className="font-mono">{conflict.pluginId}</span> required by{' '}
-                      {conflict.requiredBy.join(', ')} with versions: {conflict.versions.join(', ')}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {hasCircular && (
-              <div className="flex items-start gap-3 p-4 bg-warning/10 rounded-lg">
-                <Warning className="text-warning mt-0.5" size={20} />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-warning mb-2">Circular Dependencies</p>
-                  {resolution.circularDependencies.map((cycle, idx) => (
-                    <div key={idx} className="text-xs text-warning/80 mb-1 font-mono">
-                      {cycle.join(' → ')}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            <ArrowRight className="w-4 h-4 text-muted-foreground" />
+            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground">
+              <GitBranch className="w-4 h-4" />
+            </div>
+            <ArrowRight className="w-4 h-4 text-muted-foreground" />
+            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-muted text-muted-foreground">
+              <Download className="w-4 h-4" />
+            </div>
+            <ArrowRight className="w-4 h-4 text-muted-foreground" />
+            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-muted text-muted-foreground">
+              <CheckCircle className="w-4 h-4" />
+            </div>
           </div>
 
-          <div className="flex gap-2">
+          <Alert>
+            <Package className="h-4 w-4" />
+            <AlertTitle>Installation Plan</AlertTitle>
+            <AlertDescription>
+              The following plugins will be installed in order:
+            </AlertDescription>
+          </Alert>
+
+          <ScrollArea className="h-64 rounded-md border border-border p-4">
+            <div className="space-y-2">
+              {resolution.installOrder.map((dep, idx) => (
+                <div key={idx} className="flex items-center gap-3 p-2 rounded-lg bg-muted/30">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary text-sm font-medium">
+                    {idx + 1}
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-mono text-sm">{dep.pluginId}</div>
+                    <div className="text-xs text-muted-foreground">v{dep.version}</div>
+                  </div>
+                  {idx === resolution.installOrder.length - 1 && (
+                    <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30">
+                      Target
+                    </Badge>
+                  )}
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+
+          <div className="flex items-center justify-between p-4 rounded-lg bg-muted/30">
+            <div className="space-y-1">
+              <div className="text-sm font-medium">Total Download Size</div>
+              <div className="text-xs text-muted-foreground">
+                {resolution.installOrder.length} plugin(s) to install
+              </div>
+            </div>
+            <div className="text-lg font-bold text-primary">
+              {formatSize(resolution.totalSize)}
+            </div>
+          </div>
+
+          {hasConflicts && (
+            <Alert variant="destructive">
+              <Warning className="h-4 w-4" />
+              <AlertTitle>Dependency Conflicts Detected</AlertTitle>
+              <AlertDescription>
+                <ul className="mt-2 space-y-1">
+                  {resolution.conflicts.map((conflict, idx) => (
+                    <li key={idx} className="text-sm">
+                      <span className="font-mono">{conflict.pluginId}</span> required by{' '}
+                      <span className="font-mono">{conflict.requiredBy.join(', ')}</span>
+                      {' '}(versions: {conflict.versions.join(', ')})
+                    </li>
+                  ))}
+                </ul>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {hasCircular && (
+            <Alert variant="destructive">
+              <Warning className="h-4 w-4" />
+              <AlertTitle>Circular Dependencies Detected</AlertTitle>
+              <AlertDescription>
+                <ul className="mt-2 space-y-1">
+                  {resolution.circularDependencies.map((cycle, idx) => (
+                    <li key={idx} className="text-sm font-mono">
+                      {cycle.join(' → ')}
+                    </li>
+                  ))}
+                </ul>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <div className="flex gap-3">
             <Button 
               onClick={handleInstall} 
               disabled={hasConflicts || hasCircular}
               className="flex-1"
             >
-              <Download className="mr-2" size={16} />
-              Install All ({resolution.installOrder.length})
+              <Download className="w-4 h-4 mr-2" />
+              Install All Dependencies
             </Button>
             <Button variant="outline" onClick={handleCancel}>
               Cancel
@@ -222,45 +337,101 @@ export function PluginDependencyInstaller({
       <Card className="p-6 border-primary/20">
         <div className="flex flex-col gap-4">
           <div className="flex items-center gap-3">
-            <Download className="text-primary" size={24} />
+            <Lightning className="text-primary animate-pulse" size={24} />
             <div>
-              <h3 className="text-lg font-semibold">Installing Dependencies</h3>
+              <h3 className="text-lg font-semibold">Installing Plugins</h3>
               <p className="text-sm text-muted-foreground">
                 Please wait while plugins are downloaded and installed
               </p>
             </div>
           </div>
 
+          <div className="flex items-center gap-2">
+            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-success/20 text-success">
+              <CheckCircle className="w-4 h-4" />
+            </div>
+            <ArrowRight className="w-4 h-4 text-muted-foreground" />
+            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-success/20 text-success">
+              <GitBranch className="w-4 h-4" />
+            </div>
+            <ArrowRight className="w-4 h-4 text-muted-foreground" />
+            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground animate-pulse">
+              <Download className="w-4 h-4" />
+            </div>
+            <ArrowRight className="w-4 h-4 text-muted-foreground" />
+            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-muted text-muted-foreground">
+              <CheckCircle className="w-4 h-4" />
+            </div>
+          </div>
+
           {progress && (
             <>
+              <Alert>
+                <Lightning className="h-4 w-4 animate-pulse" />
+                <AlertTitle>Installing Plugins</AlertTitle>
+                <AlertDescription>
+                  {progress.message || 'Preparing installation...'}
+                </AlertDescription>
+              </Alert>
+
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium">{progress.currentPlugin}</span>
-                  <Badge variant={
-                    progress.status === 'completed' ? 'default' :
-                    progress.status === 'failed' ? 'destructive' :
-                    'secondary'
-                  }>
-                    {progress.status}
-                  </Badge>
+                  <span className="text-muted-foreground">
+                    {progress.current} of {progress.total}
+                  </span>
+                  <span className="font-mono text-primary">{progress.currentPlugin}</span>
                 </div>
                 <Progress value={(progress.current / progress.total) * 100} />
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>{progress.message}</span>
-                  <span>{progress.current} / {progress.total}</span>
+              </div>
+
+              <div className="p-4 rounded-lg bg-muted/30">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10">
+                    {progress.status === 'downloading' && (
+                      <Download className="w-5 h-5 text-primary animate-bounce" />
+                    )}
+                    {progress.status === 'installing' && (
+                      <Package className="w-5 h-5 text-primary animate-pulse" />
+                    )}
+                    {progress.status === 'verifying' && (
+                      <Shield className="w-5 h-5 text-primary animate-pulse" />
+                    )}
+                    {progress.status === 'completed' && (
+                      <CheckCircle className="w-5 h-5 text-success" />
+                    )}
+                    {progress.status === 'failed' && (
+                      <XCircle className="w-5 h-5 text-destructive" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-sm font-medium capitalize">{progress.status}</div>
+                    <div className="text-xs text-muted-foreground">{progress.message}</div>
+                  </div>
                 </div>
               </div>
 
               {progress.error && (
-                <div className="flex items-start gap-3 p-4 bg-destructive/10 rounded-lg">
-                  <XCircle className="text-destructive mt-0.5" size={20} />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-destructive">Installation error</p>
-                    <p className="text-xs text-destructive/80 mt-1">{progress.error}</p>
-                  </div>
-                </div>
+                <Alert variant="destructive">
+                  <XCircle className="h-4 w-4" />
+                  <AlertTitle>Installation Error</AlertTitle>
+                  <AlertDescription>{progress.error}</AlertDescription>
+                </Alert>
               )}
             </>
+          )}
+
+          {installStatus.errors.length > 0 && (
+            <Alert variant="destructive">
+              <XCircle className="h-4 w-4" />
+              <AlertTitle>Installation Errors</AlertTitle>
+              <AlertDescription>
+                <ul className="mt-2 space-y-1">
+                  {installStatus.errors.map((error, idx) => (
+                    <li key={idx} className="text-sm">{error}</li>
+                  ))}
+                </ul>
+              </AlertDescription>
+            </Alert>
           )}
         </div>
       </Card>
@@ -289,39 +460,71 @@ export function PluginDependencyInstaller({
             </div>
           </div>
 
+          <div className="flex items-center gap-2">
+            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-success/20 text-success">
+              <CheckCircle className="w-4 h-4" />
+            </div>
+            <ArrowRight className="w-4 h-4 text-muted-foreground" />
+            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-success/20 text-success">
+              <GitBranch className="w-4 h-4" />
+            </div>
+            <ArrowRight className="w-4 h-4 text-muted-foreground" />
+            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-success/20 text-success">
+              <Download className="w-4 h-4" />
+            </div>
+            <ArrowRight className="w-4 h-4 text-muted-foreground" />
+            <div className={`flex items-center justify-center w-8 h-8 rounded-full ${
+              success ? 'bg-success text-success-foreground' : 'bg-warning text-warning-foreground'
+            }`}>
+              <CheckCircle className="w-4 h-4" />
+            </div>
+          </div>
+
+          {success && (
+            <Alert className="bg-success/10 border-success/30">
+              <CheckCircle className="h-4 w-4 text-success" />
+              <AlertTitle>Installation Complete</AlertTitle>
+              <AlertDescription>
+                All plugins have been successfully installed and verified.
+              </AlertDescription>
+            </Alert>
+          )}
+
           {installed.length > 0 && (
-            <div className="p-4 bg-muted/50 rounded-lg">
-              <p className="text-sm font-medium mb-2">Installed Plugins</p>
-              <div className="space-y-1">
-                {installed.map((plugin, idx) => (
-                  <div key={idx} className="flex items-center gap-2 text-sm">
-                    <CheckCircle className="text-success" size={14} />
-                    <span className="font-mono text-xs">{plugin}</span>
-                  </div>
-                ))}
+            <div className="p-4 rounded-lg bg-muted/30">
+              <div className="space-y-2">
+                <div className="text-sm font-medium">Installed Plugins</div>
+                <ScrollArea className="h-32">
+                  <ul className="space-y-1">
+                    {installed.map((pluginId, idx) => (
+                      <li key={idx} className="flex items-center gap-2 text-sm font-mono">
+                        <CheckCircle className="w-3 h-3 text-success" />
+                        {pluginId}
+                      </li>
+                    ))}
+                  </ul>
+                </ScrollArea>
               </div>
             </div>
           )}
 
           {errors.length > 0 && (
-            <div className="p-4 bg-destructive/10 rounded-lg">
-              <p className="text-sm font-medium text-destructive mb-2">Errors</p>
-              <div className="space-y-1">
-                {errors.map((error, idx) => (
-                  <div key={idx} className="flex items-start gap-2 text-xs text-destructive/80">
-                    <XCircle className="mt-0.5" size={14} />
-                    <span>{error}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <Alert variant="destructive">
+              <XCircle className="h-4 w-4" />
+              <AlertTitle>Installation Errors</AlertTitle>
+              <AlertDescription>
+                <ul className="mt-2 space-y-1">
+                  {errors.map((error, idx) => (
+                    <li key={idx} className="text-sm">{error}</li>
+                  ))}
+                </ul>
+              </AlertDescription>
+            </Alert>
           )}
 
-          <div className="flex gap-2">
-            <Button onClick={() => onInstallComplete?.(success)} className="flex-1">
-              Done
-            </Button>
-          </div>
+          <Button onClick={() => onInstallComplete?.(success)} className="w-full">
+            Done
+          </Button>
         </div>
       </Card>
     );
