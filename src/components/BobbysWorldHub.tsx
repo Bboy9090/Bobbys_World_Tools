@@ -1,4 +1,4 @@
-import { Books, Wrench, Cpu, Users, FolderOpen, Heart, Lightning, ShieldCheck, ChartLine, DeviceMobile, Gear, ListChecks, LockKey, Package, Storefront, Flask, FileText } from '@phosphor-icons/react';
+import { Books, Wrench, Cpu, Users, FolderOpen, Heart, Lightning, ShieldCheck, ChartLine, DeviceMobile, Gear, ListChecks, LockKey, Package, Storefront, Flask, FileText, ListDashes } from '@phosphor-icons/react';
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
 interface HubCardProps {
@@ -76,6 +76,13 @@ export function BobbysWorldHub({ onNavigate }: BobbysWorldHubProps) {
             title="Authority Dashboard"
             description="Evidence signing, correlation tracking, plugin ecosystem"
             onClick={() => onNavigate('authority')}
+            featured
+          />
+          <HubCard
+            icon={<ListDashes size={28} weight="duotone" />}
+            title="Batch Diagnostics"
+            description="Run diagnostics across multiple connected devices simultaneously"
+            onClick={() => onNavigate('batch-diagnostics')}
             featured
           />
           <HubCard

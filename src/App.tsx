@@ -26,8 +26,9 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft } from '@phosphor-icons/react';
 
 import { DiagnosticPluginsDashboard } from "./components/DiagnosticPluginsDashboard";
+import { BatchDiagnosticsPanel } from "./components/BatchDiagnosticsPanel";
 
-type Section = 'hub' | 'repair-library' | 'tool-registry' | 'diagnostics' | 'flashing' | 'universal-flash' | 'multi-brand-flash' | 'mtk-flash' | 'ios-dfu' | 'security-edu' | 'pandora-codex' | 'support-matrix' | 'community' | 'workspace' | 'about' | 'settings' | 'vault' | 'authority' | 'plugins' | 'marketplace' | 'testing' | 'evidence' | 'diagnostic-plugins';
+type Section = 'hub' | 'repair-library' | 'tool-registry' | 'diagnostics' | 'flashing' | 'universal-flash' | 'multi-brand-flash' | 'mtk-flash' | 'ios-dfu' | 'security-edu' | 'pandora-codex' | 'support-matrix' | 'community' | 'workspace' | 'about' | 'settings' | 'vault' | 'authority' | 'plugins' | 'marketplace' | 'testing' | 'evidence' | 'diagnostic-plugins' | 'batch-diagnostics';
 
 function App() {
     const [currentSection, setCurrentSection] = useState<Section>('hub');
@@ -78,6 +79,7 @@ function App() {
                     {currentSection === 'testing' && <AutomatedTestingDashboard />}
                     {currentSection === 'evidence' && <EvidenceBundleManager />}
                     {currentSection === 'diagnostic-plugins' && <DiagnosticPluginsDashboard />}
+                    {currentSection === 'batch-diagnostics' && <BatchDiagnosticsPanel />}
                 </div>
             </div>
             <Toaster />
