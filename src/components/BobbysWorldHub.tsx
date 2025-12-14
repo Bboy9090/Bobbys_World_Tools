@@ -1,4 +1,4 @@
-import { Books, Wrench, Cpu, Users, FolderOpen, Heart, Lightning, ShieldCheck, ChartLine, DeviceMobile, Gear, ListChecks, LockKey, Package, Storefront, Flask, FileText, ListDashes } from '@phosphor-icons/react';
+import { Books, Wrench, Cpu, Users, FolderOpen, Heart, Lightning, ShieldCheck, ChartLine, DeviceMobile, Gear, ListChecks, LockKey, Package, Storefront, Flask, FileText, ListDashes, GitBranch } from '@phosphor-icons/react';
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
 interface HubCardProps {
@@ -83,6 +83,13 @@ export function BobbysWorldHub({ onNavigate }: BobbysWorldHubProps) {
             title="Batch Diagnostics"
             description="Run diagnostics across multiple connected devices simultaneously"
             onClick={() => onNavigate('batch-diagnostics')}
+            featured
+          />
+          <HubCard
+            icon={<GitBranch size={28} weight="duotone" />}
+            title="Dependency Graph"
+            description="Visualize plugin dependencies, conflicts, and circular references"
+            onClick={() => onNavigate('plugin-graph')}
             featured
           />
           <HubCard

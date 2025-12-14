@@ -21,6 +21,7 @@ import { PluginManager } from "./components/PluginManager";
 import { PluginMarketplace } from "./components/PluginMarketplace";
 import { AutomatedTestingDashboard } from "./components/AutomatedTestingDashboard";
 import { EvidenceBundleManager } from "./components/EvidenceBundleManager";
+import { PluginDependencyGraph } from "./components/PluginDependencyGraph";
 import { Toaster } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from '@phosphor-icons/react';
@@ -30,7 +31,7 @@ import { BatchDiagnosticsPanel } from "./components/BatchDiagnosticsPanel";
 import { MockBatchDiagnosticsWebSocket } from "./lib/mock-batch-diagnostics-websocket";
 import { setupMockRegistryAPI } from "./lib/mock-plugin-registry-server";
 
-type Section = 'hub' | 'repair-library' | 'tool-registry' | 'diagnostics' | 'flashing' | 'universal-flash' | 'multi-brand-flash' | 'mtk-flash' | 'ios-dfu' | 'security-edu' | 'pandora-codex' | 'support-matrix' | 'community' | 'workspace' | 'about' | 'settings' | 'vault' | 'authority' | 'plugins' | 'marketplace' | 'testing' | 'evidence' | 'diagnostic-plugins' | 'batch-diagnostics';
+type Section = 'hub' | 'repair-library' | 'tool-registry' | 'diagnostics' | 'flashing' | 'universal-flash' | 'multi-brand-flash' | 'mtk-flash' | 'ios-dfu' | 'security-edu' | 'pandora-codex' | 'support-matrix' | 'community' | 'workspace' | 'about' | 'settings' | 'vault' | 'authority' | 'plugins' | 'marketplace' | 'testing' | 'evidence' | 'diagnostic-plugins' | 'batch-diagnostics' | 'plugin-graph';
 
 function App() {
     const [currentSection, setCurrentSection] = useState<Section>('hub');
@@ -93,6 +94,7 @@ function App() {
                     {currentSection === 'evidence' && <EvidenceBundleManager />}
                     {currentSection === 'diagnostic-plugins' && <DiagnosticPluginsDashboard />}
                     {currentSection === 'batch-diagnostics' && <BatchDiagnosticsPanel />}
+                    {currentSection === 'plugin-graph' && <PluginDependencyGraph />}
                 </div>
             </div>
             <Toaster />
