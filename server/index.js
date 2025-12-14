@@ -12,9 +12,14 @@ app.use(express.json());
 
 const server = createServer(app);
 const wss = new WebSocketServer({ server, path: '/ws/device-events' });
+const wssCorrelation = new WebSocketServer({ server, path: '/ws/correlation' });
+
+const clients = new Set();
+const correlationClients = new Set();
 
 wss.on('connection', (ws) => {
-  console.log('WebSocket client connected');
+  console.log('WebSocket client connected (device-events)');
+  clients.add(ws);
   
   ws.send(JSON.stringify({
     type: 'connected',
@@ -22,7 +27,7 @@ wss.on('connection', (ws) => {
     platform_hint: 'android',
     mode: 'Normal OS (Confirmed)',
     confidence: 0.95,
-    timestamp: new Date().toISOString(),
+    timestamp: Date.now(),
     display_name: 'Demo Android Device',
     matched_tool_ids: ['ABC123XYZ'],
     correlation_badge: 'CORRELATED',
@@ -42,7 +47,7 @@ wss.on('connection', (ws) => {
         platform_hint: platform,
         mode: isConnect ? 'Normal OS (Confirmed)' : 'Disconnected',
         confidence: 0.85 + Math.random() * 0.15,
-        timestamp: new Date().toISOString(),
+        timestamp: Date.now(),
         display_name: `${platform.charAt(0).toUpperCase() + platform.slice(1)} Device`,
         matched_tool_ids: Math.random() > 0.5 ? [deviceId] : [],
         correlation_badge: Math.random() > 0.5 ? 'CORRELATED' : 'LIKELY'
@@ -51,15 +56,153 @@ wss.on('connection', (ws) => {
   }, 8000);
 
   ws.on('close', () => {
-    console.log('WebSocket client disconnected');
+    console.log('WebSocket client disconnected (device-events)');
+    clients.delete(ws);
     clearInterval(interval);
   });
 
   ws.on('error', (error) => {
     console.error('WebSocket error:', error);
+    clients.delete(ws);
     clearInterval(interval);
   });
 });
+
+wssCorrelation.on('connection', (ws) => {
+  console.log('WebSocket client connected (correlation tracking)');
+  correlationClients.add(ws);
+  
+  ws.send(JSON.stringify({
+    type: 'batch_update',
+    devices: [
+      {
+        id: 'demo-android-001',
+        serial: 'ABC123XYZ',
+        platform: 'android',
+        mode: 'confirmed_android_os',
+        confidence: 0.95,
+        correlationBadge: 'CORRELATED',
+        matchedIds: ['ABC123XYZ', 'adb-ABC123XYZ'],
+        correlationNotes: ['Per-device correlation present (matched tool ID(s)).'],
+        vendorId: 0x18d1,
+        productId: 0x4ee7
+      }
+    ],
+    timestamp: Date.now()
+  }));
+
+  const interval = setInterval(() => {
+    if (ws.readyState === ws.OPEN) {
+      const eventType = Math.random();
+      const platforms = ['android', 'ios'];
+      const platform = platforms[Math.floor(Math.random() * platforms.length)];
+      const deviceId = `device-${Math.random().toString(36).substr(2, 9)}`;
+      const confidence = 0.75 + Math.random() * 0.25;
+      const hasMatchedIds = Math.random() > 0.4;
+      
+      const badges = ['CORRELATED', 'CORRELATED (WEAK)', 'SYSTEM-CONFIRMED', 'LIKELY', 'UNCONFIRMED'];
+      let badge;
+      let matchedIds = [];
+      let notes = [];
+      
+      if (hasMatchedIds && confidence >= 0.90) {
+        badge = 'CORRELATED';
+        matchedIds = [deviceId, `${platform}-${deviceId}`];
+        notes = ['Per-device correlation present (matched tool ID(s)).'];
+      } else if (hasMatchedIds) {
+        badge = 'CORRELATED (WEAK)';
+        matchedIds = [deviceId];
+        notes = ['Matched tool ID(s) present, but mode not strongly confirmed.'];
+      } else if (confidence >= 0.90) {
+        badge = 'SYSTEM-CONFIRMED';
+        notes = ['System-level confirmation exists, but not mapped to this specific USB record.'];
+      } else if (confidence >= 0.75) {
+        badge = 'LIKELY';
+        notes = [];
+      } else {
+        badge = 'UNCONFIRMED';
+        notes = [];
+      }
+      
+      if (eventType < 0.33) {
+        ws.send(JSON.stringify({
+          type: 'device_connected',
+          deviceId: deviceId,
+          device: {
+            id: deviceId,
+            serial: Math.random() > 0.3 ? deviceId.substring(0, 10).toUpperCase() : undefined,
+            platform: platform,
+            mode: `confirmed_${platform}_os`,
+            confidence: confidence,
+            correlationBadge: badge,
+            matchedIds: matchedIds,
+            correlationNotes: notes,
+            vendorId: platform === 'android' ? 0x18d1 : 0x05ac,
+            productId: platform === 'android' ? 0x4ee7 : 0x12a8
+          },
+          timestamp: Date.now()
+        }));
+      } else if (eventType < 0.66) {
+        ws.send(JSON.stringify({
+          type: 'correlation_update',
+          deviceId: deviceId,
+          device: {
+            correlationBadge: badge,
+            matchedIds: matchedIds,
+            confidence: confidence,
+            correlationNotes: notes
+          },
+          timestamp: Date.now()
+        }));
+      } else {
+        ws.send(JSON.stringify({
+          type: 'device_disconnected',
+          deviceId: deviceId,
+          timestamp: Date.now()
+        }));
+      }
+    }
+  }, 5000);
+  
+  ws.on('message', (data) => {
+    try {
+      const message = JSON.parse(data);
+      if (message.type === 'ping') {
+        ws.send(JSON.stringify({
+          type: 'pong',
+          timestamp: Date.now()
+        }));
+      }
+    } catch (error) {
+      console.error('Failed to parse correlation WebSocket message:', error);
+    }
+  });
+
+  ws.on('close', () => {
+    console.log('WebSocket client disconnected (correlation tracking)');
+    correlationClients.delete(ws);
+    clearInterval(interval);
+  });
+
+  ws.on('error', (error) => {
+    console.error('WebSocket error (correlation):', error);
+    correlationClients.delete(ws);
+    clearInterval(interval);
+  });
+});
+
+function broadcastCorrelation(message) {
+  const data = JSON.stringify({
+    ...message,
+    timestamp: Date.now()
+  });
+  
+  for (const client of correlationClients) {
+    if (client.readyState === client.OPEN) {
+      client.send(data);
+    }
+  }
+}
 
 function safeExec(cmd) {
   try {
@@ -1456,5 +1599,6 @@ server.listen(PORT, () => {
   console.log(`📐 Standards reference: http://localhost:${PORT}/api/standards`);
   console.log(`🔌 Hotplug events: http://localhost:${PORT}/api/hotplug/*`);
   console.log(`🌐 WebSocket hotplug: ws://localhost:${PORT}/ws/device-events`);
+  console.log(`🔗 WebSocket correlation: ws://localhost:${PORT}/ws/correlation`);
   console.log(`🏥 Health check: http://localhost:${PORT}/api/health`);
 });

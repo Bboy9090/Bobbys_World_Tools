@@ -4,8 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
+import { Input } from '@/components/ui/input';
 import { CorrelationBadgeDisplay } from './CorrelationBadgeDisplay';
 import { useCorrelationTracking } from '@/hooks/use-correlation-tracking';
+import { useCorrelationWebSocket } from '@/hooks/use-correlation-websocket';
 import {
   Pulse,
   DeviceMobile,
@@ -17,7 +19,10 @@ import {
   Link,
   Play,
   Pause,
-  Trash
+  Trash,
+  WifiHigh,
+  WifiSlash,
+  Warning
 } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 
@@ -35,6 +40,22 @@ export function RealTimeCorrelationTracker() {
   } = useCorrelationTracking();
 
   const [elapsedTime, setElapsedTime] = useState(0);
+  const [wsUrl, setWsUrl] = useState('ws://localhost:3001/ws/correlation');
+  const [enableWebSocket, setEnableWebSocket] = useState(false);
+  
+  const {
+    isConnected: wsConnected,
+    connectionStatus,
+    reconnectAttempts,
+    lastMessageTime,
+    connect: wsConnect,
+    disconnect: wsDisconnect,
+  } = useCorrelationWebSocket({
+    url: wsUrl,
+    autoConnect: false,
+    enableNotifications: true,
+  });
+
   const stats = getStats();
 
   useEffect(() => {
@@ -67,6 +88,42 @@ export function RealTimeCorrelationTracker() {
   const handleClearAll = () => {
     clearAllDevices();
     toast.success('All tracked devices cleared');
+  };
+
+  const handleToggleWebSocket = () => {
+    if (wsConnected) {
+      wsDisconnect();
+      setEnableWebSocket(false);
+      toast.info('WebSocket disconnected');
+    } else {
+      setEnableWebSocket(true);
+      wsConnect();
+    }
+  };
+
+  const getConnectionStatusBadge = () => {
+    switch (connectionStatus) {
+      case 'connected':
+        return <Badge className="bg-accent text-accent-foreground gap-1">
+          <WifiHigh className="w-3 h-3" weight="bold" />
+          Connected
+        </Badge>;
+      case 'connecting':
+        return <Badge variant="secondary" className="gap-1">
+          <Pulse className="w-3 h-3 animate-pulse" />
+          Connecting...
+        </Badge>;
+      case 'error':
+        return <Badge variant="destructive" className="gap-1">
+          <Warning className="w-3 h-3" weight="fill" />
+          Error
+        </Badge>;
+      default:
+        return <Badge variant="outline" className="gap-1">
+          <WifiSlash className="w-3 h-3" />
+          Disconnected
+        </Badge>;
+    }
   };
 
   const formatTime = (seconds: number) => {
@@ -109,6 +166,68 @@ export function RealTimeCorrelationTracker() {
           )}
         </div>
       </div>
+
+      <Card className="mb-4 border-primary/50">
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Broadcast className="w-5 h-5 text-primary" weight="duotone" />
+            WebSocket Live Updates
+          </CardTitle>
+          <CardDescription>
+            Real-time device correlation updates via WebSocket
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-3">
+            <Input
+              type="text"
+              value={wsUrl}
+              onChange={(e) => setWsUrl(e.target.value)}
+              placeholder="ws://localhost:3001/ws/correlation"
+              disabled={wsConnected}
+              className="font-mono text-sm"
+            />
+            <Button
+              onClick={handleToggleWebSocket}
+              variant={wsConnected ? 'destructive' : 'default'}
+              className="gap-2 min-w-[140px]"
+            >
+              {wsConnected ? (
+                <>
+                  <WifiSlash className="w-4 h-4" weight="bold" />
+                  Disconnect
+                </>
+              ) : (
+                <>
+                  <WifiHigh className="w-4 h-4" weight="bold" />
+                  Connect
+                </>
+              )}
+            </Button>
+          </div>
+          
+          <div className="flex items-center gap-4 flex-wrap text-sm">
+            <div className="flex items-center gap-2">
+              <span className="text-muted-foreground">Status:</span>
+              {getConnectionStatusBadge()}
+            </div>
+            
+            {reconnectAttempts > 0 && (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Warning className="w-4 h-4 text-destructive" />
+                <span>Reconnect attempts: {reconnectAttempts}</span>
+              </div>
+            )}
+            
+            {lastMessageTime > 0 && (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Clock className="w-4 h-4" />
+                <span>Last message: {new Date(lastMessageTime).toLocaleTimeString()}</span>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card className={isTracking ? 'border-accent' : ''}>
@@ -374,11 +493,13 @@ export function RealTimeCorrelationTracker() {
             <div>
               <p className="font-semibold text-foreground mb-1">Features:</p>
               <ul className="space-y-1 text-xs">
+                <li>• <strong>WebSocket live updates</strong> for instant correlation tracking</li>
                 <li>• Real-time badge updates as device states change</li>
                 <li>• Persistent tracking across sessions (stored locally)</li>
                 <li>• Correlation statistics and distribution metrics</li>
                 <li>• Per-device matched tool ID display</li>
                 <li>• Confidence scoring with visual indicators</li>
+                <li>• Auto-reconnect with configurable retry logic</li>
               </ul>
             </div>
           </div>
