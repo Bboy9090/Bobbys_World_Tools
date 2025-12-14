@@ -1,4 +1,4 @@
-import { Books, Wrench, Cpu, Users, FolderOpen, Heart, Lightning, ShieldCheck, ChartLine, DeviceMobile, Gear, ListChecks, LockKey, Package, Storefront, Flask, FileText, ListDashes, GitBranch, Camera } from '@phosphor-icons/react';
+import { Books, Wrench, Cpu, Users, FolderOpen, Heart, Lightning, ShieldCheck, ChartLine, DeviceMobile, Gear, ListChecks, LockKey, Package, Storefront, Flask, FileText, ListDashes, GitBranch, Camera, FloppyDisk } from '@phosphor-icons/react';
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
 interface HubCardProps {
@@ -97,6 +97,13 @@ export function BobbysWorldHub({ onNavigate }: BobbysWorldHubProps) {
             title="Snapshot Retention"
             description="Automatic backup management with configurable retention policies"
             onClick={() => onNavigate('snapshot-retention')}
+            featured
+          />
+          <HubCard
+            icon={<FloppyDisk size={28} weight="duotone" />}
+            title="Workspace Backup"
+            description="Automated backup system with scheduled intervals"
+            onClick={() => onNavigate('workspace-backup')}
             featured
           />
           <HubCard

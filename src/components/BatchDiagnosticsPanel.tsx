@@ -26,6 +26,7 @@ import {
 } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { useBatchDiagnosticsWebSocket } from '@/hooks/use-batch-diagnostics-websocket';
+import { useAutoSnapshot } from '@/hooks/use-auto-snapshot';
 import {
   batteryHealthManifest,
   BatteryHealthData,
@@ -86,6 +87,14 @@ export function BatchDiagnosticsPanel() {
 
   const ws = useBatchDiagnosticsWebSocket({
     wsUrl: 'ws://localhost:3001/ws/batch-diagnostics',
+  });
+
+  const autoSnapshot = useAutoSnapshot({
+    enabled: true,
+    beforeDiagnostics: true,
+    afterDiagnostics: true,
+    onErrors: true,
+    minIntervalMs: 30000,
   });
 
   const scanDevices = async () => {
@@ -379,6 +388,12 @@ export function BatchDiagnosticsPanel() {
     const { device } = deviceState;
     const platform = device.platform_hint.toLowerCase().includes('android') ? 'android' : 'ios';
     
+    await autoSnapshot.beforeDiagnostic(
+      device.device_uid,
+      type,
+      { mode: device.mode, confidence: device.confidence }
+    );
+
     try {
       if (type === 'battery' || type === 'all') {
         const context = createPluginContext(device.device_uid, platform, batteryHealthManifest.id);
@@ -388,6 +403,7 @@ export function BatchDiagnosticsPanel() {
           deviceState.completedOperations.push('battery');
         } else {
           deviceState.errors.push(`Battery: ${result.error || 'Unknown error'}`);
+          await autoSnapshot.onError(device.device_uid, 'battery', result.error);
         }
       }
 
@@ -399,6 +415,7 @@ export function BatchDiagnosticsPanel() {
           deviceState.completedOperations.push('storage');
         } else {
           deviceState.errors.push(`Storage: ${result.error || 'Unknown error'}`);
+          await autoSnapshot.onError(device.device_uid, 'storage', result.error);
         }
       }
 
@@ -410,10 +427,23 @@ export function BatchDiagnosticsPanel() {
           deviceState.completedOperations.push('thermal');
         } else {
           deviceState.errors.push(`Thermal: ${result.error || 'Unknown error'}`);
+          await autoSnapshot.onError(device.device_uid, 'thermal', result.error);
         }
       }
+
+      await autoSnapshot.afterDiagnostic(
+        device.device_uid,
+        type,
+        {
+          battery: deviceState.batteryData,
+          storage: deviceState.storageData,
+          thermal: deviceState.thermalData,
+          completedOperations: deviceState.completedOperations,
+        }
+      );
     } catch (error) {
       deviceState.errors.push(`${type}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      await autoSnapshot.onError(device.device_uid, type, error);
     }
   };
 
