@@ -68,6 +68,13 @@ This is a curated resource hub and diagnostic toolkit for legitimate device repa
 - **Progression**: User enables atmosphere → Selects mode → Adjusts intensity (0-15%) → Enables auto-mute/pause options → Starts work → Audio fades in → Job completes → Audio fades out
 - **Success criteria**: Never auto-plays on launch, volume hard-capped at 15%, smooth fade in/out (200-300ms), respects user preferences via useKV persistence, works with all flash/diagnostic operations, gracefully handles missing audio files, External mode does nothing (BYO audio), legal/license-clean audio only
 
+### Snapshot Retention System
+- **Functionality**: Automatic backup management with configurable retention policies - captures device states, diagnostic results, flash operations, plugin configs, evidence bundles, and workspace backups. Includes age-based deletion, count-based limits, priority levels, automatic compression, and minimum retention guarantees
+- **Purpose**: Provide reliable data lifecycle management, ensure critical operations are never lost, and automatically clean up old data while preserving forensic evidence
+- **Trigger**: Automatic snapshots created during device operations (diagnostics, flashing, plugin changes), manual snapshot creation from UI, periodic workspace backups every 24 hours, retention policies applied every 6 hours
+- **Progression**: Operation occurs → Auto-snapshot created with metadata → Policy check runs → Compression applied after threshold → Old snapshots deleted per policy → Activity logged → Stats updated
+- **Success criteria**: All critical operations automatically snapshotted (flash ops, evidence bundles), diagnostic results retained for 90 days, device states retained for 30 days, workspace backups run daily, compression saves >40% storage after 7 days, policies respect minimum retention counts, never auto-delete priority=critical snapshots, export/import works correctly, audit trail tracks all lifecycle events, UI shows real-time stats and filtering, policy editor validates all inputs
+
 ### Plugin Marketplace
 - **Functionality**: Community-driven plugin ecosystem with browsing, installation, submission, and automated testing - includes 5+ sample plugins (Samsung Enhanced Diagnostics, Xiaomi EDL Helper, iOS Checkra1n Automation, Universal Fastboot Tools, Battery Health Pro), search/filter by category/risk/certification, detailed plugin pages with test results, ratings, and author info
 - **Purpose**: Extend Bobby's World capabilities through vetted community contributions with automated security and quality checks

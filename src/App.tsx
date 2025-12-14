@@ -24,6 +24,7 @@ import { EvidenceBundleManager } from "./components/EvidenceBundleManager";
 import { PluginDependencyGraph } from "./components/PluginDependencyGraph";
 import { PluginRollbackPanel } from "./components/PluginRollbackPanel";
 import { PluginInstallationDemo } from "./components/PluginInstallationDemo";
+import { SnapshotRetentionPanel } from "./components/SnapshotRetentionPanel";
 import { Toaster } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from '@phosphor-icons/react';
@@ -33,7 +34,7 @@ import { BatchDiagnosticsPanel } from "./components/BatchDiagnosticsPanel";
 import { MockBatchDiagnosticsWebSocket } from "./lib/mock-batch-diagnostics-websocket";
 import { setupMockRegistryAPI } from "./lib/mock-plugin-registry-server";
 
-type Section = 'hub' | 'repair-library' | 'tool-registry' | 'diagnostics' | 'flashing' | 'universal-flash' | 'multi-brand-flash' | 'mtk-flash' | 'ios-dfu' | 'security-edu' | 'pandora-codex' | 'support-matrix' | 'community' | 'workspace' | 'about' | 'settings' | 'vault' | 'authority' | 'plugins' | 'marketplace' | 'testing' | 'evidence' | 'diagnostic-plugins' | 'batch-diagnostics' | 'plugin-graph' | 'plugin-rollback' | 'plugin-install-demo';
+type Section = 'hub' | 'repair-library' | 'tool-registry' | 'diagnostics' | 'flashing' | 'universal-flash' | 'multi-brand-flash' | 'mtk-flash' | 'ios-dfu' | 'security-edu' | 'pandora-codex' | 'support-matrix' | 'community' | 'workspace' | 'about' | 'settings' | 'vault' | 'authority' | 'plugins' | 'marketplace' | 'testing' | 'evidence' | 'diagnostic-plugins' | 'batch-diagnostics' | 'plugin-graph' | 'plugin-rollback' | 'plugin-install-demo' | 'snapshot-retention';
 
 function App() {
     const [currentSection, setCurrentSection] = useState<Section>('hub');
@@ -99,6 +100,7 @@ function App() {
                     {currentSection === 'plugin-graph' && <PluginDependencyGraph />}
                     {currentSection === 'plugin-rollback' && <PluginRollbackPanel />}
                     {currentSection === 'plugin-install-demo' && <PluginInstallationDemo onNavigate={navigateToSection} />}
+                    {currentSection === 'snapshot-retention' && <SnapshotRetentionPanel />}
                 </div>
             </div>
             <Toaster />

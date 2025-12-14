@@ -1,4 +1,4 @@
-import { Books, Wrench, Cpu, Users, FolderOpen, Heart, Lightning, ShieldCheck, ChartLine, DeviceMobile, Gear, ListChecks, LockKey, Package, Storefront, Flask, FileText, ListDashes, GitBranch } from '@phosphor-icons/react';
+import { Books, Wrench, Cpu, Users, FolderOpen, Heart, Lightning, ShieldCheck, ChartLine, DeviceMobile, Gear, ListChecks, LockKey, Package, Storefront, Flask, FileText, ListDashes, GitBranch, Camera } from '@phosphor-icons/react';
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 
 interface HubCardProps {
@@ -90,6 +90,13 @@ export function BobbysWorldHub({ onNavigate }: BobbysWorldHubProps) {
             title="Dependency Graph"
             description="Visualize plugin dependencies, conflicts, and circular references"
             onClick={() => onNavigate('plugin-graph')}
+            featured
+          />
+          <HubCard
+            icon={<Camera size={28} weight="duotone" />}
+            title="Snapshot Retention"
+            description="Automatic backup management with configurable retention policies"
+            onClick={() => onNavigate('snapshot-retention')}
             featured
           />
           <HubCard
