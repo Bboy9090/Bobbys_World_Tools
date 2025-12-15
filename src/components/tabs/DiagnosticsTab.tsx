@@ -6,6 +6,7 @@ import { DeviceAuthorizationTriggersPanel } from "../DeviceAuthorizationTriggers
 import { ComprehensiveAuthorizationTriggersGuide } from "../ComprehensiveAuthorizationTriggersGuide";
 import { TriggerCatalog } from "../TriggerCatalog";
 import { AuthorizationHistoryDashboard } from "../AuthorizationHistoryDashboard";
+import { FirmwareLibrary } from "../FirmwareLibrary";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { 
     Scan, 
@@ -15,7 +16,8 @@ import {
     Cpu,
     ShieldCheck,
     ListChecks,
-    ClockCounterClockwise
+    ClockCounterClockwise,
+    Package
 } from '@phosphor-icons/react';
 
 export function DiagnosticsTab() {
@@ -53,6 +55,10 @@ export function DiagnosticsTab() {
                         <DeviceMobile weight="duotone" size={16} />
                         Multi-Brand
                     </TabsTrigger>
+                    <TabsTrigger value="firmware" className="gap-1.5 text-xs">
+                        <Package weight="duotone" size={16} />
+                        Firmware Library
+                    </TabsTrigger>
                     <TabsTrigger value="catalog" className="gap-1.5 text-xs">
                         <ListChecks weight="duotone" size={16} />
                         Trigger Catalog
@@ -81,6 +87,10 @@ export function DiagnosticsTab() {
 
                 <TabsContent value="flash" className="mt-4">
                     <MultiBrandFlashDashboard />
+                </TabsContent>
+
+                <TabsContent value="firmware" className="mt-4">
+                    <FirmwareLibrary />
                 </TabsContent>
 
                 <TabsContent value="catalog" className="mt-4">

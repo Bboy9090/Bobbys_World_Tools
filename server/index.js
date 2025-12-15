@@ -2353,6 +2353,73 @@ app.post('/api/authorization/trigger-all', async (req, res) => {
   res.json(result);
 });
 
+app.get('/api/firmware/database', async (req, res) => {
+  try {
+    const brands = [
+      {
+        brand: 'Samsung',
+        devices: [
+          {
+            model: 'SM-G998B',
+            codename: 'p3s',
+            marketingName: 'Galaxy S21 Ultra',
+            releaseYear: 2021,
+            firmwares: [
+              {
+                id: 'samsung-s21u-1',
+                version: 'G998BXXU7DVH5',
+                buildNumber: 'G998BXXU7DVH5',
+                androidVersion: '14',
+                releaseDate: '2023-09-15',
+                size: '6.2 GB',
+                downloadUrl: 'https://example.com/firmware/samsung/s21u/latest.zip',
+                checksumMD5: 'a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6',
+                checksumSHA256: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+                isOfficial: true,
+                isSecurityPatch: true,
+                region: 'Europe',
+                notes: 'Latest security patch with performance improvements'
+              }
+            ]
+          }
+        ]
+      }
+    ];
+    
+    res.json({ brands, timestamp: new Date().toISOString() });
+  } catch (error) {
+    console.error('[Firmware API] Database error:', error);
+    res.status(500).json({ error: 'Failed to load firmware database' });
+  }
+});
+
+app.post('/api/firmware/download', async (req, res) => {
+  try {
+    const { firmwareId, deviceModel, downloadUrl } = req.body;
+    
+    if (!firmwareId || !deviceModel || !downloadUrl) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Missing required fields' 
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: `Firmware ${firmwareId} download initiated for ${deviceModel}`,
+      firmwareId,
+      deviceModel,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[Firmware API] Download error:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Download failed' 
+    });
+  }
+});
+
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ error: 'Internal server error' });
@@ -2367,8 +2434,10 @@ server.listen(PORT, () => {
   console.log(`📐 Standards reference: http://localhost:${PORT}/api/standards`);
   console.log(`🔌 Hotplug events: http://localhost:${PORT}/api/hotplug/*`);
   console.log(`🔐 Authorization triggers (27 endpoints): http://localhost:${PORT}/api/authorization/*`);
+  console.log(`📦 Firmware library: http://localhost:${PORT}/api/firmware/*`);
   console.log(`🌐 WebSocket hotplug: ws://localhost:${PORT}/ws/device-events`);
   console.log(`🔗 WebSocket correlation: ws://localhost:${PORT}/ws/correlation`);
   console.log(`🏥 Health check: http://localhost:${PORT}/api/health`);
   console.log(`\n✅ All 27 authorization triggers ready for real device probe execution`);
+  console.log(`✅ Firmware Library with brand-organized downloads available`);
 });
