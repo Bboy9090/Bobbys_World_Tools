@@ -4,7 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { DeviceMobile, Lightning, ArrowsClockwise, Warning } from '@phosphor-icons/react';
+import { EmptyState } from './EmptyState';
+import { ErrorState } from './ErrorState';
+import { DeviceMobile, Lightning, ArrowsClockwise, Warning, AppleLogo } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 
 interface IOSDevice {

@@ -10,6 +10,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
+import { EmptyState } from './EmptyState';
+import { ErrorState } from './ErrorState';
+import { useApp } from '@/lib/app-context';
 import {
   DeviceMobile,
   Lightning,
@@ -23,6 +26,7 @@ import {
   ShieldWarning,
   Archive,
   FileArchive,
+  ArrowsClockwise,
 } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 
@@ -63,10 +67,12 @@ interface FirmwareFiles {
 }
 
 export function SamsungOdinFlashPanel() {
+  const { isDemoMode } = useApp();
   const [devices, setDevices] = useState<SamsungDevice[]>([]);
   const [selectedDevice, setSelectedDevice] = useState<string>('');
   const [operations, setOperations] = useState<OdinOperation[]>([]);
   const [isScanning, setIsScanning] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const [firmwareFiles, setFirmwareFiles] = useState<FirmwareFiles>({});
   const [pitFile, setPitFile] = useState('');
@@ -76,47 +82,46 @@ export function SamsungOdinFlashPanel() {
 
   useEffect(() => {
     scanDevices();
-    const interval = setInterval(scanDevices, 5000);
-    return () => clearInterval(interval);
   }, []);
 
   const scanDevices = async () => {
     setIsScanning(true);
+    setError(null);
     try {
-      const mockDevices: SamsungDevice[] = [
-        {
-          serial: '0123456789ABCDEF',
-          port: 'COM4',
-          model: 'SM-G998B (Galaxy S21 Ultra)',
-          chipset: 'Exynos 2100',
-          androidVersion: '13',
-          mode: 'download',
-          isKnoxTripped: false,
-          bootloaderVersion: 'G998BXXU5DVHG',
-        },
-        {
-          serial: 'FEDCBA9876543210',
-          port: '/dev/ttyACM0',
-          model: 'SM-A525F (Galaxy A52)',
-          chipset: 'Snapdragon 750G',
-          androidVersion: '12',
-          mode: 'download',
-          isKnoxTripped: true,
-          bootloaderVersion: 'A525FXXU5CVHA',
-        },
-      ];
-
-      setDevices(mockDevices);
-
-      if (mockDevices.length > 0) {
-        toast.success(`Found ${mockDevices.length} Samsung device(s) in Download mode`, {
-          description: mockDevices.map(d => d.model).join(', '),
-        });
+      const response = await fetch('http://localhost:3001/api/odin/scan');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.devices && data.devices.length > 0) {
+          setDevices(data.devices);
+          toast.success(`Found ${data.devices.length} Samsung device(s) in Download Mode`);
+        } else {
+          setDevices([]);
+        }
+      } else {
+        setDevices([]);
+        setError('Failed to scan for Samsung devices');
       }
-    } catch (error) {
-      toast.error('Failed to scan Samsung devices', {
-        description: error instanceof Error ? error.message : 'Unknown error',
-      });
+    } catch (err) {
+      if (isDemoMode) {
+        const mockDevices: SamsungDevice[] = [
+          {
+            serial: '[DEMO] 0123456789ABCDEF',
+            port: 'COM4',
+            model: '[DEMO] SM-G998B (Galaxy S21 Ultra)',
+            chipset: 'Exynos 2100',
+            androidVersion: '13',
+            mode: 'download',
+            isKnoxTripped: false,
+            bootloaderVersion: 'G998BXXU5DVHG',
+          },
+        ];
+        setDevices(mockDevices);
+        toast.info('Running in demo mode with simulated devices');
+      } else {
+        setDevices([]);
+        setError('Backend API unavailable - cannot scan for Samsung devices');
+        console.error('Failed to scan devices:', err);
+      }
     } finally {
       setIsScanning(false);
     }
@@ -368,6 +373,7 @@ export function SamsungOdinFlashPanel() {
             </div>
             <div className="flex gap-2">
               <Button onClick={enterDownloadMode} size="sm" variant="outline">
+                <Info className="w-4 h-4 mr-1" />
                 Download Mode Help
               </Button>
               <Button
@@ -376,54 +382,81 @@ export function SamsungOdinFlashPanel() {
                 size="sm"
                 variant="outline"
               >
+                <ArrowsClockwise className={`w-4 h-4 ${isScanning ? 'animate-spin' : ''}`} />
                 {isScanning ? 'Scanning...' : 'Refresh'}
               </Button>
             </div>
           </div>
 
-          <div className="grid gap-3">
-            {devices.map((device) => (
-              <Card
-                key={device.serial}
-                className={`cursor-pointer transition-colors ${
-                  selectedDevice === device.serial
-                    ? 'border-accent bg-accent/5'
-                    : 'border-border hover:border-accent/50'
-                }`}
-                onClick={() => setSelectedDevice(device.serial)}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <DeviceMobile className="w-5 h-5 text-accent" weight="duotone" />
-                        <span className="font-medium">{device.model}</span>
+          {error && (
+            <ErrorState 
+              title="Connection Error"
+              message={error}
+              variant="error"
+              action={{
+                label: 'Retry Scan',
+                onClick: scanDevices
+              }}
+            />
+          )}
+
+          {!error && devices.length === 0 && (
+            <EmptyState
+              icon={<Archive size={48} weight="duotone" />}
+              title="No Samsung Devices Detected"
+              description="Connect a Samsung device in Download Mode to begin flashing. Click 'Download Mode Help' for instructions."
+              action={{
+                label: 'Scan Again',
+                onClick: scanDevices
+              }}
+            />
+          )}
+
+          {devices.length > 0 && (
+            <div className="grid gap-3">
+              {devices.map((device) => (
+                <Card
+                  key={device.serial}
+                  className={`cursor-pointer transition-colors ${
+                    selectedDevice === device.serial
+                      ? 'border-accent bg-accent/5'
+                      : 'border-border hover:border-accent/50'
+                  }`}
+                  onClick={() => setSelectedDevice(device.serial)}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <DeviceMobile className="w-5 h-5 text-accent" weight="duotone" />
+                          <span className="font-medium">{device.model}</span>
+                        </div>
+                        <div className="space-y-1 text-xs text-muted-foreground font-mono">
+                          <div>Port: {device.port}</div>
+                          <div>Serial: {device.serial}</div>
+                          <div>Chipset: {device.chipset}</div>
+                          <div>Android: {device.androidVersion}</div>
+                          <div>Bootloader: {device.bootloaderVersion}</div>
+                        </div>
                       </div>
-                      <div className="space-y-1 text-xs text-muted-foreground font-mono">
-                        <div>Port: {device.port}</div>
-                        <div>Serial: {device.serial}</div>
-                        <div>Chipset: {device.chipset}</div>
-                        <div>Android: {device.androidVersion}</div>
-                        <div>Bootloader: {device.bootloaderVersion}</div>
+                      <div className="flex flex-col gap-2 items-end">
+                        <Badge variant="default">DOWNLOAD MODE</Badge>
+                        {device.isKnoxTripped ? (
+                          <Badge variant="destructive" className="text-xs">
+                            KNOX 0x1
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-xs">
+                            KNOX 0x0
+                          </Badge>
+                        )}
                       </div>
                     </div>
-                    <div className="flex flex-col gap-2 items-end">
-                      <Badge variant="default">DOWNLOAD MODE</Badge>
-                      {device.isKnoxTripped ? (
-                        <Badge variant="destructive" className="text-xs">
-                          KNOX 0x1
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-xs">
-                          KNOX 0x0
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
 
           {selectedDeviceData && (
             <>

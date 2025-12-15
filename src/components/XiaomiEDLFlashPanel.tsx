@@ -10,6 +10,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { EmptyState } from './EmptyState';
+import { ErrorState } from './ErrorState';
+import { useApp } from '@/lib/app-context';
 import {
   DeviceMobile,
   Lightning,
@@ -23,6 +26,7 @@ import {
   ShieldWarning,
   Cpu,
   HardDrive,
+  ArrowsClockwise,
 } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 
@@ -60,10 +64,12 @@ const XIAOMI_MODELS = [
 ];
 
 export function XiaomiEDLFlashPanel() {
+  const { isDemoMode } = useApp();
   const [devices, setDevices] = useState<EDLDevice[]>([]);
   const [selectedDevice, setSelectedDevice] = useState<string>('');
   const [operations, setOperations] = useState<EDLOperation[]>([]);
   const [isScanning, setIsScanning] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   const [romPath, setRomPath] = useState('');
   const [selectedPartition, setSelectedPartition] = useState('');
@@ -73,45 +79,45 @@ export function XiaomiEDLFlashPanel() {
 
   useEffect(() => {
     scanDevices();
-    const interval = setInterval(scanDevices, 5000);
-    return () => clearInterval(interval);
   }, []);
 
   const scanDevices = async () => {
     setIsScanning(true);
+    setError(null);
     try {
-      const mockDevices: EDLDevice[] = [
-        {
-          port: '/dev/ttyUSB0',
-          serial: '9c7bd9a4',
-          model: 'Redmi Note 11',
-          chipset: 'qualcomm',
-          socName: 'Snapdragon 680 (SM6225)',
-          isAuthenticated: true,
-          partitionTable: ['boot', 'system', 'vendor', 'userdata', 'recovery', 'dtbo', 'vbmeta', 'persist', 'modem', 'fsg'],
-        },
-        {
-          port: 'COM3',
-          serial: 'abc123def',
-          model: 'POCO F3',
-          chipset: 'qualcomm',
-          socName: 'Snapdragon 870 (SM8250)',
-          isAuthenticated: false,
-          partitionTable: ['boot', 'system', 'vendor', 'userdata', 'recovery', 'dtbo', 'vbmeta'],
-        },
-      ];
-      
-      setDevices(mockDevices);
-      
-      if (mockDevices.length > 0) {
-        toast.success(`Found ${mockDevices.length} device(s) in EDL mode`, {
-          description: mockDevices.map(d => `${d.model} on ${d.port}`).join(', '),
-        });
+      const response = await fetch('http://localhost:3001/api/edl/scan');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.devices && data.devices.length > 0) {
+          setDevices(data.devices);
+          toast.success(`Found ${data.devices.length} device(s) in EDL mode`);
+        } else {
+          setDevices([]);
+        }
+      } else {
+        setDevices([]);
+        setError('Failed to scan for EDL devices');
       }
-    } catch (error) {
-      toast.error('Failed to scan EDL devices', {
-        description: error instanceof Error ? error.message : 'Unknown error',
-      });
+    } catch (err) {
+      if (isDemoMode) {
+        const mockDevices: EDLDevice[] = [
+          {
+            port: '/dev/ttyUSB0',
+            serial: '[DEMO] 9c7bd9a4',
+            model: '[DEMO] Redmi Note 11',
+            chipset: 'qualcomm',
+            socName: 'Snapdragon 680 (SM6225)',
+            isAuthenticated: true,
+            partitionTable: ['boot', 'system', 'vendor', 'userdata', 'recovery', 'dtbo', 'vbmeta', 'persist', 'modem', 'fsg'],
+          },
+        ];
+        setDevices(mockDevices);
+        toast.info('Running in demo mode with simulated devices');
+      } else {
+        setDevices([]);
+        setError('Backend API unavailable - cannot scan for EDL devices');
+        console.error('Failed to scan devices:', err);
+      }
     } finally {
       setIsScanning(false);
     }
@@ -453,6 +459,7 @@ export function XiaomiEDLFlashPanel() {
             </div>
             <div className="flex gap-2">
               <Button onClick={enterEDLMode} size="sm" variant="outline">
+                <Info className="w-4 h-4 mr-1" />
                 EDL Instructions
               </Button>
               <Button
@@ -461,53 +468,80 @@ export function XiaomiEDLFlashPanel() {
                 size="sm"
                 variant="outline"
               >
+                <ArrowsClockwise className={`w-4 h-4 ${isScanning ? 'animate-spin' : ''}`} />
                 {isScanning ? 'Scanning...' : 'Refresh'}
               </Button>
             </div>
           </div>
 
-          <div className="grid gap-3">
-            {devices.map((device) => (
-              <Card
-                key={device.serial}
-                className={`cursor-pointer transition-colors ${
-                  selectedDevice === device.serial
-                    ? 'border-destructive bg-destructive/5'
-                    : 'border-border hover:border-destructive/50'
-                }`}
-                onClick={() => setSelectedDevice(device.serial)}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Cpu className="w-5 h-5 text-destructive" weight="duotone" />
-                        <span className="font-medium">{device.model}</span>
+          {error && (
+            <ErrorState 
+              title="Connection Error"
+              message={error}
+              variant="error"
+              action={{
+                label: 'Retry Scan',
+                onClick: scanDevices
+              }}
+            />
+          )}
+
+          {!error && devices.length === 0 && (
+            <EmptyState
+              icon={<Cpu size={48} weight="duotone" />}
+              title="No EDL Devices Detected"
+              description="Connect a Xiaomi device in EDL mode to begin flashing. Click 'EDL Instructions' for guidance on entering EDL mode."
+              action={{
+                label: 'Scan Again',
+                onClick: scanDevices
+              }}
+            />
+          )}
+
+          {devices.length > 0 && (
+            <div className="grid gap-3">
+              {devices.map((device) => (
+                <Card
+                  key={device.serial}
+                  className={`cursor-pointer transition-colors ${
+                    selectedDevice === device.serial
+                      ? 'border-destructive bg-destructive/5'
+                      : 'border-border hover:border-destructive/50'
+                  }`}
+                  onClick={() => setSelectedDevice(device.serial)}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Cpu className="w-5 h-5 text-destructive" weight="duotone" />
+                          <span className="font-medium">{device.model}</span>
+                        </div>
+                        <div className="space-y-1 text-xs text-muted-foreground font-mono">
+                          <div>Port: {device.port}</div>
+                          <div>Serial: {device.serial}</div>
+                          <div>SoC: {device.socName}</div>
+                          <div>Chipset: {device.chipset.toUpperCase()}</div>
+                        </div>
                       </div>
-                      <div className="space-y-1 text-xs text-muted-foreground font-mono">
-                        <div>Port: {device.port}</div>
-                        <div>Serial: {device.serial}</div>
-                        <div>SoC: {device.socName}</div>
-                        <div>Chipset: {device.chipset.toUpperCase()}</div>
+                      <div className="flex flex-col gap-2 items-end">
+                        <Badge variant="destructive">EDL MODE</Badge>
+                        {device.isAuthenticated ? (
+                          <Badge variant="outline" className="text-xs">
+                            ✓ Authenticated
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary" className="text-xs">
+                            ⚠ Not Auth
+                          </Badge>
+                        )}
                       </div>
                     </div>
-                    <div className="flex flex-col gap-2 items-end">
-                      <Badge variant="destructive">EDL MODE</Badge>
-                      {device.isAuthenticated ? (
-                        <Badge variant="outline" className="text-xs">
-                          ✓ Authenticated
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary" className="text-xs">
-                          ⚠ Not Auth
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
 
           {selectedDeviceData && (
             <>
