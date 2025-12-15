@@ -1,23 +1,23 @@
 # Planning Guide
 
-Bobby's World - A professional repair utility dashboard (3uTools / SamFW style) featuring device diagnostics, flash monitoring, evidence reporting, and community repair guides. Transformed from enterprise square design to streamlined workshop toolkit with sidebar device list, top navigation tabs, and bottom logs panel.
+Bobby's World - A professional repair utility dashboard (3uTools / SamFW style) featuring device diagnostics, flash monitoring, evidence reporting, and community repair guides. Redesigned from enterprise interface to streamlined workshop toolkit with compact header, device sidebar, horizontal tabs, and collapsible console.
 
 **Experience Qualities**: 
-1. **Professional** - Clean utility interface with proper grouping and hierarchy, like field equipment
-2. **Efficient** - Quick access to diagnostic tools, flash operations, and reports without navigation bloat
+1. **Efficient** - Compact, utility-focused interface with minimal chrome and maximum workspace
+2. **Professional** - Clean tool aesthetic with proper visual hierarchy, like field equipment
 3. **Technical** - Workshop-grade infrastructure that technicians trust for real work
 
 **Complexity Level**: Complex Application (advanced functionality with multiple views)
-This is a comprehensive repair utility dashboard with real-time device monitoring, batch diagnostics, flash operations, evidence management, plugin ecosystem, and community resources - all organized in a professional utility interface with sidebar + tabs layout.
+This is a comprehensive repair utility dashboard with real-time device monitoring, batch diagnostics, flash operations, evidence management, plugin ecosystem, and community resources - all organized in a professional utility interface with streamlined sidebar + tabs layout.
 
 ## Essential Features
 
 ### Dashboard Layout (Utility-Style Interface)
-- **Functionality**: Professional dashboard with left sidebar (device list with status icons), top navigation tabs (Diagnostics | Reports | Tests | Plugins | Community | Settings), main content area, and bottom logs/notifications panel
-- **Purpose**: Provide efficient access to all tools with proper visual hierarchy like 3uTools/SamFW - everything visible at a glance
-- **Trigger**: App loads into dashboard layout with device sidebar showing connected/weak/confirmed/likely/unconfirmed devices
-- **Progression**: App opens → Dashboard loads → Sidebar shows devices → User clicks tab → Content switches → Logs panel shows activity
-- **Success criteria**: Device sidebar updates in real-time, tab switching instant, logs panel expandable/collapsible, no nested navigation, all tools 1-2 clicks away
+- **Functionality**: Professional dashboard with compact header (48px with wrench icon, title, backend status badge), left sidebar (device list with real-time status icons), horizontal tab navigation (Diagnostics | Reports | Tests | Plugins | Community | Settings), main content area with section headers, and bottom collapsible console panel
+- **Purpose**: Provide efficient access to all tools with proper visual hierarchy like 3uTools/SamFW - everything visible at a glance with no wasted space
+- **Trigger**: App loads into dashboard layout with device sidebar showing real devices from backend API (connected/weak/confirmed/likely/unconfirmed) or empty state if none detected
+- **Progression**: App opens → Dashboard loads → Sidebar queries real device API → Backend status badge shows "API Connected" or "Offline Mode" → User clicks tab → Content switches instantly → Console panel shows activity
+- **Success criteria**: Device sidebar updates with real device data only (no ghost values), tab switching instant, console panel expandable/collapsible, no nested navigation, all tools 1-2 clicks away, backend connection status always visible
 
 ### Diagnostics Tab (Real Backend Integration)
 - **Functionality**: Four sub-sections: Device Diagnostics (ADB/Fastboot/USB detection via real API), Batch Diagnostics (multi-device runs), Flash Monitoring (Pandora Codex integration with real-time WebSocket benchmarking), Multi-Brand Flash (iOS DFU, Odin, EDL, Fastboot, MTK) - all connected to backend Express server
@@ -82,11 +82,11 @@ This is a comprehensive repair utility dashboard with real-time device monitorin
 
 ## Design Direction
 
-**Professional Utility Dashboard** - This interface channels 3uTools and SamFW style: clean, efficient, technical. No unnecessary decoration - just proper visual hierarchy and intuitive grouping. Device sidebar on left with real-time status icons (Connected/Weak/Confirmed/Likely/Unconfirmed). Top navigation tabs for main sections. Bottom logs panel for activity monitoring.
+**Professional Utility Dashboard** - This interface channels 3uTools and SamFW style: clean, compact, efficient, technical. No unnecessary decoration - just proper visual hierarchy and intuitive grouping. Compact header (48px) with wrench icon, title, backend status, and version. Device sidebar on left with real-time status icons showing only actual detected devices (no ghost values). Horizontal tab navigation with duotone icons and active state highlighting. Bottom collapsible console panel for activity monitoring.
 
-The UI captures repair utility professionalism: field-tested equipment aesthetic, technical credibility, workshop-grade infrastructure. Fluorescent cyan accents for active states. Amber highlights for warnings. Dark background reduces eye strain during long repair sessions. Status indicators use color + icon for quick scanning.
+The UI captures repair utility professionalism: field-tested equipment aesthetic, technical credibility, workshop-grade infrastructure. Cyan accents for active states and primary actions. Amber highlights for warnings. Dark background reduces eye strain during long repair sessions. Status indicators use color + icon for quick scanning. Compact spacing maximizes workspace while maintaining clarity.
 
-This is operator-grade tooling with proper information architecture - everything visible at a glance, no nested navigation, 1-2 clicks to any feature.
+This is operator-grade tooling with proper information architecture - everything visible at a glance, no wasted vertical space, 1-2 clicks to any feature. Tab sub-navigation uses compact horizontal pills instead of full-width grids. Section headers include icon badges for visual identity. All data shown is truth-first: no simulated values, no placeholder content.
 
 ## Color Selection
 

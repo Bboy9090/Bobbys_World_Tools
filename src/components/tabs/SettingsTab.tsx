@@ -7,54 +7,60 @@ import {
     SlidersHorizontal, 
     DeviceTablet, 
     ShieldWarning, 
-    Info 
+    Info,
+    Gear
 } from '@phosphor-icons/react';
 
 export function SettingsTab() {
     return (
-        <div className="space-y-6">
-            <div>
-                <h2 className="text-2xl font-display tracking-tight text-foreground mb-1">
-                    SETTINGS
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                    Audio notifications, workshop preferences, device modes, legal compliance, and about
-                </p>
+        <div className="space-y-4">
+            <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded bg-primary/10 flex items-center justify-center">
+                    <Gear weight="duotone" className="text-primary" size={20} />
+                </div>
+                <div>
+                    <h2 className="text-xl font-semibold text-foreground">
+                        Settings
+                    </h2>
+                    <p className="text-xs text-muted-foreground">
+                        Preferences, device modes, legal compliance, and about
+                    </p>
+                </div>
             </div>
 
             <Tabs defaultValue="preferences" className="w-full">
-                <TabsList className="grid w-full grid-cols-4 bg-muted/30">
-                    <TabsTrigger value="preferences" className="gap-2">
-                        <SlidersHorizontal weight="duotone" />
+                <TabsList className="w-full justify-start bg-muted/20 h-9 p-1">
+                    <TabsTrigger value="preferences" className="gap-1.5 text-xs">
+                        <SlidersHorizontal weight="duotone" size={16} />
                         Preferences
                     </TabsTrigger>
-                    <TabsTrigger value="devices" className="gap-2">
-                        <DeviceTablet weight="duotone" />
-                        Device Modes
+                    <TabsTrigger value="devices" className="gap-1.5 text-xs">
+                        <DeviceTablet weight="duotone" size={16} />
+                        Devices
                     </TabsTrigger>
-                    <TabsTrigger value="legal" className="gap-2">
-                        <ShieldWarning weight="duotone" />
-                        Legal Notice
+                    <TabsTrigger value="legal" className="gap-1.5 text-xs">
+                        <ShieldWarning weight="duotone" size={16} />
+                        Legal
                     </TabsTrigger>
-                    <TabsTrigger value="about" className="gap-2">
-                        <Info weight="duotone" />
+                    <TabsTrigger value="about" className="gap-1.5 text-xs">
+                        <Info weight="duotone" size={16} />
                         About
                     </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="preferences" className="mt-6">
+                <TabsContent value="preferences" className="mt-4">
                     <SettingsPanel />
                 </TabsContent>
 
-                <TabsContent value="devices" className="mt-6">
+                <TabsContent value="devices" className="mt-4">
                     <BootForgeUSBSupportMatrix />
                 </TabsContent>
 
-                <TabsContent value="legal" className="mt-6">
+                <TabsContent value="legal" className="mt-4">
                     <SecurityLockEducationPanel />
                 </TabsContent>
 
-                <TabsContent value="about" className="mt-6">
+                <TabsContent value="about" className="mt-4">
                     <AboutBobby />
                 </TabsContent>
             </Tabs>
