@@ -32,6 +32,8 @@ This document defines **authorized, lawful, and ownership-respecting** workflows
    - Device owner must remove account before factory reset
    - FRP bypass tools are explicitly out of scope
 
+**Note**: All typed confirmations referenced in this document (CONFIRM, UNLOCK, RESET, DELETE, YES) match the exact implementation strings in `/server/authorization-triggers.js` and frontend components. Any changes to confirmation strings must be updated in both locations.
+
 ---
 
 ## Supported Android Device Workflows

@@ -693,6 +693,12 @@ All endpoints follow consistent error structure:
 
 **Planned**: Bearer token authentication via `Authorization: Bearer <token>` header with RBAC support
 
+**Implementation Guidance:**
+- Phase 1 (Q1 2025): JWT-based authentication with user registration/login
+- Phase 2 (Q2 2025): Role-Based Access Control (RBAC) with permission levels
+- Phase 3 (Q2 2025): API key management for automation/integration
+- See `/docs/security/authentication-plan.md` (planned) for detailed implementation roadmap
+
 ---
 
 ## Versioning

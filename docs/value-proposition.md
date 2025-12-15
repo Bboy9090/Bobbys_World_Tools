@@ -620,6 +620,13 @@ Pandora Codex:
 - Total savings: $2000-2500
 ```
 
+**Assumptions & Disclaimers:**
+- Traditional costs assume no existing Mac/Windows machines
+- Pandora requires compatible Linux/Mac/Windows system
+- Does not include training time or learning curve differences
+- Maintenance costs minimal for both approaches (software updates free)
+- Savings calculation based on 2024 hardware pricing
+
 ---
 
 ### 2. Enterprise IT Departments
@@ -652,6 +659,15 @@ Pandora Codex:
 
 Savings: $325,000 (90% reduction)
 ```
+
+**Assumptions & Disclaimers:**
+- MDM pricing based on 2024 Hexnode mid-tier plans
+- Assumes in-house Pandora deployment (no SaaS fees)
+- Setup cost includes server hardware, IT labor for installation, and staff training
+- Annual maintenance includes updates, technical support, and server hosting
+- Does not include opportunity cost of migration from existing MDM
+- Actual savings vary based on fleet size, existing infrastructure, and operational requirements
+- Enterprise may require additional features (multi-user, LDAP integration) affecting costs
 
 ---
 
