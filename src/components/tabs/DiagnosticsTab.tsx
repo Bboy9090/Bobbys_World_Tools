@@ -6,7 +6,7 @@ import { DeviceAuthorizationTriggersPanel } from "../DeviceAuthorizationTriggers
 import { ComprehensiveAuthorizationTriggersGuide } from "../ComprehensiveAuthorizationTriggersGuide";
 import { TriggerCatalog } from "../TriggerCatalog";
 import { AuthorizationHistoryDashboard } from "../AuthorizationHistoryDashboard";
-import { FirmwareLibrary } from "../FirmwareLibrary";
+import { FirmwareDashboard } from "../FirmwareDashboard";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { 
     Scan, 
@@ -90,7 +90,7 @@ export function DiagnosticsTab() {
                 </TabsContent>
 
                 <TabsContent value="firmware" className="mt-4">
-                    <FirmwareLibrary />
+                    <FirmwareDashboard />
                 </TabsContent>
 
                 <TabsContent value="catalog" className="mt-4">
