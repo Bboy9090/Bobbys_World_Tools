@@ -3,6 +3,7 @@ import { BatchDiagnosticsPanel } from "../BatchDiagnosticsPanel";
 import { PandoraCodexControlRoom } from "../PandoraCodexControlRoom";
 import { MultiBrandFlashDashboard } from "../MultiBrandFlashDashboard";
 import { DeviceAuthorizationTriggersPanel } from "../DeviceAuthorizationTriggersPanel";
+import { ComprehensiveAuthorizationTriggersGuide } from "../ComprehensiveAuthorizationTriggersGuide";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { 
     Scan, 
@@ -71,10 +72,7 @@ export function DiagnosticsTab() {
                 </TabsContent>
 
                 <TabsContent value="auth" className="mt-4">
-                    <div className="text-center py-8 text-muted-foreground">
-                        <p className="text-sm mb-2">Select a device from the sidebar to trigger authorizations</p>
-                        <p className="text-xs">Available triggers: ADB USB debugging, iOS Trust Computer, File Transfer, Backup Auth, and more</p>
-                    </div>
+                    <ComprehensiveAuthorizationTriggersGuide />
                 </TabsContent>
             </Tabs>
         </div>

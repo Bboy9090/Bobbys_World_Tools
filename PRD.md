@@ -20,11 +20,11 @@ This is a comprehensive repair utility dashboard with real-time device monitorin
 - **Success criteria**: Device sidebar updates with real device data only (no ghost values), tab switching instant, console panel expandable/collapsible, no nested navigation, all tools 1-2 clicks away, backend connection status always visible
 
 ### Diagnostics Tab (Real Backend Integration)
-- **Functionality**: Four sub-sections: Device Diagnostics (ADB/Fastboot/USB detection via real API), Batch Diagnostics (multi-device runs), Flash Monitoring (Pandora Codex integration with real-time WebSocket benchmarking), Multi-Brand Flash (iOS DFU, Odin, EDL, Fastboot, MTK) - all connected to backend Express server
-- **Purpose**: Centralize all device testing and flashing operations with real backend API connectivity - no mock data
+- **Functionality**: Five sub-sections: Device Diagnostics (ADB/Fastboot/USB detection via real API), Batch Diagnostics (multi-device runs), Flash Monitoring (Pandora Codex integration with real-time WebSocket benchmarking), Multi-Brand Flash (iOS DFU, Odin, EDL, Fastboot, MTK), Authorization Triggers (comprehensive guide to 36+ device authorization triggers) - all connected to backend Express server
+- **Purpose**: Centralize all device testing, flashing operations, and authorization triggers with real backend API connectivity - no mock data
 - **Trigger**: User clicks Diagnostics tab → Frontend queries `/api/flash/devices` → Real device scan via ADB/Fastboot
 - **Progression**: Click tab → Backend API scans devices → Real device list populates → User selects flash operation → POST to `/api/flash/start` → WebSocket streams progress → Operation completes → History stored
-- **Success criteria**: Backend server running on port 3001, real device detection working, WebSocket progress streaming functional, flash history persisted, all operations use backend API endpoints (no mock responses)
+- **Success criteria**: Backend server running on port 3001, real device detection working, WebSocket progress streaming functional, flash history persisted, all operations use backend API endpoints (no mock responses), authorization triggers guide fully comprehensive with 36+ triggers documented
 
 ### Reports Tab (Evidence & Backups)
 - **Functionality**: Four sub-sections: Evidence Bundles (signed reports with chain-of-custody), Backups (snapshot retention with auto-cleanup), Evidence Dashboard (authority signing, correlation tracking), Repair Library (teardown guides, tutorials)
@@ -60,6 +60,13 @@ This is a comprehensive repair utility dashboard with real-time device monitorin
 - **Trigger**: User clicks Settings tab
 - **Progression**: Click tab → Sub-tabs visible → User adjusts preferences → Views device mode specifications → Reads legal compliance → Views about info
 - **Success criteria**: Settings persist via useKV, audio preferences work, device mode matrix displays correctly, legal disclaimers present
+
+### Authorization Triggers System (Comprehensive Device Prompts)
+- **Functionality**: Comprehensive guide documenting 36+ device authorization triggers across all platforms (Android ADB, iOS, Fastboot, Samsung Odin, Qualcomm EDL, MediaTek SP Flash) - categorized into Trust & Security (USB debugging, trust computer, file transfer, backup auth), Device Operations (flash firmware, bootloader unlock, factory reset, reboot modes), Diagnostics & Evidence (run diagnostics, export bundles, collect logs, benchmarks), Policy & Compliance (destructive action confirmations, RBAC gates, audit consent), Connection & Hotplug (USB attach, driver prompts), and Advanced Platform-Specific (Samsung PIT, EDL operations, MTK bootloader unlock)
+- **Purpose**: Provide complete reference for every possible trigger that prompts user interaction, device authorization, or system-level confirmation - all backed by real command execution (no simulated responses)
+- **Trigger**: User clicks Diagnostics → Auth Triggers tab OR Settings → API Docs tab
+- **Progression**: View guide → Select category filter (Trust/Operation/Diagnostic/Policy/Connection/Advanced) → Browse triggers → See command executed, user prompt, platform support, and destructive/user-action flags → Click implementation resources for backend API guide
+- **Success criteria**: All 36+ triggers documented with real commands, categorized properly, searchable/filterable, shows destructive operation warnings, requires-user-action badges visible, backend API implementation guide complete with Node.js and Python examples, audit logging documented, security best practices included
 
 ## Edge Case Handling
 
