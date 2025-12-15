@@ -1,0 +1,5 @@
+# Phoenix Key Dependencies
+requests>=2.31.0
+
+# Development dependencies (optional)
+# Install with: pip install -r requirements.txt -r requirements-dev.txt

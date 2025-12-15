@@ -1,0 +1,12 @@
+{
+  "name": "@pandora-codex/arsenal-scripts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Development utility scripts for Pandora Codex",
+  "main": "index.js",
+  "scripts": {
+    "status": "node status.js",
+    "check:android": "node check-android-tools.js",
+    "check:rust": "node check-rust.js"
+  }
+}

@@ -1,0 +1,2646 @@
+This wraps your existing modules in a JSON-friendly way instead of the human CLI output.
+
+Create bobby_dev_mode/api_cli.py:
+
+# bobby_dev_mode/api_cli.py
+
+import json
+import os
+import sys
+from io import StringIO
+from contextlib import redirect_stdout
+
+from .modules import MODULES
+
+BASE_DIR = os.path.dirname(__file__)
+PROFILE_DIR = os.path.join(BASE_DIR, "profiles")
+
+
+def load_profile(name: str) -> dict:
+    path = os.path.join(PROFILE_DIR, f"{name}.json")
+    if not os.path.isfile(path):
+        raise FileNotFoundError(f"Profile not found: {path}")
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def list_profiles_json():
+    profiles = []
+    for fname in sorted(os.listdir(PROFILE_DIR)):
+        if not fname.endswith(".json"):
+            continue
+        name = fname[:-5]
+        with open(os.path.join(PROFILE_DIR, fname), "r", encoding="utf-8") as f:
+            data = json.load(f)
+        profiles.append({
+            "id": name,
+            "name": data.get("name", name),
+            "brand": data.get("brand", "Unknown"),
+            "notes": data.get("notes", "")
+        })
+    print(json.dumps(profiles))
+
+
+def run_module_json(profile_name: str, module: str):
+    profile = load_profile(profile_name)
+    module = module.lower()
+
+    if module == "all":
+        modules_order = ["dossier", "warhammer", "darklab", "forbidden", "fastboot", "recovery"]
+        selected = [m for m in modules_order if m in MODULES]
+    else:
+        if module not in MODULES:
+            print(json.dumps({"error": f"Unknown module: {module}"}))
+            return
+        selected = [module]
+
+    buf = StringIO()
+    with redirect_stdout(buf):
+        print(f"=== BOBBY DEV MODE ===")
+        print(f"Profile: {profile.get('name', profile_name)}")
+        print(f"Brand:   {profile.get('brand', 'Unknown')}")
+        print(f"Notes:   {profile.get('notes', '')}")
+        print("")
+
+        for m in selected:
+            fn = MODULES[m]
+            print(f"\n########## MODULE: {m.upper()} ##########\n")
+            fn(profile)
+
+    output = buf.getvalue()
+    print(json.dumps({
+        "profile": profile_name,
+        "module": module,
+        "output": output,
+    }))
+
+
+def main():
+    if len(sys.argv) < 2:
+        print("Usage: api_cli.py <command> [...]")
+        sys.exit(1)
+
+    cmd = sys.argv[1]
+
+    if cmd == "list_profiles_json":
+        list_profiles_json()
+    elif cmd == "run_module_json":
+        if len(sys.argv) < 4:
+            print(json.dumps({"error": "Need profile and module"}))
+            sys.exit(1)
+        profile = sys.argv[2]
+        module = sys.argv[3]
+        run_module_json(profile, module)
+    else:
+        print(json.dumps({"error": f"Unknown command: {cmd}"}))
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
+
+
+That gives you:
+
+python -m bobby_dev_mode.api_cli list_profiles_json
+
+python -m bobby_dev_mode.api_cli run_module_json moto_g_play_23 all
+
+returning clean JSON.
+
+2️⃣ Tauri: Rust bridge functions
+
+In src-tauri/src/main.rs, you already have a run_python helper in earlier designs. Reuse that:
+
+#[tauri::command]
+fn devmode_list_profiles() -> Result<String, String> {
+    // python -m bobby_dev_mode.api_cli list_profiles_json
+    run_python("-m", &["bobby_dev_mode.api_cli", "list_profiles_json"])
+}
+
+#[tauri::command]
+fn devmode_run_module(profile: String, module: String) -> Result<String, String> {
+    // python -m bobby_dev_mode.api_cli run_module_json <profile> <module>
+    run_python(
+        "-m",
+        &["bobby_dev_mode.api_cli", "run_module_json", &profile, &module],
+    )
+}
+
+
+If your run_python signature was run_python(cmd: &str, args: &[&str]), then above is consistent: first arg is "-m", rest are the module + subcommand.
+
+Wire them into the handler:
+
+.invoke_handler(tauri::generate_handler![
+    // existing commands...
+    devmode_list_profiles,
+    devmode_run_module,
+])
+
+
+Now the frontend can call:
+
+invoke("devmode_list_profiles") → JSON array of profiles
+
+invoke("devmode_run_module", { profile, module }) → JSON with output string
+
+3️⃣ React: DevModeTab.tsx
+
+Create src/tabs/DevModeTab.tsx:
+
+import { useEffect, useState } from "react";
+import { invoke } from "@tauri-apps/api/tauri";
+
+type DevProfile = {
+  id: string;
+  name: string;
+  brand: string;
+  notes: string;
+};
+
+const MODULE_OPTIONS = [
+  { value: "all", label: "All Modules" },
+  { value: "dossier", label: "Device Dossier" },
+  { value: "warhammer", label: "Debloat Warhammer" },
+  { value: "darklab", label: "Dark Lab (Thermal / I/O / CPU)" },
+  { value: "forbidden", label: "Forbidden Chamber (Security)" },
+  { value: "fastboot", label: "Fastboot / Flash Arsenal" },
+  { value: "recovery", label: "Recovery Ops" },
+];
+
+export function DevModeTab() {
+  const [profiles, setProfiles] = useState<DevProfile[]>([]);
+  const [profileId, setProfileId] = useState<string>("");
+  const [module, setModule] = useState<string>("all");
+  const [output, setOutput] = useState<string>("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string>("");
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const raw = await invoke<string>("devmode_list_profiles");
+        const data = JSON.parse(raw) as DevProfile[];
+        setProfiles(data);
+        if (data.length > 0) {
+          setProfileId(data[0].id);
+        }
+      } catch (e: any) {
+        setError(String(e));
+      }
+    })();
+  }, []);
+
+  async function run() {
+    if (!profileId) return;
+    setLoading(true);
+    setError("");
+    setOutput("");
+    try {
+      const raw = await invoke<string>("devmode_run_module", {
+        profile: profileId,
+        module,
+      });
+      const res = JSON.parse(raw) as { output?: string; error?: string };
+      if (res.error) {
+        setError(res.error);
+      }
+      if (res.output) {
+        setOutput(res.output);
+      }
+    } catch (e: any) {
+      setError(String(e));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const currentProfile = profiles.find((p) => p.id === profileId);
+
+  return (
+    <div className="flex flex-col gap-3 h-full">
+      {/* Controls row */}
+      <div className="flex flex-wrap gap-3 items-end">
+        <div className="min-w-[220px]">
+          <label className="block text-xs text-slate-400 mb-1">
+            Profile (Device)
+          </label>
+          <select
+            className="w-full bg-slate-900 border border-slate-700 rounded-md px-2 py-1 text-xs"
+            value={profileId}
+            onChange={(e) => setProfileId(e.target.value)}
+          >
+            {profiles.length === 0 && (
+              <option value="">No profiles found</option>
+            )}
+            {profiles.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.brand} – {p.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="min-w-[220px]">
+          <label className="block text-xs text-slate-400 mb-1">
+            Module
+          </label>
+          <select
+            className="w-full bg-slate-900 border border-slate-700 rounded-md px-2 py-1 text-xs"
+            value={module}
+            onChange={(e) => setModule(e.target.value)}
+          >
+            {MODULE_OPTIONS.map((m) => (
+              <option key={m.value} value={m.value}>
+                {m.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <button
+          onClick={run}
+          disabled={!profileId || loading}
+          className="px-4 py-2 rounded-md bg-emerald-600 hover:bg-emerald-500 text-sm disabled:opacity-50"
+        >
+          {loading ? "Running…" : "Run Dev Mode"}
+        </button>
+
+        {error && (
+          <div className="text-xs text-red-400 max-w-xs">
+            {error}
+          </div>
+        )}
+      </div>
+
+      {/* Profile notes */}
+      {currentProfile && (
+        <div className="border border-slate-800 rounded-xl p-2 text-xs text-slate-300 bg-slate-950/60">
+          <div className="flex justify-between">
+            <div>
+              <span className="font-semibold">{currentProfile.name}</span>{" "}
+              <span className="text-slate-400">
+                ({currentProfile.brand})
+              </span>
+            </div>
+          </div>
+          {currentProfile.notes && (
+            <div className="mt-1 text-[11px] text-slate-400">
+              {currentProfile.notes}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Output window */}
+      <div className="flex-1 border border-slate-800 rounded-xl overflow-hidden flex flex-col">
+        <div className="px-3 py-2 text-xs text-slate-400 border-b border-slate-800">
+          Console Output
+        </div>
+        <pre className="flex-1 bg-slate-950 text-[11px] p-3 overflow-auto whitespace-pre-wrap">
+          {output || "Run a profile/module to see output here."}
+        </pre>
+      </div>
+    </div>
+  );
+}
+
+4️⃣ Hook Tab into the main app
+
+In src/App.tsx (or wherever your main UI switch is):
+
+Import the tab:
+
+import { DevModeTab } from "./tabs/DevModeTab";
+
+
+Add a tab button:
+
+type TabKey = "drives" | "imaging" | "diagnostics" | "jobs" | "console" | "devmode";
+
+
+Nav:
+
+<button
+  onClick={() => setTab("devmode")}
+  className={`px-3 py-1 rounded-md ${
+    tab === "devmode" ? "bg-slate-800" : "hover:bg-slate-900"
+  }`}
+>
+  Dev Mode
+</button>
+
+
+Render the tab:
+
+{tab === "devmode" && <DevModeTab />}
+
+
+Now you’ve got:
+
+All your Bobby Dev Mode logic in one CLI
+
+A JSON API layer for Tauri
+
+A Dev Mode panel in the app:
+
+Pick profile (Moto G Play 23, S22+, Pixel, etc.)
+
+Pick module (Dossier / Warhammer / Dark Lab / etc.)
+
+Click run → see full terminal-style output
+
+If you want to go even harder later, we can:
+
+Add per-command streaming output (live scroll while ADB runs)
+
+Add one-click ADB log export per run
+
+Or wire Dev Mode outputs into your Case Files / History system.
+
+You said:
+yea go all
+ChatGPT said:
+Thought for 53s
+
+Cool. Let’s flip everything on:
+
+Live streaming Dev Mode output
+
+Run-and-save into Case Files
+
+Text log export button
+
+I’ll give you delta patches, not theory.
+
+1️⃣ Live Streaming Dev Mode Output
+
+We’ll stream stdout from the CLI instead of waiting for JSON.
+
+A. Tauri command: devmode_stream_module
+
+In src-tauri/src/main.rs:
+
+use std::process::{Command, Stdio};
+use std::io::{BufRead, BufReader};
+use tauri::Window;
+
+// existing run_python etc…
+
+#[tauri::command]
+fn devmode_stream_module(window: Window, profile: String, module: String) -> Result<(), String> {
+    // python -m bobby_dev_mode.cli --profile <profile> --module <module>
+    let mut child = Command::new("python")
+        .arg("-m")
+        .arg("bobby_dev_mode.cli")
+        .arg("--profile")
+        .arg(&profile)
+        .arg("--module")
+        .arg(&module)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| format!("Failed to spawn devmode: {e}"))?;
+
+    let stdout = child.stdout.take().ok_or("No stdout from devmode")?;
+    let stderr = child.stderr.take();
+
+    // Stream STDOUT
+    let win_clone = window.clone();
+    tauri::async_runtime::spawn(async move {
+        let reader = BufReader::new(stdout);
+        for line in reader.lines() {
+            if let Ok(l) = line {
+                let _ = win_clone.emit("devmode-output", l);
+            }
+        }
+    });
+
+    // Optionally also stream STDERR into same channel (tagged)
+    if let Some(err) = stderr {
+        let win_clone2 = window.clone();
+        tauri::async_runtime::spawn(async move {
+            let reader = BufReader::new(err);
+            for line in reader.lines() {
+                if let Ok(l) = line {
+                    let _ = win_clone2.emit("devmode-output", format!("[ERR] {l}"));
+                }
+            }
+        });
+    }
+
+    Ok(())
+}
+
+
+Add to invoke_handler!:
+
+.invoke_handler(tauri::generate_handler![
+    // …other commands…
+    devmode_list_profiles,
+    devmode_run_module,
+    devmode_stream_module,
+])
+
+B. DevModeTab: add streaming mode
+
+Modify DevModeTab.tsx:
+
+add state:
+
+import { listen } from "@tauri-apps/api/event";
+
+const [live, setLive] = useState(false);
+const [streaming, setStreaming] = useState(false);
+
+
+Add useEffect to subscribe to devmode-output:
+
+useEffect(() => {
+  let unlistenPromise: Promise<()>;
+  if (live) {
+    unlistenPromise = listen<string>("devmode-output", (event) => {
+      const line = event.payload;
+      // append line
+      setOutput((prev) => (prev ? prev + "\n" + line : line));
+    }).then((unlisten) => {
+      // return cleanup
+      return () => unlisten();
+    });
+  }
+
+  return () => {
+    if (unlistenPromise) {
+      unlistenPromise.then((cleanup) => cleanup && cleanup());
+    }
+  };
+}, [live]);
+
+
+(If your tooling complains, you can wrap that pattern slightly differently, but idea is clear: subscribe when live is true.)
+
+Add two run functions:
+
+async function runJsonMode() {
+  if (!profileId) return;
+  setLoading(true);
+  setError("");
+  setOutput("");
+  try {
+    const raw = await invoke<string>("devmode_run_module", {
+      profile: profileId,
+      module,
+    });
+    const res = JSON.parse(raw) as { output?: string; error?: string; ticket_id?: string };
+    if (res.error) setError(res.error);
+    if (res.output) setOutput(res.output);
+    // Optional: show ticket ID if we wire case saving (next section)
+    if (res.ticket_id) {
+      setOutput((prev) => (prev ? prev + `\n\n[Saved as case ${res.ticket_id}]` : prev));
+    }
+  } catch (e: any) {
+    setError(String(e));
+  } finally {
+    setLoading(false);
+  }
+}
+
+async function runLive() {
+  if (!profileId) return;
+  setStreaming(true);
+  setError("");
+  setOutput("");
+  try {
+    await invoke("devmode_stream_module", {
+      profile: profileId,
+      module,
+    });
+    // process continues async; output comes via events
+  } catch (e: any) {
+    setError(String(e));
+    setStreaming(false);
+  }
+}
+
+
+Update controls row:
+
+<div className="flex flex-wrap gap-3 items-end">
+  {/* profile select, module select ... */}
+
+  <div className="flex items-center gap-2">
+    <label className="flex items-center gap-1 text-xs text-slate-400">
+      <input
+        type="checkbox"
+        checked={live}
+        onChange={(e) => setLive(e.target.checked)}
+      />
+      Live stream mode
+    </label>
+  </div>
+
+  <button
+    onClick={live ? runLive : runJsonMode}
+    disabled={!profileId || loading || streaming}
+    className="px-4 py-2 rounded-md bg-emerald-600 hover:bg-emerald-500 text-sm disabled:opacity-50"
+  >
+    {live
+      ? streaming
+        ? "Streaming…"
+        : "Run Dev Mode (Live)"
+      : loading
+        ? "Running…"
+        : "Run Dev Mode"}
+  </button>
+</div>
+
+
+Now you have two modes:
+
+JSON mode (non-live) — used for history & export
+
+Live mode — raw CLI streamed into the pane
+
+2️⃣ Dev Mode → Case Files / History
+
+We’ll make non-live runs automatically write a DEV- case into the existing history.manager.
+
+A. Extend history/manager.py
+
+Add an optional kind and allow arbitrary payload:
+
+# history/manager.py (add this helper)
+
+from datetime import datetime
+
+def save_devmode_run(profile: dict, module: str, output: str) -> str:
+    """
+    Save Dev Mode run as a case file and return ticket_id.
+    """
+    ts = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+    ticket_id = f"DEV-{ts}"
+
+    payload = {
+        "ticket_id": ticket_id,
+        "kind": "devmode",
+        "profile_id": profile.get("id"),
+        "profile_name": profile.get("name"),
+        "brand": profile.get("brand"),
+        "module": module,
+        "output": output,
+        "device_hint": profile.get("model_hint"),
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+    }
+    save_case(ticket_id, payload)
+    return ticket_id
+
+
+save_case is the same function we already made earlier; this just piggybacks on it.
+
+B. Modify bobby_dev_mode/api_cli.py
+
+Change run_module_json:
+
+# bobby_dev_mode/api_cli.py
+
+from datetime import datetime
+from io import StringIO
+from contextlib import redirect_stdout
+
+from ..history.manager import save_devmode_run  # adjust relative path as needed
+
+def run_module_json(profile_name: str, module: str):
+    profile = load_profile(profile_name)
+    module = module.lower()
+
+    if module == "all":
+        modules_order = ["dossier", "warhammer", "darklab", "forbidden", "fastboot", "recovery"]
+        selected = [m for m in modules_order if m in MODULES]
+    else:
+        if module not in MODULES:
+            print(json.dumps({"error": f"Unknown module: {module}"}))
+            return
+        selected = [module]
+
+    buf = StringIO()
+    with redirect_stdout(buf):
+        print(f"=== BOBBY DEV MODE ===")
+        print(f"Profile: {profile.get('name', profile_name)}")
+        print(f"Brand:   {profile.get('brand', 'Unknown')}")
+        print(f"Notes:   {profile.get('notes', '')}")
+        print("")
+
+        for m in selected:
+            fn = MODULES[m]
+            print(f"\n########## MODULE: {m.upper()} ##########\n")
+            fn(profile)
+
+    output = buf.getvalue()
+
+    # 🔥 Save as DevMode case
+    # Ensure profile has "id" field for history; if not, inject.
+    if "id" not in profile:
+        profile["id"] = profile_name
+    ticket_id = save_devmode_run(profile, module, output)
+
+    print(json.dumps({
+        "profile": profile_name,
+        "module": module,
+        "output": output,
+        "ticket_id": ticket_id,
+    }))
+
+
+Now every JSON-mode run:
+
+Executes DevMode
+
+Captures output
+
+Writes a DEV-YYYYMMDD-HHMMSS case in history/storage
+
+Returns that ticket_id to the frontend
+
+DevMode runs will now show up in your existing Jobs / Case Files panel.
+
+The DevModeTab JSON run button already parses ticket_id (we added it) and can annotate the console text with [Saved as case DEV-…].
+
+3️⃣ Export Dev Mode Log as Text File
+
+For quick exports, we’ll do it in Rust only, no Python.
+
+A. Tauri command: devmode_export_log
+
+In src-tauri/src/main.rs:
+
+use std::fs;
+use std::path::PathBuf;
+use chrono::Utc; // add chrono = "0.4" to Cargo.toml if not present
+
+#[tauri::command]
+fn devmode_export_log(profile: String, module: String, content: String) -> Result<String, String> {
+    // Choose an app-local logs dir:
+    let mut dir = tauri::api::path::data_dir().ok_or("No data dir")?;
+    dir.push("bobby_dev_mode_logs");
+    fs::create_dir_all(&dir).map_err(|e| format!("Failed to create log dir: {e}"))?;
+
+    let ts = Utc::now().format("%Y%m%d-%H%M%S").to_string();
+    let safe_profile = profile.replace(|c: char| !c.is_ascii_alphanumeric(), "_");
+    let safe_module = module.replace(|c: char| !c.is_ascii_alphanumeric(), "_");
+    let filename = format!("devmode_{safe_profile}_{safe_module}_{ts}.log");
+
+    let mut path = PathBuf::from(&dir);
+    path.push(filename);
+
+    fs::write(&path, content).map_err(|e| format!("Failed to write log: {e}"))?;
+
+    Ok(path.to_string_lossy().to_string())
+}
+
+
+Add to handler:
+
+.invoke_handler(tauri::generate_handler![
+    // …
+    devmode_export_log,
+])
+
+B. Add “Export Log” button in DevModeTab.tsx
+
+Under the output panel (or in controls row):
+
+async function exportLog() {
+  if (!output) return;
+  try {
+    const path = await invoke<string>("devmode_export_log", {
+      profile: profileId || "unknown",
+      module,
+      content: output,
+    });
+    alert(`Dev Mode log exported:\n${path}`);
+  } catch (e: any) {
+    setError(String(e));
+  }
+}
+
+
+Add button:
+
+<button
+  onClick={exportLog}
+  disabled={!output}
+  className="px-3 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-xs"
+>
+  Export Log
+</button>
+
+
+Stick it on the right side of the “Console Output” header or in the top row, whatever fits your layout.
+
+What you’ve got now
+
+For Dev Mode:
+
+Live Stream Mode
+
+devmode_stream_module runs python -m bobby_dev_mode.cli …
+
+Every line from ADB/fastboot prints straight into your React console in real time.
+
+Case-Backed Mode
+
+devmode_run_module uses api_cli.run_module_json
+
+Captures all output, calls save_devmode_run, creates a DEV-… entry in history
+
+Returns the ticket_id to the UI
+
+Shows up in your Jobs / Case Files view next to imaging/diagnostics
+
+Exportable Logs
+
+devmode_export_log writes a .log file to …/bobby_dev_mode_logs/
+
+One click from DevModeTab and you’ve got a raw text log path you can archive or attach to tickets
+
+This stitches Dev Mode into the same ecosystem as:
+
+BootForge imaging
+
+Pandora diagnostics
+
+Case Files / PDF reports
+
+All under one roof.
+
+If you want to push even further later, the next killer step would be:
+
+Add a “Attach Dev Mode Case” dropdown inside the Jobs view so you can cross-link: Imaging Case IMG-… + Dev Mode Case DEV-… + Diagnostics Case POST-INSTALL-… into a single “Master Ticket”.
+
+But for now, you’ve got the full “ALL” package wired.
+
+You said:
+alll
+ChatGPT said:
+Thought for 15s
+
+Got it — you want the whole thing fused, not just pieces.
+
+So let’s do what I teased:
+Master Tickets that group:
+
+Imaging cases (IMG-…)
+
+Diagnostics (POST-…/BENCH-…)
+
+Dev Mode runs (DEV-…)
+
+Anything else you log later
+
+All under one “job” ID you can click and see the whole story of that device.
+
+I’ll give you concrete building blocks:
+
+Backend: Master Ticket system in history/manager.py
+
+Python API: JSON commands to manage master tickets
+
+Tauri: Commands to talk to that API
+
+JobsTab UI:
+
+List master tickets
+
+See linked cases
+
+Attach current case → existing or new master ticket
+
+You can refine styling later; this will work.
+
+1️⃣ Backend: Master Ticket System
+A. Extend history/manager.py
+
+Add a new JSON file to track master tickets:
+
+# history/manager.py
+
+import os, json
+from datetime import datetime
+from typing import Dict, Any, List
+
+BASE_DIR = os.path.join(os.path.dirname(__file__), "storage")
+os.makedirs(BASE_DIR, exist_ok=True)
+
+MASTER_FILE = os.path.join(BASE_DIR, "master_tickets.json")
+
+# ... existing save_case, load_case, list_cases ...
+
+
+def _load_master_tickets() -> List[Dict[str, Any]]:
+    if not os.path.isfile(MASTER_FILE):
+        return []
+    with open(MASTER_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def _save_master_tickets(tickets: List[Dict[str, Any]]) -> None:
+    with open(MASTER_FILE, "w", encoding="utf-8") as f:
+        json.dump(tickets, f, indent=2)
+
+
+def create_master_ticket(
+    label: str,
+    description: str = "",
+    initial_cases: List[str] | None = None,
+) -> Dict[str, Any]:
+    tickets = _load_master_tickets()
+    ts = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+    master_id = f"MT-{ts}"
+
+    ticket = {
+        "master_id": master_id,
+        "label": label or master_id,
+        "description": description or "",
+        "created_at": datetime.utcnow().isoformat() + "Z",
+        "case_ids": initial_cases or [],
+    }
+    tickets.append(ticket)
+    _save_master_tickets(tickets)
+    return ticket
+
+
+def list_master_tickets() -> List[Dict[str, Any]]:
+    return sorted(_load_master_tickets(), key=lambda t: t["created_at"], reverse=True)
+
+
+def attach_case_to_master(master_id: str, case_id: str) -> Dict[str, Any]:
+    tickets = _load_master_tickets()
+    found = None
+    for t in tickets:
+        if t.get("master_id") == master_id:
+            found = t
+            break
+    if not found:
+        raise ValueError(f"Master ticket not found: {master_id}")
+
+    if "case_ids" not in found:
+        found["case_ids"] = []
+
+    if case_id not in found["case_ids"]:
+        found["case_ids"].append(case_id)
+
+    _save_master_tickets(tickets)
+    return found
+
+
+You already have save_case, load_case, list_cases defined earlier.
+
+This gives you:
+
+create_master_ticket(label, description, initial_cases)
+
+list_master_tickets()
+
+attach_case_to_master(master_id, case_id)
+
+2️⃣ Python API: Master Ticket JSON Commands
+
+In your existing phoenix_api_cli.py (the one that already exposes list_cases_json, load_case_json, etc.), add imports + handlers:
+
+# phoenix_api_cli.py
+
+from history.manager import (
+    list_cases,
+    load_case,
+    create_master_ticket,
+    list_master_tickets,
+    attach_case_to_master,
+)
+
+# ... existing CLI handling ...
+
+
+elif cmd == "list_master_tickets_json":
+    tickets = list_master_tickets()
+    print(json.dumps(tickets, indent=2))
+
+elif cmd == "create_master_ticket_json":
+    # args: label [description]
+    label = sys.argv[2] if len(sys.argv) > 2 else ""
+    description = sys.argv[3] if len(sys.argv) > 3 else ""
+    ticket = create_master_ticket(label, description, [])
+    print(json.dumps(ticket, indent=2))
+
+elif cmd == "attach_case_to_master_json":
+    # args: master_id case_id
+    if len(sys.argv) < 4:
+        print(json.dumps({"error": "Need master_id and case_id"}))
+        sys.exit(1)
+    master_id = sys.argv[2]
+    case_id = sys.argv[3]
+    ticket = attach_case_to_master(master_id, case_id)
+    print(json.dumps(ticket, indent=2))
+
+
+Now from shell you could do, for example:
+
+python phoenix_api_cli.py list_master_tickets_json
+python phoenix_api_cli.py create_master_ticket_json "S22+ Full Rework" "IMG+DEV+Diag bundle"
+python phoenix_api_cli.py attach_case_to_master_json MT-... IMG-...
+
+3️⃣ Tauri: Bridge Commands
+
+In src-tauri/src/main.rs you already have run_python(PHOENIX_CLI, ...).
+
+Add:
+
+#[tauri::command]
+fn list_master_tickets() -> Result<String, String> {
+    // phoenix_api_cli.py list_master_tickets_json
+    run_python(PHOENIX_CLI, &["list_master_tickets_json"])
+}
+
+#[tauri::command]
+fn create_master_ticket(label: String, description: String) -> Result<String, String> {
+    // phoenix_api_cli.py create_master_ticket_json <label> <description>
+    run_python(PHOENIX_CLI, &["create_master_ticket_json", &label, &description])
+}
+
+#[tauri::command]
+fn attach_case_to_master(master_id: String, case_id: String) -> Result<String, String> {
+    // phoenix_api_cli.py attach_case_to_master_json <master_id> <case_id>
+    run_python(
+        PHOENIX_CLI,
+        &["attach_case_to_master_json", &master_id, &case_id],
+    )
+}
+
+
+Then wire them into the invoke_handler!:
+
+.invoke_handler(tauri::generate_handler![
+    // existing commands...
+    list_cases,
+    load_case,
+    list_master_tickets,
+    create_master_ticket,
+    attach_case_to_master,
+    // devmode_* etc...
+])
+
+4️⃣ JobsTab UI: Master Tickets Panel + Attach Flow
+
+We extend the JobsTab we already built.
+
+A. Extend JobsTab state
+
+In src/tabs/JobsTab.tsx:
+
+type CaseSummary = {
+  ticket_id: string;
+  timestamp?: string;
+  device?: { model?: string };
+  health_score?: { overall?: number };
+  recipe?: string;
+  kind?: string;
+};
+
+type MasterTicket = {
+  master_id: string;
+  label: string;
+  description?: string;
+  created_at: string;
+  case_ids: string[];
+};
+
+const [cases, setCases] = useState<CaseSummary[]>([]);
+const [selected, setSelected] = useState<string | null>(null);
+const [details, setDetails] = useState<any | null>(null);
+
+const [masters, setMasters] = useState<MasterTicket[]>([]);
+const [selectedMaster, setSelectedMaster] = useState<string>("");
+const [newMasterLabel, setNewMasterLabel] = useState<string>("");
+const [newMasterDescription, setNewMasterDescription] = useState<string>("");
+
+B. Load master tickets on mount
+
+Inside useEffect that loads cases, add another fetch or separate one:
+
+useEffect(() => {
+  (async () => {
+    try {
+      const rawCases = await invoke<string>("list_cases");
+      setCases(JSON.parse(rawCases));
+
+      const rawMasters = await invoke<string>("list_master_tickets");
+      setMasters(JSON.parse(rawMasters));
+    } catch (e: any) {
+      console.error(e);
+    }
+  })();
+}, []);
+
+C. Attach current case → master ticket
+
+Add helper:
+
+async function attachToExistingMaster() {
+  if (!selected || !selectedMaster) return;
+  try {
+    await invoke<string>("attach_case_to_master", {
+      masterId: selectedMaster,
+      caseId: selected,
+    });
+    // refresh master tickets list to reflect new case
+    const rawMasters = await invoke<string>("list_master_tickets");
+    setMasters(JSON.parse(rawMasters));
+  } catch (e: any) {
+    console.error(e);
+  }
+}
+
+async function createMasterAndAttach() {
+  if (!selected || !newMasterLabel.trim()) return;
+  try {
+    const raw = await invoke<string>("create_master_ticket", {
+      label: newMasterLabel,
+      description: newMasterDescription || "",
+    });
+    const mt = JSON.parse(raw) as MasterTicket;
+    await invoke<string>("attach_case_to_master", {
+      masterId: mt.master_id,
+      caseId: selected,
+    });
+    const rawMasters = await invoke<string>("list_master_tickets");
+    setMasters(JSON.parse(rawMasters));
+    setSelectedMaster(mt.master_id);
+    setNewMasterLabel("");
+    setNewMasterDescription("");
+  } catch (e: any) {
+    console.error(e);
+  }
+}
+
+D. Show Master Ticket info for selected case
+
+Compute:
+
+const attachedMasters = masters.filter((mt) =>
+  mt.case_ids?.includes(selected || "")
+);
+
+E. Layout: add a right-side master ticket panel
+
+Your JobsTab layout was:
+
+Left: cases list
+
+Right: case details JSON
+
+We’ll expand right side to:
+
+top: master ticket info / attach controls
+
+bottom: case JSON
+
+Sketch:
+
+return (
+  <div className="grid grid-cols-3 gap-4 h-full">
+    {/* LEFT: Case list */}
+    <div className="col-span-1 border border-slate-800 rounded-xl p-3 text-xs">
+      <h2 className="font-semibold mb-2 text-sm">Cases</h2>
+      <div className="space-y-1 max-h-[70vh] overflow-auto">
+        {cases.map((c) => (
+          <button
+            key={c.ticket_id}
+            onClick={() => load(c.ticket_id)}
+            className={`w-full text-left px-2 py-1 rounded-md hover:bg-slate-900 ${
+              selected === c.ticket_id ? "bg-slate-800" : ""
+            }`}
+          >
+            <div className="flex justify-between">
+              <span>{c.ticket_id}</span>
+              {c.health_score?.overall != null && (
+                <span className="text-[10px] text-slate-400">
+                  {c.health_score.overall}
+                </span>
+              )}
+            </div>
+            <div className="text-slate-400 text-[10px]">
+              {c.device?.model || "Unknown"} · {c.timestamp}
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+
+    {/* RIGHT: Master + Details */}
+    <div className="col-span-2 flex flex-col gap-3">
+      {/* Master Ticket controls */}
+      <div className="border border-slate-800 rounded-xl p-3 text-xs space-y-2">
+        <div className="flex justify-between items-center">
+          <div className="font-semibold text-sm">Master Ticket Links</div>
+          <div className="text-[11px] text-slate-500">
+            Group IMG / DEV / DIAG into one job ID.
+          </div>
+        </div>
+
+        {selected ? (
+          <>
+            {attachedMasters.length > 0 ? (
+              <div className="text-[11px] text-emerald-300">
+                Attached to:{" "}
+                {attachedMasters
+                  .map((mt) => `${mt.master_id} (${mt.label})`)
+                  .join(", ")}
+              </div>
+            ) : (
+              <div className="text-[11px] text-slate-400">
+                This case is not attached to any master ticket yet.
+              </div>
+            )}
+
+            <div className="mt-2 grid grid-cols-2 gap-3">
+              {/* Attach to existing */}
+              <div>
+                <div className="text-[11px] text-slate-400 mb-1">
+                  Attach to existing Master Ticket
+                </div>
+                <div className="flex gap-2">
+                  <select
+                    className="flex-1 bg-slate-900 border border-slate-700 rounded-md px-2 py-1 text-[11px]"
+                    value={selectedMaster}
+                    onChange={(e) => setSelectedMaster(e.target.value)}
+                  >
+                    <option value="">Select…</option>
+                    {masters.map((mt) => (
+                      <option key={mt.master_id} value={mt.master_id}>
+                        {mt.master_id} – {mt.label}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={attachToExistingMaster}
+                    disabled={!selectedMaster}
+                    className="px-3 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-[11px]"
+                  >
+                    Attach
+                  </button>
+                </div>
+              </div>
+
+              {/* Create new + attach */}
+              <div>
+                <div className="text-[11px] text-slate-400 mb-1">
+                  Create new Master Ticket and attach
+                </div>
+                <div className="flex flex-col gap-1">
+                  <input
+                    className="bg-slate-900 border border-slate-700 rounded-md px-2 py-1 text-[11px]"
+                    placeholder="Label (e.g. S22+ Full Rework)"
+                    value={newMasterLabel}
+                    onChange={(e) => setNewMasterLabel(e.target.value)}
+                  />
+                  <div className="flex gap-2">
+                    <input
+                      className="flex-1 bg-slate-900 border border-slate-700 rounded-md px-2 py-1 text-[11px]"
+                      placeholder="Description (optional)"
+                      value={newMasterDescription}
+                      onChange={(e) =>
+                        setNewMasterDescription(e.target.value)
+                      }
+                    />
+                    <button
+                      onClick={createMasterAndAttach}
+                      disabled={!newMasterLabel.trim()}
+                      className="px-3 py-1 rounded-md bg-emerald-600 hover:bg-emerald-500 text-[11px]"
+                    >
+                      Create + Attach
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="text-[11px] text-slate-400">
+            Select a case on the left to manage its master ticket links.
+          </div>
+        )}
+      </div>
+
+      {/* Case details viewer */}
+      <div className="border border-slate-800 rounded-xl p-3 text-xs flex-1 flex flex-col">
+        <h2 className="font-semibold mb-2 text-sm">Case Details</h2>
+        {details ? (
+          <pre className="bg-slate-950 rounded-lg p-2 max-h-[55vh] overflow-auto">
+            {JSON.stringify(details, null, 2)}
+          </pre>
+        ) : (
+          <div className="text-slate-400">
+            Select a case to view details.
+          </div>
+        )}
+      </div>
+    </div>
+  </div>
+);
+
+
+Now the flow is:
+
+Imaging run → IMG-… case
+
+Diagnostic bench → POST-/BENCH-/whatever case
+
+DevMode run → DEV-… case
+
+In JobsTab:
+
+Click an imaging case → attach to new Master Ticket MT-… labeled “S22+ Full Rework”
+
+Click the DevMode case for that same device → attach it to the same MT-…
+
+Click the diagnostic case → attach it too
+
+Then, from the Master Ticket row, you see:
+
+Which master tickets this case belongs to
+
+From your master tickets backend (or a separate listing tab later), you can see all case IDs under MT-….
+
+What you’ve got now
+
+You’ve basically built your own shop CRM core:
+
+Case Files for every operation:
+
+Imaging
+
+Diagnostics
+
+DevMode
+
+(Anything else you log later)
+
+Master Tickets (MT-…) that group cases into one “job” per device/visit.
+
+UI that lets you:
+
+See every case
+
+See case JSON (health report, dev logs, imaging info)
+
+Attach cases to master tickets
+
+Create new master tickets on the fly
+
+On top of all the earlier stuff:
+
+Dev Mode CLI
+
+Dev Mode UI (profiles + modules)
+
+Live streaming Dev Mode output
+
+Case history
+
+PDF export for diagnostics
+
+Log export for Dev Mode
+
+You’ve basically built the backbone of Bobby’s repair platform.
+
+If you want to go even wilder later, we can add:
+
+A dedicated Master Tickets tab that shows each MT-… and all linked cases in one view
+
+Simple customer + device records attached at the master level (so you can see “Customer X, S22+, all work done”)
+
+You said:
+if wewere to skip this what would be suggested next
+ChatGPT said:
+Thought for 10s
+
+Short answer: if we skip the whole Master Ticket fusion thing, the next smartest upgrade is to move toward a real “intake → workflow → checkout” pipeline instead of more backend plumbing.
+
+If I had to rank what to do next:
+
+1️⃣ Build a Proper Intake / Workflow Wizard (Top Pick)
+
+Turn all these raw tools (Dev Mode, imaging, diagnostics) into a one-click flow:
+
+Flow per device:
+
+Intake screen
+
+Customer name / phone / email
+
+Device nickname (e.g. “Kai’s S22+”)
+
+Reported issue (drop-down + free text)
+
+Priority: Normal / Rush / Data-Critical
+
+Auto-actions on Start
+
+Run Device Dossier (Dev Mode)
+
+Run a quick Pandora health check
+
+Snapshot battery + SMART/status
+
+Open a “session log” for this device
+
+Action step
+
+Buttons like:
+
+“Run Debloat Warhammer”
+
+“Run Dark Lab”
+
+“Deploy OS (Phoenix)”
+
+Each button automatically:
+
+Runs the module
+
+Saves a case file
+
+Tags it with the intake ticket ID
+
+Checkout
+
+Show summary:
+
+What was run (DevMode/Imaging/Diag)
+
+Before/after key metrics
+
+Button: “Generate PDF for customer”
+
+Button: “Export internal log bundle”
+
+You already have 80% of the pieces:
+
+Case files ✔
+
+Dev Mode CLI ✔
+
+Imaging + PDF export ✔
+
+This step is mostly:
+“Glue them into a guided wizard, not separate screens.”
+
+2️⃣ Flesh Out the Customer + Device CRM
+
+You’ve already got a light CRM stub. Next step:
+
+Add status: (New, In Progress, Waiting on Parts, Done, Picked Up)
+
+Add device slots per customer (so Bobby can see all work ever done on one person’s phones/tablets/laptops)
+
+Show, on the customer screen:
+
+All tickets (intake/workflows)
+
+All devices
+
+Total jobs done
+
+Quick buttons to open last case
+
+That turns your tool from “lab console” into an actual shop system.
+
+3️⃣ iOS / Cross-Platform Dev Mode Panel
+
+Right now Dev Mode is Android-centric (ADB/fastboot).
+Next obvious monster unlock:
+
+Apple tab:
+
+ideviceinfo, idevicediagnostics, idevicebackup2, idevicesyslog
+
+Simple “Intake → iOS snapshot → save case”
+
+Very explicit that you only run it on devices you own / are allowed to service
+
+That gives you:
+
+Android Dev Panel
+
+iOS Dev Panel
+
+Same history + intake flow
+
+4️⃣ Automation: Saved “Recipes” / Presets
+
+Once you’ve got the wizard + CRM:
+
+Define repair presets, e.g.:
+
+“S22+ Full Cleanup” = Dossier + Warhammer + Dark Lab quick + health PDF
+
+“Moto G Play Refresh” = Dossier + Debloat + basic imaging check
+
+One button: run the whole chain, log everything, attach to intake ticket.
+
+You already think in “profiles”; this just pushes it one layer up.
+
+If you want to actually pick one and build, my order for real impact is:
+
+Intake + Workflow Wizard
+
+Deeper Customer/Device CRM
+
+iOS Dev Mode panel
+
+Automation presets
+
+Tell me which one you want first, and I’ll lay out the concrete code/structure for that path the same way we did for Dev Mode.
+
+You said:
+all 
+ChatGPT said:
+Thought for 11s
+
+Alright, you animal. You said “all” so we’re doing the full stack:
+
+Intake / Workflow wizard
+
+Beefed-up CRM
+
+iOS Dev Panel
+
+Automation presets
+
+I’ll give you concrete building pieces you can drop into what you already have (Phoenix / Pandora / Bobby Dev Mode). I’ll keep it focused so you’re not drowning in walls of code.
+
+0. New Concepts We’re Adding
+
+We’re going to add two new core ideas on top of what you already built:
+
+Intake Ticket = one visit / job for a device
+
+Preset = predefined sequence of steps (Dev Mode + diagnostics + imaging, etc.)
+
+Your existing Case Files (IMG-…, DEV-…, etc.) will now point to an intake ticket instead of floating alone.
+
+1️⃣ Intake + Workflow Wizard
+1.1. Intake data model
+
+Create intake/manager.py:
+
+# intake/manager.py
+
+import os, json, uuid
+from datetime import datetime
+from typing import Dict, Any, List, Optional
+
+BASE_DIR = os.path.join(os.path.dirname(__file__), "storage")
+os.makedirs(BASE_DIR, exist_ok=True)
+
+INTAKE_FILE = os.path.join(BASE_DIR, "intake_tickets.json")
+
+STATUS_VALUES = [
+    "new", "diagnosing", "waiting_parts",
+    "in_progress", "ready", "picked_up",
+]
+
+
+def _load_intake() -> List[Dict[str, Any]]:
+    if not os.path.isfile(INTAKE_FILE):
+        return []
+    with open(INTAKE_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def _save_intake(data: List[Dict[str, Any]]) -> None:
+    with open(INTAKE_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+
+
+def create_intake(
+    customer_id: str,
+    device_id: str,
+    reported_issue: str,
+    priority: str = "normal",
+) -> Dict[str, Any]:
+    tickets = _load_intake()
+    intake_id = f"JOB-{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}"
+    ticket = {
+        "intake_id": intake_id,
+        "customer_id": customer_id,
+        "device_id": device_id,
+        "reported_issue": reported_issue,
+        "priority": priority,  # "normal", "rush", "data_critical"
+        "status": "new",
+        "created_at": datetime.utcnow().isoformat() + "Z",
+        "updated_at": None,
+        "case_ids": [],  # imaging / devmode / diagnostics linked here
+    }
+    tickets.append(ticket)
+    _save_intake(tickets)
+    return ticket
+
+
+def list_intake() -> List[Dict[str, Any]]:
+    return sorted(
+        _load_intake(),
+        key=lambda t: t["created_at"],
+        reverse=True,
+    )
+
+
+def update_intake_status(intake_id: str, status: str) -> Dict[str, Any]:
+    if status not in STATUS_VALUES:
+        raise ValueError(f"Invalid status: {status}")
+    tickets = _load_intake()
+    for t in tickets:
+        if t["intake_id"] == intake_id:
+            t["status"] = status
+            t["updated_at"] = datetime.utcnow().isoformat() + "Z"
+            _save_intake(tickets)
+            return t
+    raise ValueError(f"Intake not found: {intake_id}")
+
+
+def attach_case_to_intake(intake_id: str, case_id: str) -> Dict[str, Any]:
+    tickets = _load_intake()
+    for t in tickets:
+        if t["intake_id"] == intake_id:
+            if "case_ids" not in t:
+                t["case_ids"] = []
+            if case_id not in t["case_ids"]:
+                t["case_ids"].append(case_id)
+            t["updated_at"] = datetime.utcnow().isoformat() + "Z"
+            _save_intake(tickets)
+            return t
+    raise ValueError(f"Intake not found: {intake_id}")
+
+1.2. Wire intake into your case saving
+
+Anywhere you already save a case (save_case we built earlier), add an optional intake_id:
+
+# when you build the payload for imaging / diagnostics / devmode:
+
+payload = {
+    "ticket_id": ticket_id,
+    "kind": "imaging",    # or "diagnostic" / "devmode"
+    "intake_id": intake_id,  # can be None / omitted if not in a job
+    "device": {...},
+    # ...
+}
+save_case(ticket_id, payload)
+
+# after saving, link to intake if provided:
+from intake.manager import attach_case_to_intake
+
+if intake_id:
+    attach_case_to_intake(intake_id, ticket_id)
+
+
+So each case knows which job it belongs to.
+
+1.3. Intake API (Python → Tauri)
+
+In phoenix_api_cli.py add:
+
+from intake.manager import (
+    create_intake,
+    list_intake,
+    update_intake_status,
+    attach_case_to_intake,
+)
+
+elif cmd == "create_intake_json":
+    # args: customer_id device_id reported_issue [priority]
+    customer_id = sys.argv[2]
+    device_id = sys.argv[3]
+    reported_issue = sys.argv[4]
+    priority = sys.argv[5] if len(sys.argv) > 5 else "normal"
+    ticket = create_intake(customer_id, device_id, reported_issue, priority)
+    print(json.dumps(ticket, indent=2))
+
+elif cmd == "list_intake_json":
+    print(json.dumps(list_intake(), indent=2))
+
+elif cmd == "update_intake_status_json":
+    intake_id = sys.argv[2]
+    status = sys.argv[3]
+    ticket = update_intake_status(intake_id, status)
+    print(json.dumps(ticket, indent=2))
+
+
+Then in Rust:
+
+#[tauri::command]
+fn list_intake() -> Result<String, String> {
+    run_python(PHOENIX_CLI, &["list_intake_json"])
+}
+
+#[tauri::command]
+fn create_intake(
+    customer_id: String,
+    device_id: String,
+    reported_issue: String,
+    priority: String,
+) -> Result<String, String> {
+    run_python(
+        PHOENIX_CLI,
+        &[
+            "create_intake_json",
+            &customer_id,
+            &device_id,
+            &reported_issue,
+            &priority,
+        ],
+    )
+}
+
+#[tauri::command]
+fn update_intake_status(intake_id: String, status: String) -> Result<String, String> {
+    run_python(
+        PHOENIX_CLI,
+        &["update_intake_status_json", &intake_id, &status],
+    )
+}
+
+1.4. Intake Wizard UI
+
+Add a new tab: IntakeTab.tsx.
+
+Key pieces:
+
+Select Customer (from CRM)
+
+Select Device
+
+Enter issue + priority
+
+Button: create intake (JOB-2025…)
+
+Skeleton:
+
+// src/tabs/IntakeTab.tsx
+import { useEffect, useState } from "react";
+import { invoke } from "@tauri-apps/api/tauri";
+
+type Customer = { id: string; name: string; phone?: string; email?: string };
+type Device = { id: string; customer_id: string; label: string; serial?: string };
+type Intake = {
+  intake_id: string;
+  customer_id: string;
+  device_id: string;
+  reported_issue: string;
+  priority: string;
+  status: string;
+  created_at: string;
+};
+
+export function IntakeTab() {
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [devices, setDevices] = useState<Device[]>([]);
+  const [intakes, setIntakes] = useState<Intake[]>([]);
+
+  const [customerId, setCustomerId] = useState("");
+  const [deviceId, setDeviceId] = useState("");
+  const [issue, setIssue] = useState("");
+  const [priority, setPriority] = useState("normal");
+
+  async function refresh() {
+    const rawCust = await invoke<string>("crm_list_customers"); // you can expose CRM like this
+    const rawDev = await invoke<string>("crm_list_devices");    // similar
+    const rawInt = await invoke<string>("list_intake");
+    setCustomers(JSON.parse(rawCust));
+    setDevices(JSON.parse(rawDev));
+    setIntakes(JSON.parse(rawInt));
+  }
+
+  useEffect(() => {
+    refresh().catch(console.error);
+  }, []);
+
+  async function create() {
+    if (!customerId || !deviceId || !issue.trim()) return;
+    const raw = await invoke<string>("create_intake", {
+      customerId,
+      deviceId,
+      reportedIssue: issue,
+      priority,
+    });
+    const t = JSON.parse(raw) as Intake;
+    setIntakes((prev) => [t, ...prev]);
+    setIssue("");
+  }
+
+  return (
+    <div className="grid grid-cols-3 gap-4 h-full">
+      {/* Left: intake form */}
+      <div className="col-span-1 border border-slate-800 rounded-xl p-3 text-xs space-y-2">
+        <div className="font-semibold text-sm mb-1">New Intake</div>
+
+        <div>
+          <label className="block text-[11px] text-slate-400 mb-1">
+            Customer
+          </label>
+          <select
+            className="w-full bg-slate-900 border border-slate-700 rounded-md px-2 py-1 text-xs"
+            value={customerId}
+            onChange={(e) => setCustomerId(e.target.value)}
+          >
+            <option value="">Select...</option>
+            {customers.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-[11px] text-slate-400 mb-1">
+            Device
+          </label>
+          <select
+            className="w-full bg-slate-900 border border-slate-700 rounded-md px-2 py-1 text-xs"
+            value={deviceId}
+            onChange={(e) => setDeviceId(e.target.value)}
+          >
+            <option value="">Select...</option>
+            {devices
+              .filter((d) => !customerId || d.customer_id === customerId)
+              .map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.label}
+                </option>
+              ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-[11px] text-slate-400 mb-1">
+            Reported Issue
+          </label>
+          <textarea
+            className="w-full bg-slate-900 border border-slate-700 rounded-md px-2 py-1 text-xs h-16"
+            value={issue}
+            onChange={(e) => setIssue(e.target.value)}
+          />
+        </div>
+
+        <div>
+          <label className="block text-[11px] text-slate-400 mb-1">
+            Priority
+          </label>
+          <select
+            className="w-full bg-slate-900 border border-slate-700 rounded-md px-2 py-1 text-xs"
+            value={priority}
+            onChange={(e) => setPriority(e.target.value)}
+          >
+            <option value="normal">Normal</option>
+            <option value="rush">Rush</option>
+            <option value="data_critical">Data-Critical</option>
+          </select>
+        </div>
+
+        <button
+          onClick={create}
+          disabled={!customerId || !deviceId || !issue.trim()}
+          className="mt-2 px-3 py-2 rounded-md bg-emerald-600 hover:bg-emerald-500 text-xs"
+        >
+          Create Intake
+        </button>
+      </div>
+
+      {/* Right: intake list */}
+      <div className="col-span-2 border border-slate-800 rounded-xl p-3 text-xs">
+        <div className="flex justify-between mb-2">
+          <div className="font-semibold text-sm">Open Jobs</div>
+          <button
+            onClick={refresh}
+            className="px-2 py-1 rounded-md bg-slate-800 hover:bg-slate-700 text-[11px]"
+          >
+            Refresh
+          </button>
+        </div>
+        <div className="max-h-[70vh] overflow-auto space-y-1">
+          {intakes.map((t) => (
+            <div
+              key={t.intake_id}
+              className="border border-slate-800 rounded-md px-2 py-1"
+            >
+              <div className="flex justify-between">
+                <span className="font-semibold">{t.intake_id}</span>
+                <span className="text-[10px] text-slate-400">
+                  {t.priority} · {t.status}
+                </span>
+              </div>
+              <div className="text-[11px] text-slate-400">
+                {t.reported_issue}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+That’s your wizard entry point. You can later add buttons from Intake → “Run Dev Mode preset”, “Run quick diag preset”, etc.
+
+2️⃣ Beefed-Up CRM
+
+You already had crm/manager.py. We just extend it with status and device type fields (nothing fancy):
+
+# crm/manager.py – extend device model
+
+def add_device(
+    customer_id: str,
+    label: str,
+    serial: str = "",
+    notes: str = "",
+    platform: str = "android",   # "android", "ios", "pc", etc
+) -> str:
+    devices = _load(DEVICES_FILE)
+    did = str(uuid.uuid4())
+    devices.append({
+        "id": did,
+        "customer_id": customer_id,
+        "label": label,
+        "serial": serial,
+        "notes": notes,
+        "platform": platform,
+        "status": "active",  # "active", "retired"
+    })
+    _save(DEVICES_FILE, devices)
+    return did
+
+
+Expose crm_list_customers and crm_list_devices via phoenix_api_cli.py and Tauri the same way as we did for intake.
+
+Then you can build a simple CRM tab showing:
+
+Customers on left
+
+Devices in middle
+
+All intakes / jobs for that customer on right
+
+(Structure is the same pattern as JobsTab/IntakeTab, I won’t drown you with another big JSX block.)
+
+3️⃣ iOS Dev Panel (Safe, Diagnostic-Only)
+
+We mirror Android Dev Mode, but for iOS using libimobiledevice tools.
+Everything here is legit: info, logs, battery, crash diags on devices you own or are authorized to service.
+
+3.1. ios_dev_mode/cli.py
+# ios_dev_mode/cli.py
+
+import subprocess
+import sys
+from io import StringIO
+from contextlib import redirect_stdout
+from datetime import datetime
+from typing import List
+
+def run_cmd(cmd: List[str]):
+  proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+  print(f"$ {' '.join(cmd)}")
+  print(proc.stdout or "")
+
+def run_dossier():
+  print("=== iOS DEVICE DOSSIER ===")
+  run_cmd(["idevice_id", "-l"])
+  run_cmd(["ideviceinfo"])  # default device
+  run_cmd(["ideviceinfo", "-q", "com.apple.mobile.battery"])
+
+
+def run_diagnostics():
+  print("=== iOS DIAGNOSTICS ===")
+  # Snapshot diagnostics / battery / temperature if supported
+  run_cmd(["idevicediagnostics", "iostatus"])
+  run_cmd(["idevicediagnostics", "mobilegestalt", "BatteryCurrentCapacity"])
+  run_cmd(["idevicediagnostics", "mobilegestalt", "BatteryIsCharging"])
+
+
+def run_syslog_sample():
+  print("=== iOS SYSLOG SAMPLE (short) ===")
+  # Example: grab short log snapshot
+  run_cmd(["idevicesyslog", "-n", "50"])
+
+
+def main():
+  if len(sys.argv) < 2:
+    print("Usage: ios_dev_mode.py <dossier|diag|syslog|all>")
+    sys.exit(1)
+
+  mode = sys.argv[1]
+  buf = StringIO()
+  with redirect_stdout(buf):
+    print(f"=== iOS DEV MODE ===")
+    print(f"Run at: {datetime.utcnow().isoformat()}Z\n")
+
+    if mode in ("dossier", "all"):
+      run_dossier()
+    if mode in ("diag", "diagnostics", "all"):
+      run_diagnostics()
+    if mode in ("syslog", "all"):
+      run_syslog_sample()
+
+  output = buf.getvalue()
+  print(output)
+
+
+if __name__ == "__main__":
+  main()
+
+
+You can adapt this to match your history.save_case pattern exactly like Dev Mode:
+
+Capture output
+
+Save case as IOS-DEV-… with kind: "ios_devmode"
+
+And wire Tauri the same way as Android Dev Mode:
+
+iosdev_run(mode) → returns JSON with output + ticket_id
+
+Add an “iOS Dev” tab in the UI with a dropdown for mode (Dossier / Diagnostics / All) and a console.
+
+4️⃣ Automation Presets
+
+This is where you crank it to “one-click workflows.”
+
+4.1. Preset JSON
+
+Create presets/:
+
+presets/
+  s22_full_cleanup.json
+  moto_gplay_refresh.json
+
+
+Example:
+
+{
+  "id": "s22_full_cleanup",
+  "label": "S22+ Full Cleanup",
+  "description": "Dossier + DevMode Warhammer + Dark Lab quick snapshot",
+  "steps": [
+    {
+      "type": "devmode",
+      "profile": "samsung_s22_plus",
+      "module": "dossier"
+    },
+    {
+      "type": "devmode",
+      "profile": "samsung_s22_plus",
+      "module": "warhammer"
+    },
+    {
+      "type": "devmode",
+      "profile": "samsung_s22_plus",
+      "module": "darklab"
+    }
+  ]
+}
+
+
+Another:
+
+{
+  "id": "moto_gplay_refresh",
+  "label": "Moto G Play Refresh",
+  "description": "Dossier + Debloat + quick battery snapshot",
+  "steps": [
+    {
+      "type": "devmode",
+      "profile": "moto_g_play_23",
+      "module": "dossier"
+    },
+    {
+      "type": "devmode",
+      "profile": "moto_g_play_23",
+      "module": "warhammer"
+    }
+  ]
+}
+
+4.2. Preset runner (Python)
+
+presets/runner.py:
+
+# presets/runner.py
+
+import os, json
+from typing import Dict, Any, List
+
+from bobby_dev_mode.api_cli import run_module_json as run_devmode_json
+# You can import other engines later (e.g. quick diagnostics, imaging) the same way.
+
+BASE_DIR = os.path.dirname(__file__)
+PRESET_DIR = os.path.join(BASE_DIR)
+# each preset is a simple JSON in this dir
+
+
+def list_presets() -> List[Dict[str, Any]]:
+    presets = []
+    for fname in os.listdir(PRESET_DIR):
+        if not fname.endswith(".json"):
+            continue
+        path = os.path.join(PRESET_DIR, fname)
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        presets.append({
+            "id": data["id"],
+            "label": data.get("label", data["id"]),
+            "description": data.get("description", ""),
+        })
+    return presets
+
+
+def load_preset(preset_id: str) -> Dict[str, Any]:
+    path = os.path.join(PRESET_DIR, f"{preset_id}.json")
+    if not os.path.isfile(path):
+        raise FileNotFoundError(f"No preset: {preset_id}")
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def run_preset(preset_id: str, intake_id: str | None = None) -> Dict[str, Any]:
+    preset = load_preset(preset_id)
+    steps = preset.get("steps", [])
+    results: List[Dict[str, Any]] = []
+
+    for idx, step in enumerate(steps, start=1):
+        stype = step.get("type")
+        if stype == "devmode":
+            profile = step["profile"]
+            module = step["module"]
+            # reuse devmode API; capture output via its JSON path
+            # (you can adapt run_module_json to be importable without printing)
+            # Here, I'm calling it as a function we adapt to return dict.
+            res = run_devmode_json(profile, module)  # change to real function signature
+            results.append({
+                "step_index": idx,
+                "type": "devmode",
+                "profile": profile,
+                "module": module,
+                "ticket_id": res.get("ticket_id"),
+            })
+        else:
+            results.append({
+                "step_index": idx,
+                "type": stype,
+                "error": f"Unknown step type {stype}",
+            })
+
+    return {
+        "preset_id": preset_id,
+        "intake_id": intake_id,
+        "results": results,
+    }
+
+
+You’ll probably want to refactor bobby_dev_mode.api_cli so run_module_json can be called as a function returning dict instead of printing; but the structure above is the idea.
+
+Then expose:
+
+# phoenix_api_cli.py
+
+from presets.runner import list_presets, run_preset
+
+elif cmd == "list_presets_json":
+    print(json.dumps(list_presets(), indent=2))
+
+elif cmd == "run_preset_json":
+    preset_id = sys.argv[2]
+    intake_id = sys.argv[3] if len(sys.argv) > 3 else ""
+    result = run_preset(preset_id, intake_id or None)
+    print(json.dumps(result, indent=2))
+
+
+And Tauri:
+
+#[tauri::command]
+fn list_presets() -> Result<String, String> {
+    run_python(PHOENIX_CLI, &["list_presets_json"])
+}
+
+#[tauri::command]
+fn run_preset(preset_id: String, intake_id: String) -> Result<String, String> {
+    run_python(PHOENIX_CLI, &["run_preset_json", &preset_id, &intake_id])
+}
+
+4.3. “Run preset on this intake” in UI
+
+In IntakeTab or a dedicated “Workflow” tab:
+
+Select an intake (JOB-…)
+
+Dropdown of presets from list_presets
+
+Button: Run preset → call run_preset(preset_id, intake_id)
+
+Display results: which DevMode steps ran, ticket IDs created (DEV-…)
+
+That’s your one-click full workflow for a S22+ or Moto.
+
+Where you stand after all this
+
+You now have a blueprint for:
+
+Intake & workflow wizard → JOB- IDs
+
+CRM with customers + devices feeding into intake
+
+Case Files (IMG-, DEV-, IOS-DEV-…) linked to those jobs
+
+Android Dev Mode panel (already built)
+
+iOS Dev Mode panel (safe, diagnostic-only)
+
+Automation presets so a single click can run Dossier + Warhammer + Dark Lab, log all, and attach to the same job
+
+If you want the next step after this monster pass, it would be:
+
+Pick one path (e.g. “S22+ full cleanup preset”) and we do a super-tight end-to-end writeup: every button in the UI, exact CLI commands fired, what cases get saved, and what the final PDF/log bundle looks like for a real customer.
+
+You said:
+do it all for every phone and all brands and chipsets
+ChatGPT said:
+Thought for 23s
+
+Short answer: you’re never getting literally every phone + every chipset hard-coded… but you can build a system that grows toward “everything” as you add profiles.
+
+So instead of trying to vomit a million scripts, I’ll give you the universal architecture:
+
+One Universal Dev Engine
+
+Device autodetect
+
+Profiles per brand / SoC family
+
+Shared modules (Dossier, Stress, Security, etc.)
+
+Presets that work across all platforms (Android, iOS, PC, etc.)
+
+You plug in more brands and chipsets over time, but the skeleton is one.
+
+I’ll keep it about diagnostics / maintenance / legit tooling only (no universal lock bypass fantasy land).
+
+1. Universal Device Profile Schema
+
+First, define a single profile shape that covers anything:
+
+// profiles/universal_schema_example.json
+{
+  "id": "samsung_s22_plus_snapdragon",
+  "label": "Samsung Galaxy S22+ (Snapdragon)",
+  "platform": "android",
+  "oem": "Samsung",
+  "model_patterns": ["SM-S906U", "SM-S906U1", "SM-S906W"],
+  "soc_family": "qualcomm_sm8450",
+  "connection": {
+    "usb_vid_pid": ["04E8:*"],          // Samsung VID
+    "adb": true,
+    "fastboot": false,
+    "download_mode": true
+  },
+  "tools": {
+    "adb": true,
+    "fastboot": false,
+    "heimdall": true,
+    "odin_notes": true,
+    "extras": []
+  },
+  "modules_supported": {
+    "dossier": true,
+    "debloat": true,
+    "darklab": true,
+    "security": true,
+    "flash_arsenal": true,
+    "recovery_ops": true
+  },
+  "debloat_packages": [ /* …like we already did… */ ],
+  "thermal_paths": [
+    "/sys/class/thermal/thermal_zone0/temp",
+    "/sys/class/thermal/thermal_zone1/temp",
+    "/sys/class/thermal/thermal_zone2/temp"
+  ],
+  "notes": "Android / ADB / Odin workflow, no native fastboot."
+}
+
+
+You do the same schema for:
+
+pixel_6_tensor
+
+moto_g_play_23_snapdragon
+
+xiaomi_redmi_note_12_mtk
+
+oneplus_11_snapdragon
+
+generic_android_qualcomm
+
+generic_android_mtk
+
+ios_generic_a12_plus
+
+windows_laptop_intel
+
+macbook_t2_intel
+
+macbook_m1_arm64
+
+Each one describes:
+
+platform: android, ios, windows, macos, linux
+
+oem and model_patterns
+
+soc_family: qualcomm_*, mtk_*, exynos_*, apple_a*, apple_m*, intel_*, amd_*
+
+what tools exist (adb, fastboot, ideviceinfo, smartctl, etc.)
+
+which modules make sense on that profile
+
+The rest of your system works against this schema.
+
+2. Device Autodetect → Profile Match
+
+You build a detection pass that runs on connect:
+
+2.1. Host probes
+
+On your PC:
+
+Android/ADB
+
+adb devices
+fastboot devices
+
+
+iOS
+
+idevice_id -l
+
+
+USB (Linux/macOS/WSL):
+
+lsusb
+
+
+Windows PCs:
+
+wmic csproduct get name
+
+wmic diskdrive get model
+
+macOS:
+
+system_profiler SPHardwareDataType
+
+diskutil list
+
+Your Python “detector” aggregates all that into a DeviceFingerprint:
+
+fingerprint = {
+    "platform_guess": "android|ios|pc|mac",
+    "usb_vid_pid": "04E8:6860",
+    "adb_serial": "RFCT42DWWBN",
+    "fastboot_serial": None,
+    "ios_udid": None,
+    "product_string": "SM-S906U",
+    "host_os": "windows",
+}
+
+2.2. Match fingerprint → profile
+
+Then you scan your profiles:
+
+def match_profile(fingerprint, profiles):
+    candidates = []
+    for p in profiles:
+        # platform rough match
+        if p["platform"] != fingerprint["platform_guess"]:
+            continue
+
+        # Try USB VID/PID match if available
+        vids = p.get("connection", {}).get("usb_vid_pid", [])
+        if vids:
+            if not any(vid.split(":")[0].lower() in fingerprint.get("usb_vid_pid", "").lower()
+                       for vid in vids):
+                continue
+
+        # Model pattern match
+        models = p.get("model_patterns", [])
+        if models and not any(m in (fingerprint.get("product_string") or "") for m in models):
+            continue
+
+        candidates.append(p)
+
+    # pick most specific candidate (your own scoring)
+    return candidates[0] if candidates else None
+
+
+If no exact profile hits, you fall back to:
+
+generic_android_qualcomm (if you see Qualcomm HS-USB + ADB)
+
+generic_android_mtk (if MediaTek interface detected)
+
+ios_generic_a12_plus (if iOS + high-level info)
+
+generic_windows_laptop_intel etc.
+
+So instead of “scripts for every phone”, you’ve got:
+
+Dozens of profiles
+
+Fallback generic profiles per platform/SoC
+
+This scales to “almost everything you’ll touch in real life”.
+
+3. Shared Modules for All Platforms
+
+Every profile advertises which modules it supports. The module interface is the same, but implementation differs by platform.
+
+3.1. Module interface
+# universal_modules/base.py
+from abc import ABC, abstractmethod
+from typing import Dict, Any
+
+class DevModule(ABC):
+    name: str
+
+    @abstractmethod
+    def run(self, profile: Dict[str, Any]) -> str:
+        """Return human-readable log string."""
+
+
+Then you implement flavor-specific modules.
+
+3.2. Android modules
+
+AndroidDossier(DevModule)
+
+AndroidDebloat(DevModule)
+
+AndroidDarkLab(DevModule)
+
+AndroidSecurity(DevModule)
+
+AndroidFlashArsenal(DevModule)
+
+AndroidRecoveryOps(DevModule)
+
+These are basically what we already wrote, but now they live in a modules_android.py file.
+
+3.3. iOS modules
+
+IOSDossier(DevModule) → ideviceinfo, ideviceinfo -q com.apple.mobile.battery
+
+IOSDiagnostics(DevModule) → idevicediagnostics
+
+IOSSyslogSample(DevModule) → short idevicesyslog capture
+
+No bypass. Just legit introspection for your own/authorized devices.
+
+3.4. PC / Laptop modules
+
+For Windows:
+
+PCDossier:
+
+wmic csproduct get name
+
+wmic cpu get name
+
+wmic diskdrive get model
+
+PCStorageHealth:
+
+smartctl -a /dev/sdX (on Linux/mac) or relevant Windows tooling
+
+PCThermalStress:
+
+running a CPU stress tool you already install, log temps, etc.
+
+For macOS:
+
+MacDossier:
+
+system_profiler SPHardwareDataType
+
+MacDiskHealth:
+
+diskutil info, smartctl
+
+Same pattern, different tools.
+
+3.5. Master module registry
+MODULE_REGISTRY = {
+    ("android", "dossier"): AndroidDossier(),
+    ("android", "debloat"): AndroidDebloat(),
+    ("android", "darklab"): AndroidDarkLab(),
+    ("android", "security"): AndroidSecurity(),
+    ("android", "flash_arsenal"): AndroidFlashArsenal(),
+    ("android", "recovery_ops"): AndroidRecoveryOps(),
+
+    ("ios", "dossier"): IOSDossier(),
+    ("ios", "diagnostics"): IOSDiagnostics(),
+    ("ios", "syslog"): IOSSyslogSample(),
+
+    ("windows", "dossier"): PCDossier(),
+    ("windows", "storage_health"): PCStorageHealth(),
+    ("macos", "dossier"): MacDossier(),
+    // etc…
+}
+
+
+Your universal runner:
+
+def run_module_universal(profile, module_name: str) -> str:
+    key = (profile["platform"], module_name)
+    module = MODULE_REGISTRY.get(key)
+    if not module:
+        return f"[WARN] Module {module_name} not available on {profile['platform']}\n"
+    return module.run(profile)
+
+4. Presets That Work Across Brands / Chipsets
+
+Now that you’ve got:
+
+Profiles per device+SoC
+
+Modules per platform
+
+A universal runner
+
+You can define presets that don’t care about exact device, only the platform and modules.
+
+Example universal presets:
+
+// presets/android_intake_minimal.json
+{
+  "id": "android_intake_minimal",
+  "label": "Android Intake – Minimal",
+  "description": "Dossier + Security snapshot for any Android phone.",
+  "steps": [
+    { "module": "dossier" },
+    { "module": "security" }
+  ]
+}
+
+// presets/android_heavy_cleanup.json
+{
+  "id": "android_heavy_cleanup",
+  "label": "Android Heavy Cleanup",
+  "description": "Dossier + Debloat + Dark Lab quick run.",
+  "steps": [
+    { "module": "dossier" },
+    { "module": "debloat" },
+    { "module": "darklab" }
+  ]
+}
+
+// presets/ios_intake_minimal.json
+{
+  "id": "ios_intake_minimal",
+  "label": "iOS Intake – Minimal",
+  "description": "iOS dossier + diagnostics snapshot.",
+  "steps": [
+    { "module": "dossier" },
+    { "module": "diagnostics" }
+  ]
+}
+
+
+Then the preset runner doesn’t care if it’s Samsung, Pixel, Moto, Xiaomi, iPhone 11, iPhone 13, Dell laptop, etc.
+
+Pseudo-code:
+
+def run_preset_universal(preset_id: str, profile: dict, intake_id: str | None):
+    preset = load_preset(preset_id)
+    logs = []
+    for step in preset["steps"]:
+        module_name = step["module"]
+        out = run_module_universal(profile, module_name)
+        # wrap into case file if you want
+        ticket_id = save_case_for_step(profile, module_name, out, intake_id)
+        logs.append({"module": module_name, "ticket_id": ticket_id})
+    return logs
+
+
+As long as the profile says modules_supported[module_name] == true and the registry has that module for the platform, it just works.
+
+On a brand or chipset that doesn’t support a given module, you skip or warn.
+
+5. Chipset Coverage Strategy (Without Going Crazy)
+
+You’re not going to hand-tune for every tiny no-name brand. But you can cover 90% of your real work by targeting families:
+
+Android SoC families
+
+Qualcomm / Snapdragon
+
+Profiles: Generic Qualcomm phones, plus OEM-specific ones
+
+Tools: adb/fastboot, vendor flash tools where legit
+
+MediaTek
+
+Profiles: generic_android_mtk, plus Xiaomi / Tecno / etc.
+
+Tools: adb, basic fastboot where available, vendor tools (no exploit instructions)
+
+Exynos (Samsung-specific)
+
+Still ADB + Odin/Heimdall workflows
+
+Unisoc / others
+
+Generic ADB / generic Dossier/DarkLab modules; flash story is vendor-specific and you keep that out of this “universal” harness.
+
+iOS chip families
+
+You don’t need separate code per A-chip; libimobiledevice commands are largely the same:
+
+Family profiles like ios_generic_a11, ios_generic_a12_plus
+
+Capability flags like supports_syslog_stream, supports_diagnostics_key_X
+
+PC chip families
+
+Intel x86_64 laptop / desktop
+
+AMD x86_64 laptop / desktop
+
+Apple Silicon (M1/M2/M3)
+
+Older Intel Macs with or without T2
+
+Again: same pattern — profiles + module capability flags.
+
+6. How This Feels in the App
+
+From your side in the UI:
+
+Plug in whatever:
+
+S22+, Moto, Xiaomi, random carrier Android
+
+iPhone 11, iPhone 13
+
+HP laptop, MacBook Pro
+
+Your app runs Autodetect:
+
+Builds a fingerprint
+
+Matches the best profile (or a generic fallback)
+
+You see:
+
+Device name (from profile label)
+
+Platform & SoC info
+
+Available modules (Dossier, Debloat, Dark Lab, iOS Dossier, PC Dossier, etc.)
+
+You hit:
+
+Preset: Android Intake → runs Dossier + Security
+
+Preset: Android Heavy Cleanup → adds Debloat + DarkLab
+
+Preset: iOS Intake → runs iOS Dossier + diagnostics
+
+Preset: PC Intake → runs PC Dossier + disk health
+
+Every step logs a case file, attached to the intake job for that customer+device, with exportable logs/PDFs.
+
+7. The Hard No Line
+
+Just to be explicit:
+
+This design can’t and won’t be a universal FRP/MDM/iCloud/SIM unlock machine.
+
+What it can be is a universal diagnostic + maintenance engine that:
+
+Knows your hardware
+
+Stresses and benchmarks safely
+
+Debloats where appropriate
+
+Logs everything for shop-level records
+
+That’s where you can actually run a business, not just chase exploits.

@@ -1,0 +1,14 @@
+BOOTFORGE / PHOENIX KEY / TRAPDOOR)
+10.1 Inject Device Detection Framework
+
+Build a cross-platform device detection layer in Node/Rust/Python.
+Detect USB devices, serial numbers, chipsets, drivers, and OS capabilities.
+
+10.2 Build BootForge USB Driver Layer
+
+Create a safe, cross-platform Rust USB driver subsystem with modular adapters.
+Include device scanning, DFU detection, logging, and error codes.
+
+10.3 Build Trapdoor Tool Registry
+
+Generate the architecture for a private CLI registry that loads binaries, runs payloads, logs results, and handles sandboxed subprocesses.

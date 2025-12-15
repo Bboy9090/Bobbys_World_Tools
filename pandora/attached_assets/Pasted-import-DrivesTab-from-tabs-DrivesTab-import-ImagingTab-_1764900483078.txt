@@ -1,0 +1,2645 @@
+import { DrivesTab } from "./tabs/DrivesTab";
+import { ImagingTab } from "./tabs/ImagingTab";
+import { DiagnosticsTab } from "./tabs/DiagnosticsTab";
+
+type TabKey = "drives" | "imaging" | "diagnostics";
+
+export default function App() {
+  const [tab, setTab] = useState<TabKey>("drives");
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+      <header className="border-b border-slate-800 px-4 py-3 flex items-center justify-between">
+        <div className="font-semibold tracking-wide">Pandora / BootForge Console</div>
+        <nav className="flex gap-2 text-sm">
+          <button onClick={() => setTab("drives")}
+                  className={`px-3 py-1 rounded-md ${tab === "drives" ? "bg-slate-800" : "hover:bg-slate-900"}`}>
+            Drives
+          </button>
+          <button onClick={() => setTab("imaging")}
+                  className={`px-3 py-1 rounded-md ${tab === "imaging" ? "bg-slate-800" : "hover:bg-slate-900"}`}>
+            Imaging / OS Deploy
+          </button>
+          <button onClick={() => setTab("diagnostics")}
+                  className={`px-3 py-1 rounded-md ${tab === "diagnostics" ? "bg-slate-800" : "hover:bg-slate-900"}`}>
+            Diagnostics
+          </button>
+        </nav>
+      </header>
+
+      <main className="flex-1 p-4 overflow-auto">
+        {tab === "drives" && <DrivesTab />}
+        {tab === "imaging" && <ImagingTab />}
+        {tab === "diagnostics" && <DiagnosticsTab />}
+      </main>
+    </div>
+  );
+}
+2. Tauri ↔ Python bridge (Rust)
+In src-tauri/src/main.rs, wrap BootForge / Phoenix functions as commands:
+
+rust
+Copy code
+use std::process::Command;
+use std::fs;
+
+const PYTHON: &str = "python"; // or "python3"
+const BOOTFORGE_CLI: &str = "bootforge_cli.py";
+const PHOENIX_CLI: &str = "phoenix_api_cli.py"; // small API-style CLI
+
+fn run_python(cmd: &str, args: &[&str]) -> Result<String, String> {
+    let output = Command::new(PYTHON)
+        .arg(cmd)
+        .args(args)
+        .output()
+        .map_err(|e| format!("Failed to run python: {e}"))?;
+
+    if !output.status.success() {
+        return Err(String::from_utf8_lossy(&output.stderr).to_string());
+    }
+
+    Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+}
+
+#[tauri::command]
+fn list_drives() -> Result<String, String> {
+    // bootforge_cli.py has a machine-readable mode now ("list_json")
+    run_python(BOOTFORGE_CLI, &["list_json"])
+}
+
+#[tauri::command]
+fn get_drive_smart(dev: String) -> Result<String, String> {
+    run_python(BOOTFORGE_CLI, &["smart_json", &dev])
+}
+
+#[tauri::command]
+fn list_os_recipes() -> Result<String, String> {
+    run_python(PHOENIX_CLI, &["list_recipes_json"])
+}
+
+#[tauri::command]
+fn deploy_os(recipe_key: String, target_dev: String) -> Result<String, String> {
+    run_python(PHOENIX_CLI, &["deploy_json", &recipe_key, &target_dev])
+}
+
+#[tauri::command]
+fn run_post_install_diag(ticket_id: String) -> Result<String, String> {
+    run_python(PHOENIX_CLI, &["diagnostics_json", &ticket_id])
+}
+
+fn main() {
+    tauri::Builder::default()
+        .invoke_handler(tauri::generate_handler![
+            list_drives,
+            get_drive_smart,
+            list_os_recipes,
+            deploy_os,
+            run_post_install_diag,
+        ])
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
+}
+Then in Python, make bootforge_cli.py and a new phoenix_api_cli.py emit JSON on these API commands.
+
+3. Drives tab (React)
+tsx
+Copy code
+// src/tabs/DrivesTab.tsx
+import { useEffect, useState } from "react";
+import { invoke } from "@tauri-apps/api/tauri";
+
+type Drive = {
+  id: string;
+  size_bytes: number;
+  model: string;
+  is_removable: boolean;
+  is_ssd: boolean | null;
+};
+
+export function DrivesTab() {
+  const [drives, setDrives] = useState<Drive[]>([]);
+  const [selected, setSelected] = useState<Drive | null>(null);
+  const [smart, setSmart] = useState<string>("");
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const raw = await invoke<string>("list_drives");
+        const data = JSON.parse(raw) as Drive[];
+        setDrives(data);
+      } catch (e) {
+        console.error(e);
+      }
+    })();
+  }, []);
+
+  async function loadSmart(devId: string) {
+    try {
+      const raw = await invoke<string>("get_drive_smart", { dev: devId });
+      setSmart(raw);
+    } catch (e) {
+      setSmart(String(e));
+    }
+  }
+
+  return (
+    <div className="grid grid-cols-2 gap-4">
+      <div className="border border-slate-800 rounded-xl p-3">
+        <h2 className="font-semibold mb-2 text-sm">Detected Drives</h2>
+        <div className="space-y-1 text-xs">
+          {drives.map((d) => {
+            const sizeGb = d.size_bytes ? d.size_bytes / (1024 ** 3) : 0;
+            return (
+              <button
+                key={d.id}
+                onClick={() => { setSelected(d); loadSmart(d.id); }}
+                className={`w-full text-left px-2 py-1 rounded-md hover:bg-slate-900 ${
+                  selected?.id === d.id ? "bg-slate-800" : ""
+                }`}
+              >
+                <div className="flex justify-between">
+                  <span>{d.id}</span>
+                  <span>{sizeGb.toFixed(1)} GB</span>
+                </div>
+                <div className="flex justify-between text-slate-400">
+                  <span>{d.model}</span>
+                  <span>{d.is_ssd ? "SSD" : "HDD/Unknown"}</span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="border border-slate-800 rounded-xl p-3">
+        <h2 className="font-semibold mb-2 text-sm">SMART / Health</h2>
+        <pre className="text-xs bg-slate-950 rounded-lg p-2 max-h-[70vh] overflow-auto">
+          {smart || "Select a drive to load SMART data."}
+        </pre>
+      </div>
+    </div>
+  );
+}
+4. Imaging tab (Phoenix + BootForge)
+tsx
+Copy code
+// src/tabs/ImagingTab.tsx
+import { useEffect, useState } from "react";
+import { invoke } from "@tauri-apps/api/tauri";
+
+type Drive = { id: string; size_bytes: number; model: string };
+type Recipe = { key: string; name: string; notes?: string };
+
+export function ImagingTab() {
+  const [drives, setDrives] = useState<Drive[]>([]);
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [drive, setDrive] = useState<string>("");
+  const [recipeKey, setRecipeKey] = useState<string>("");
+  const [output, setOutput] = useState<string>("");
+  const [running, setRunning] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const dRaw = await invoke<string>("list_drives");
+        setDrives(JSON.parse(dRaw));
+        const rRaw = await invoke<string>("list_os_recipes");
+        setRecipes(JSON.parse(rRaw));
+      } catch (e) {
+        console.error(e);
+      }
+    })();
+  }, []);
+
+  async function deploy() {
+    if (!drive || !recipeKey) return;
+    setRunning(true);
+    setOutput("");
+    try {
+      const raw = await invoke<string>("deploy_os", { recipeKey, targetDev: drive });
+      setOutput(raw);
+    } catch (e) {
+      setOutput(String(e));
+    } finally {
+      setRunning(false);
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="border border-slate-800 rounded-xl p-3 text-sm space-y-2">
+          <h2 className="font-semibold mb-1">Target Drive</h2>
+          <select
+            className="w-full bg-slate-900 border border-slate-700 rounded-md px-2 py-1 text-xs"
+            value={drive}
+            onChange={(e) => setDrive(e.target.value)}
+          >
+            <option value="">Select drive…</option>
+            {drives.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.id} – {(d.size_bytes / (1024 ** 3)).toFixed(1)} GB – {d.model}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="border border-slate-800 rounded-xl p-3 text-sm space-y-2">
+          <h2 className="font-semibold mb-1">OS Recipe</h2>
+          <select
+            className="w-full bg-slate-900 border border-slate-700 rounded-md px-2 py-1 text-xs"
+            value={recipeKey}
+            onChange={(e) => setRecipeKey(e.target.value)}
+          >
+            <option value="">Select OS…</option>
+            {recipes.map((r) => (
+              <option key={r.key} value={r.key}>
+                {r.name}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-slate-400">
+            Choose a recipe; Phoenix Key will instruct BootForge how to image it.
+          </p>
+        </div>
+      </div>
+
+      <button
+        onClick={deploy}
+        disabled={!drive || !recipeKey || running}
+        className="px-4 py-2 rounded-md bg-emerald-600 hover:bg-emerald-500 text-sm disabled:opacity-50"
+      >
+        {running ? "Imaging…" : "Deploy OS to Drive"}
+      </button>
+
+      <pre className="text-xs bg-slate-950 rounded-lg p-2 max-h-[50vh] overflow-auto border border-slate-800">
+        {output || "No imaging job started yet."}
+      </pre>
+    </div>
+  );
+}
+Diagnostics tab can just render your bench_summary.json content or call the run_post_install_diag command.
+
+B) AUTO-REPAIR RECIPES – Phoenix Script Layer
+Now we give Phoenix recipes more muscle: not just “image path + hash”, but script steps to run before and after imaging.
+
+1. Recipe schema
+Example phoenix/recipes/windows.json:
+
+json
+Copy code
+{
+  "name": "Windows 10 Pro – Standard Repair",
+  "key": "win10_pro_standard",
+  "image_path": "/Volumes/Installers/win10pro.img",
+  "sha256": "REPLACE_WITH_HASH",
+  "target_role": "primary_os",
+  "platform": "windows_pc",
+  "pre_steps": [
+    {
+      "type": "shell",
+      "tool": "diskpart",
+      "script": "scripts/windows_clean_diskpart.txt",
+      "description": "Clean disk, create GPT, primary NTFS partition"
+    }
+  ],
+  "post_steps": [
+    {
+      "type": "note",
+      "message": "Boot from USB and complete Windows setup. Then run Pandora diagnostics."
+    }
+  ]
+}
+Example phoenix/recipes/macos.json:
+
+json
+Copy code
+{
+  "name": "macOS Ventura – Intel",
+  "key": "macos_ventura_intel",
+  "image_path": "/Volumes/Installers/macos_ventura.img",
+  "sha256": "REPLACE_WITH_HASH",
+  "platform": "mac_intel",
+  "pre_steps": [
+    {
+      "type": "shell",
+      "tool": "diskutil",
+      "args": [
+        "eraseDisk",
+        "APFS",
+        "Macintosh HD",
+        "%TARGET_DISK%"
+      ],
+      "description": "Erase target disk as APFS 'Macintosh HD'"
+    }
+  ],
+  "post_steps": [
+    {
+      "type": "pandora_diag",
+      "description": "Run post-install intake on the Mac"
+    }
+  ]
+}
+2. Execution router
+In phoenix/router.py, add support for pre_steps / post_steps:
+
+python
+Copy code
+# phoenix/router.py
+
+import os
+from typing import Optional, Dict, Any, List
+
+from phoenix.registry import load_recipe
+from bootforge.imager import write_image
+from pandora.report import generate_bench_summary
+from bootforge.core import run_cmd, log
+
+
+def _run_step(step: Dict[str, Any], target_dev: str) -> None:
+    stype = step.get("type")
+    if stype == "shell":
+        tool = step.get("tool")
+        script = step.get("script")
+        args = step.get("args", [])
+
+        if script:
+            # For diskpart-style scripts
+            if tool == "diskpart":
+                cmd = f'diskpart /s "{script}"'
+                run_cmd(cmd, capture_output=True, shell=True)
+            elif tool == "sh":
+                cmd = f'sh "{script}"'
+                run_cmd(cmd, capture_output=True, shell=True)
+        elif args:
+            # Inline command with args; replace %TARGET_DISK%
+            resolved_args = [
+                a.replace("%TARGET_DISK%", target_dev) for a in args
+            ]
+            cmd = " ".join([tool] + resolved_args)
+            run_cmd(cmd, capture_output=True, shell=True)
+
+    elif stype == "note":
+        log(f"[PHOENIX] NOTE: {step.get('message')}")
+
+    elif stype == "pandora_diag":
+        # This is a logical hook, real call is separate
+        log("[PHOENIX] Post-install Pandora diagnostics requested.")
+
+    else:
+        log(f"[PHOENIX] Unknown step type: {stype}")
+
+
+def install_os_with_recipe(recipe: Dict[str, Any], target_drive: str) -> Dict[str, Any]:
+    pre_steps: List[Dict[str, Any]] = recipe.get("pre_steps", [])
+    post_steps: List[Dict[str, Any]] = recipe.get("post_steps", [])
+
+    log(f"[PHOENIX] Running pre-steps for recipe {recipe.get('key')}")
+    for step in pre_steps:
+        _run_step(step, target_drive)
+
+    log(f"[PHOENIX] Imaging OS for recipe {recipe.get('key')}")
+    result = write_image(recipe["image_path"], target_drive, block_size="1m", verify=True)
+
+    log(f"[PHOENIX] Running post-steps for recipe {recipe.get('key')}")
+    for step in post_steps:
+        _run_step(step, target_drive)
+
+    return {
+        "os": recipe.get("name"),
+        "recipe_key": recipe.get("key"),
+        "verify": result.get("verify_ok"),
+        "details": result,
+    }
+Then your Tauri command deploy_os can call a small CLI like:
+
+python
+Copy code
+# phoenix_api_cli.py
+import sys, json
+from phoenix.registry import load_recipe, list_available_os
+from phoenix.router import install_os_with_recipe
+from pandora.report import generate_bench_summary
+
+def main():
+    if len(sys.argv) < 2:
+        print("Usage: phoenix_api_cli.py <cmd> [...]")
+        sys.exit(1)
+
+    cmd = sys.argv[1]
+
+    if cmd == "list_recipes_json":
+        keys = list_available_os()
+        # simple metadata
+        out = []
+        for k in keys:
+            r = load_recipe(k)
+            if not r:
+                continue
+            out.append({"key": r.get("key", k), "name": r.get("name"), "notes": r.get("notes", "")})
+        print(json.dumps(out))
+    elif cmd == "deploy_json":
+        key = sys.argv[2]
+        target = sys.argv[3]
+        recipe = load_recipe(key)
+        if not recipe:
+            print(json.dumps({"error": f"Recipe {key} not found"}))
+            sys.exit(1)
+        res = install_os_with_recipe(recipe, target)
+        print(json.dumps(res, indent=2))
+    elif cmd == "diagnostics_json":
+        ticket = sys.argv[2]
+        summary_path = generate_bench_summary(ticket)
+        with open(summary_path, "r", encoding="utf-8") as f:
+            print(f.read())
+    else:
+        print(f"Unknown cmd {cmd}")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()
+Now the Imaging tab you already wired will show JSON result from this engine.
+
+A) SMART / SSD Health – BootForge Upgrade
+You want a quick answer to:
+
+“Is this SSD/HDD healthy or dying?”
+
+1. SMART function (smartctl)
+Use smartmontools (smartctl) on macOS/Linux.
+
+In bootforge/drives.py:
+
+python
+Copy code
+# bootforge/drives.py (add at bottom)
+
+from typing import Optional, Dict, Any
+from .core import run_cmd, log
+
+def smart_health(dev_id: str) -> Optional[Dict[str, Any]]:
+    """
+    Use smartctl to query SMART health.
+    Requires smartmontools installed.
+    Returns a dict or None if unavailable.
+    """
+    # Try auto device type probing
+    cmd = f"smartctl -a {dev_id}"
+    out = run_cmd(cmd, capture_output=True, shell=True)
+    if not out.strip():
+        log("[SMART] No output from smartctl.")
+        return None
+
+    health = {
+        "overall": "UNKNOWN",
+        "temp_c": None,
+        "power_on_hours": None,
+        "reallocated_sectors": None,
+        "wear_leveling": None,
+        "raw": out,
+    }
+
+    for line in out.splitlines():
+        s = line.strip()
+        low = s.lower()
+
+        if "overall-health self-assessment test result" in low:
+            # e.g. "SMART overall-health self-assessment test result: PASSED"
+            if ":" in s:
+                health["overall"] = s.split(":", 1)[1].strip()
+
+        if "temperature_celsius" in low or "temperature" in low:
+            # SSDs sometimes have ID 194, 190 etc.
+            parts = s.split()
+            for p in parts:
+                if p.isdigit():
+                    try:
+                        val = int(p)
+                        if 0 < val < 120:
+                            health["temp_c"] = val
+                            break
+                    except ValueError:
+                        pass
+
+        if "power_on_hours" in low:
+            # ATR line like:  9 Power_On_Hours  0x0032  098  098  000  Old_age  Always  -  12345
+            parts = s.split()
+            if parts and parts[-1].isdigit():
+                health["power_on_hours"] = int(parts[-1])
+
+        if "reallocated_sector" in low:
+            parts = s.split()
+            if parts and parts[-1].isdigit():
+                health["reallocated_sectors"] = int(parts[-1])
+
+        if "wear_leveling" in low:
+            # Vendor specific, but we just store the line
+            health["wear_leveling"] = s
+
+    return health
+2. Expose SMART via CLI for Tauri
+Update bootforge_cli.py:
+
+python
+Copy code
+from bootforge.drives import list_drives, probe_drive, smart_health
+import json
+
+# ...
+
+    if cmd == "list_json":
+        drives = list_drives()
+        out = []
+        for d in drives:
+            out.append({
+                "id": d.id,
+                "size_bytes": d.size_bytes,
+                "model": d.model,
+                "is_removable": d.is_removable,
+                "is_ssd": d.is_ssd,
+            })
+        print(json.dumps(out))
+    elif cmd == "smart_json":
+        if len(sys.argv) < 3:
+            print(json.dumps({"error": "missing dev"}))
+            sys.exit(1)
+        dev = sys.argv[2]
+        res = smart_health(dev) or {}
+        print(json.dumps(res, indent=2))
+Now your Drives tab get_drive_smart command returns a clean JSON of health data instead of raw text, and you can style it nicely (badges for PASSED/FAILED, temp, power-on hours).
+
+Where you stand now
+You’ve got, in design + code skeleton:
+
+A Tauri UI with:
+
+Drives tab (drive list + SMART/health)
+
+Imaging tab (OS recipe selection + imaging via Phoenix/BootForge)
+
+Diagnostics tab (ready to plug in Pandora bench JSON)
+
+A Phoenix recipes system with:
+
+Pre-steps (disk prep scripts)
+
+Image write (BootForge)
+
+Post-steps (notes, Pandora diag hooks)
+
+A BootForge SMART subsystem:
+
+Real drive health checks via smartctl
+
+From here, your next easy wins are:
+
+Making the Diagnostics tab load and format health_score from Pandora bench summaries.
+
+Adding a “recent jobs” history: store each imaging + diag run as a JSON log per ticket.
+
+If you want, we can do one more focused pass next on:
+
+either Diagnostics tab UI (pretty rendering of health_score + battery/perf/sensors)
+
+or Phoenix OS compatibility rules (use device info to suggest best OS + warn on bad combos).
+
+
+
+
+
+
+
+You said:
+go
+
+
+ChatGPT said:
+
+Thought for 7s
+Alright, let’s make the Diagnostics tab actually show off all that Pandora health data we just wired up.
+
+We’ll do:
+
+A clean Tauri command that returns bench summary JSON.
+
+A DiagnosticsTab React component that:
+
+calls that command
+
+parses health_score, battery_health, performance, sensors, security
+
+renders a proper “device health dashboard”.
+
+I’ll keep it focused, so you can drop this in.
+
+1️⃣ Tauri command: return bench summary JSON
+You already have a Python side that can do:
+
+generate_bench_summary(ticket_id)
+
+Or phoenix_api_cli.py diagnostics_json <ticket_id>
+
+We’ll assume you standardize on the CLI we sketched:
+
+python
+Copy code
+# phoenix_api_cli.py (already roughly designed)
+
+elif cmd == "diagnostics_json":
+    ticket = sys.argv[2]
+    summary_path = generate_bench_summary(ticket)
+    with open(summary_path, "r", encoding="utf-8") as f:
+        print(f.read())
+Now in src-tauri/src/main.rs, add the Tauri command:
+
+rust
+Copy code
+#[tauri::command]
+fn run_post_install_diag(ticket_id: String) -> Result<String, String> {
+    // phoenix_api_cli.py diagnostics_json <ticket_id>
+    run_python(PHOENIX_CLI, &["diagnostics_json", &ticket_id])
+}
+And add it to invoke_handler!:
+
+rust
+Copy code
+.invoke_handler(tauri::generate_handler![
+    list_drives,
+    get_drive_smart,
+    list_os_recipes,
+    deploy_os,
+    run_post_install_diag,
+])
+This will return a JSON string of the bench summary to the frontend.
+
+2️⃣ DiagnosticsTab UI – Health Dashboard
+We’ll assume the bench summary structure like:
+
+json
+Copy code
+{
+  "ticket_id": "POST-INSTALL",
+  "device": { "model": "SM-S906U", ... },
+  "health_score": {
+    "overall": 84,
+    "battery": 80,
+    "security": 90,
+    "performance": 86,
+    "sensors": 75
+  },
+  "battery_health": {
+    "percent_estimate": 83,
+    "condition": "GOOD",
+    "current_level_percent": 62,
+    "temperature_c": 34.5
+  },
+  "performance": {
+    "io_grade": "FAST",
+    "io_write_mb_s": 92.3,
+    "max_temp_c": 51.7
+  },
+  "sensors": {
+    "total_sensors": 11,
+    "suspect_count": 1,
+    "dead_count": 0,
+    "sensors": [ ... ]
+  },
+  "security": {
+    "verified_boot_state": "green",
+    "vbmeta_device_state": "locked",
+    "bootloader_locked": "1",
+    "build_type": "user"
+  }
+}
+src/tabs/DiagnosticsTab.tsx
+tsx
+Copy code
+// src/tabs/DiagnosticsTab.tsx
+import { useState } from "react";
+import { invoke } from "@tauri-apps/api/tauri";
+
+type HealthScore = {
+  overall: number;
+  battery: number;
+  security: number;
+  performance: number;
+  sensors: number;
+};
+
+type BatteryHealth = {
+  percent_estimate?: number | null;
+  condition?: string;
+  current_level_percent?: number;
+  temperature_c?: number;
+  cycle_count?: number;
+  cycle_hint?: string;
+};
+
+type Performance = {
+  io_grade?: "FAST" | "OK" | "DEGRADED" | string;
+  io_write_mb_s?: number | null;
+  io_test_size_mb?: number | null;
+  max_temp_c?: number | null;
+};
+
+type Sensors = {
+  total_sensors?: number;
+  suspect_count?: number;
+  dead_count?: number;
+};
+
+type Security = {
+  verified_boot_state?: string;
+  vbmeta_device_state?: string;
+  bootloader_locked?: string;
+  build_type?: string;
+};
+
+type BenchSummary = {
+  ticket_id?: string;
+  device?: { model?: string; brand?: string | null };
+  health_score?: HealthScore;
+  battery_health?: BatteryHealth;
+  performance?: Performance;
+  sensors?: Sensors;
+  security?: Security;
+};
+
+function scoreColor(score?: number) {
+  if (score == null) return "text-slate-400";
+  if (score >= 90) return "text-emerald-400";
+  if (score >= 80) return "text-lime-400";
+  if (score >= 70) return "text-amber-400";
+  if (score >= 60) return "text-orange-400";
+  return "text-red-400";
+}
+
+function chipColor(grade?: string) {
+  const g = (grade || "").toUpperCase();
+  if (g === "FAST") return "bg-emerald-900/60 text-emerald-300 border-emerald-700";
+  if (g === "OK") return "bg-amber-900/40 text-amber-300 border-amber-700";
+  if (g === "DEGRADED") return "bg-red-900/40 text-red-300 border-red-700";
+  return "bg-slate-900 text-slate-300 border-slate-700";
+}
+
+export function DiagnosticsTab() {
+  const [summary, setSummary] = useState<BenchSummary | null>(null);
+  const [rawJson, setRawJson] = useState<string>("");
+  const [loading, setLoading] = useState(false);
+  const [ticketId, setTicketId] = useState<string>("POST-INSTALL");
+  const [error, setError] = useState<string>("");
+
+  async function runDiag() {
+    setLoading(true);
+    setError("");
+    try {
+      const raw = await invoke<string>("run_post_install_diag", { ticketId });
+      setRawJson(raw);
+      const parsed = JSON.parse(raw) as BenchSummary;
+      setSummary(parsed);
+    } catch (e: any) {
+      setError(String(e));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const hs = summary?.health_score;
+  const bh = summary?.battery_health;
+  const perf = summary?.performance;
+  const sens = summary?.sensors;
+  const sec = summary?.security;
+
+  return (
+    <div className="space-y-4">
+      {/* Controls */}
+      <div className="flex items-end gap-3">
+        <div>
+          <label className="block text-xs text-slate-400 mb-1">
+            Ticket / Case ID
+          </label>
+          <input
+            className="bg-slate-900 border border-slate-700 rounded-md px-2 py-1 text-xs"
+            value={ticketId}
+            onChange={(e) => setTicketId(e.target.value)}
+          />
+        </div>
+        <button
+          onClick={runDiag}
+          disabled={loading}
+          className="px-4 py-2 rounded-md bg-emerald-600 hover:bg-emerald-500 text-sm disabled:opacity-50"
+        >
+          {loading ? "Running diagnostics…" : "Run Diagnostics"}
+        </button>
+        {error && <div className="text-xs text-red-400">{error}</div>}
+      </div>
+
+      {/* High-level device + overall score */}
+      {summary && (
+        <div className="grid grid-cols-3 gap-4">
+          <div className="col-span-1 border border-slate-800 rounded-xl p-3 flex flex-col justify-between">
+            <div>
+              <div className="text-xs text-slate-400 mb-1">Device</div>
+              <div className="text-sm font-semibold">
+                {summary.device?.model || "Unknown"}
+              </div>
+              {summary.device?.brand && (
+                <div className="text-xs text-slate-400">
+                  {summary.device.brand}
+                </div>
+              )}
+              {summary.ticket_id && (
+                <div className="mt-2 text-[11px] text-slate-500">
+                  Ticket: {summary.ticket_id}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="col-span-2 border border-slate-800 rounded-xl p-3 flex flex-col justify-center">
+            <div className="text-xs text-slate-400 mb-1">Overall Health</div>
+            <div className="flex items-baseline gap-3">
+              <div className={`text-4xl font-bold ${scoreColor(hs?.overall)}`}>
+                {hs?.overall ?? "--"}
+              </div>
+              <div className="text-xs text-slate-400">
+                Battery, security, performance, and sensors combined.
+              </div>
+            </div>
+            {hs && (
+              <div className="mt-3 grid grid-cols-4 gap-2 text-xs">
+                <div className="bg-slate-900 rounded-lg px-2 py-1">
+                  <div className="text-slate-400">Battery</div>
+                  <div className={scoreColor(hs.battery)}>{hs.battery}</div>
+                </div>
+                <div className="bg-slate-900 rounded-lg px-2 py-1">
+                  <div className="text-slate-400">Security</div>
+                  <div className={scoreColor(hs.security)}>{hs.security}</div>
+                </div>
+                <div className="bg-slate-900 rounded-lg px-2 py-1">
+                  <div className="text-slate-400">Performance</div>
+                  <div className={scoreColor(hs.performance)}>{hs.performance}</div>
+                </div>
+                <div className="bg-slate-900 rounded-lg px-2 py-1">
+                  <div className="text-slate-400">Sensors</div>
+                  <div className={scoreColor(hs.sensors)}>{hs.sensors}</div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Detail panels */}
+      {summary && (
+        <div className="grid grid-cols-2 gap-4">
+          {/* Battery */}
+          <div className="border border-slate-800 rounded-xl p-3 text-xs space-y-2">
+            <div className="flex justify-between items-center mb-1">
+              <div className="font-semibold text-sm">Battery</div>
+              <div className="text-slate-400">
+                {bh?.condition || "UNKNOWN"}
+              </div>
+            </div>
+            <div className="flex gap-4">
+              <div>
+                <div className="text-slate-400 text-[11px]">Health %</div>
+                <div className={scoreColor(bh?.percent_estimate || undefined)}>
+                  {bh?.percent_estimate ?? "--"}
+                </div>
+              </div>
+              <div>
+                <div className="text-slate-400 text-[11px]">Current Level</div>
+                <div>{bh?.current_level_percent ?? "--"}%</div>
+              </div>
+              <div>
+                <div className="text-slate-400 text-[11px]">Temperature</div>
+                <div>{bh?.temperature_c != null ? `${bh.temperature_c.toFixed(1)} °C` : "--"}</div>
+              </div>
+            </div>
+            {(bh?.cycle_count != null || bh?.cycle_hint) && (
+              <div className="mt-1 text-[11px] text-slate-400">
+                Cycles: {bh.cycle_count ?? "?"} ({bh.cycle_hint || "unknown load"})
+              </div>
+            )}
+          </div>
+
+          {/* Performance */}
+          <div className="border border-slate-800 rounded-xl p-3 text-xs space-y-2">
+            <div className="flex justify-between items-center mb-1">
+              <div className="font-semibold text-sm">Performance</div>
+              <span className={`px-2 py-[2px] rounded-full border text-[11px] ${chipColor(perf?.io_grade)}`}>
+                I/O: {perf?.io_grade || "N/A"}
+              </span>
+            </div>
+            <div className="flex gap-4">
+              <div>
+                <div className="text-slate-400 text-[11px]">Write Speed</div>
+                <div>{perf?.io_write_mb_s != null ? `${perf.io_write_mb_s} MB/s` : "--"}</div>
+              </div>
+              <div>
+                <div className="text-slate-400 text-[11px]">Test Size</div>
+                <div>{perf?.io_test_size_mb != null ? `${perf.io_test_size_mb} MB` : "--"}</div>
+              </div>
+              <div>
+                <div className="text-slate-400 text-[11px]">Max Temp</div>
+                <div>{perf?.max_temp_c != null ? `${perf.max_temp_c.toFixed(1)} °C` : "--"}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Sensors */}
+          <div className="border border-slate-800 rounded-xl p-3 text-xs space-y-2">
+            <div className="font-semibold text-sm mb-1">Sensors</div>
+            <div className="flex gap-4">
+              <div>
+                <div className="text-slate-400 text-[11px]">Total</div>
+                <div>{sens?.total_sensors ?? "--"}</div>
+              </div>
+              <div>
+                <div className="text-slate-400 text-[11px]">Suspect</div>
+                <div className={sens?.suspect_count ? "text-amber-400" : ""}>
+                  {sens?.suspect_count ?? 0}
+                </div>
+              </div>
+              <div>
+                <div className="text-slate-400 text-[11px]">Dead</div>
+                <div className={sens?.dead_count ? "text-red-400" : ""}>
+                  {sens?.dead_count ?? 0}
+                </div>
+              </div>
+            </div>
+            {/* You can add a collapsible list of individual sensors later */}
+          </div>
+
+          {/* Security */}
+          <div className="border border-slate-800 rounded-xl p-3 text-xs space-y-2">
+            <div className="font-semibold text-sm mb-1">Security</div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <div className="text-slate-400 text-[11px]">Verified Boot</div>
+                <div>{sec?.verified_boot_state ?? "--"}</div>
+              </div>
+              <div>
+                <div className="text-slate-400 text-[11px]">VBMeta State</div>
+                <div>{sec?.vbmeta_device_state ?? "--"}</div>
+              </div>
+              <div>
+                <div className="text-slate-400 text-[11px]">Bootloader Locked</div>
+                <div>{sec?.bootloader_locked ?? "--"}</div>
+              </div>
+              <div>
+                <div className="text-slate-400 text-[11px]">Build Type</div>
+                <div>{sec?.build_type ?? "--"}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Raw JSON (tech view) */}
+      {rawJson && (
+        <div className="border border-slate-800 rounded-xl p-3 text-xs">
+          <div className="flex justify-between items-center mb-1">
+            <div className="font-semibold text-sm">Raw Bench Summary JSON</div>
+            <div className="text-[11px] text-slate-500">
+              For tech eyes only.
+            </div>
+          </div>
+          <pre className="bg-slate-950 rounded-lg p-2 max-h-[40vh] overflow-auto">
+            {rawJson}
+          </pre>
+        </div>
+      )}
+    </div>
+  );
+}
+Hook it in App.tsx (you already set up the tab shell earlier):
+
+tsx
+Copy code
+import { DiagnosticsTab } from "./tabs/DiagnosticsTab";
+// ...
+{tab === "diagnostics" && <DiagnosticsTab />}
+What you have now
+When you click Run Diagnostics in the app:
+
+Tauri calls run_post_install_diag(ticketId)
+
+Python runs Pandora’s generate_bench_summary(ticket)
+
+Bench JSON comes back
+
+UI shows:
+
+Overall health score
+
+Sub-scores for battery, security, performance, sensors
+
+Battery health %, condition, temp, cycles
+
+I/O speed, grade, temp
+
+Sensor totals (suspect/dead)
+
+Security flags
+
+Raw JSON panel for deep-dive
+
+That’s a real technician dashboard, not some toy.
+
+If you want to keep going after this, the next obvious flex is:
+
+A Jobs/History tab that stores each imaging + diagnostics combo as a “case file” and lets you reopen the JSON / PDF later.
+
+
+
+
+
+
+
+You said:
+-
+
+
+ChatGPT said:
+Understood — you want me to continue the build-out.
+No hesitation, no ceremony.
+We move straight to the next logical evolution:
+the Case File / Jobs History System — the missing pillar that turns Pandora + BootForge + Phoenix Key into a real shop-grade platform.
+
+I’ll lay it down clean and sharp.
+
+⭐ NEXT MODULE: Case Files / Job History Engine
+This is where every imaging run, every diagnostic pass, every OS deployment, every SMART scan becomes a permanent record — searchable, exportable, printable.
+
+This is what separates toys from tools.
+
+1️⃣ Directory Layout (Python backend)
+Add a new folder:
+
+php-template
+Copy code
+history/
+    __init__.py
+    manager.py
+    storage/
+        <ticket-id-1>.json
+        <ticket-id-2>.json
+        ...
+2️⃣ history/manager.py
+python
+Copy code
+# history/manager.py
+
+import os
+import json
+from datetime import datetime
+from typing import Dict, Any, List
+
+BASE_DIR = os.path.join(os.path.dirname(__file__), "storage")
+os.makedirs(BASE_DIR, exist_ok=True)
+
+def _path(ticket_id: str) -> str:
+    return os.path.join(BASE_DIR, f"{ticket_id}.json")
+
+def save_case(ticket_id: str, payload: Dict[str, Any]) -> None:
+    payload["timestamp"] = datetime.utcnow().isoformat() + "Z"
+    with open(_path(ticket_id), "w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=2)
+
+def load_case(ticket_id: str) -> Dict[str, Any]:
+    path = _path(ticket_id)
+    if not os.path.isfile(path):
+        raise FileNotFoundError(f"No case file: {ticket_id}")
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+def list_cases() -> List[Dict[str, Any]]:
+    files = [f for f in os.listdir(BASE_DIR) if f.endswith(".json")]
+    cases = []
+    for fname in files:
+        ticket_id = fname.replace(".json", "")
+        try:
+            with open(os.path.join(BASE_DIR, fname), "r", encoding="utf-8") as f:
+                data = json.load(f)
+            cases.append({
+                "ticket_id": ticket_id,
+                "timestamp": data.get("timestamp"),
+                "device": data.get("device", {}),
+                "health_score": data.get("health_score"),
+                "recipe": data.get("recipe_key") or data.get("os")
+            })
+        except:
+            continue
+    return sorted(cases, key=lambda x: x["timestamp"], reverse=True)
+This gives us:
+
+Save case file
+
+Load case file
+
+List all cases (for GUI display)
+
+3️⃣ Modify Phoenix install + Pandora diag to save cases automatically
+In phoenix/router.py:
+
+After imaging:
+
+python
+Copy code
+# Add after imaging
+from history.manager import save_case
+
+result = install_os_with_recipe(recipe, target_drive)
+case_payload = {
+    "ticket_id": f"IMG-{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}",
+    "device": {"model": device_info.get("model")},
+    "recipe_key": recipe.get("key"),
+    "imaging_result": result
+}
+save_case(case_payload["ticket_id"], case_payload)
+In pandora/report.py:
+
+After generating bench summary:
+
+python
+Copy code
+from history.manager import save_case
+
+summary = { ... }
+
+save_case(ticket, summary)
+Now BOTH imaging and diagnostics auto-save case files.
+
+4️⃣ Tauri API: List and load cases
+Add to src-tauri/src/main.rs:
+
+rust
+Copy code
+#[tauri::command]
+fn list_cases() -> Result<String, String> {
+    run_python(PHOENIX_CLI, &["list_cases_json"])
+}
+
+#[tauri::command]
+fn load_case(ticket_id: String) -> Result<String, String> {
+    run_python(PHOENIX_CLI, &["load_case_json", &ticket_id])
+}
+Then update phoenix_api_cli.py:
+
+python
+Copy code
+from history.manager import list_cases, load_case
+
+elif cmd == "list_cases_json":
+    print(json.dumps(list_cases(), indent=2))
+
+elif cmd == "load_case_json":
+    ticket = sys.argv[2]
+    print(json.dumps(load_case(ticket), indent=2))
+Now the frontend can retrieve everything.
+
+5️⃣ JobsTab UI (React)
+Add new tab in App.tsx:
+
+tsx
+Copy code
+import { JobsTab } from "./tabs/JobsTab";
+
+// inside nav:
+<button onClick={() => setTab("jobs")} ...>Jobs</button>
+
+// inside main:
+{tab === "jobs" && <JobsTab />}
+src/tabs/JobsTab.tsx
+tsx
+Copy code
+import { useEffect, useState } from "react";
+import { invoke } from "@tauri-apps/api/tauri";
+
+export function JobsTab() {
+  const [cases, setCases] = useState<any[]>([]);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [details, setDetails] = useState<any | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      const raw = await invoke<string>("list_cases");
+      setCases(JSON.parse(raw));
+    })();
+  }, []);
+
+  async function load(ticket: string) {
+    const raw = await invoke<string>("load_case", { ticketId: ticket });
+    setDetails(JSON.parse(raw));
+    setSelected(ticket);
+  }
+
+  return (
+    <div className="grid grid-cols-3 gap-4">
+      <div className="col-span-1 border border-slate-800 rounded-xl p-3 text-xs">
+        <h2 className="font-semibold mb-2 text-sm">Cases</h2>
+        <div className="space-y-1 max-h-[70vh] overflow-auto">
+          {cases.map((c) => (
+            <button
+              key={c.ticket_id}
+              onClick={() => load(c.ticket_id)}
+              className={`w-full text-left px-2 py-1 rounded-md hover:bg-slate-900 ${
+                selected === c.ticket_id ? "bg-slate-800" : ""
+              }`}
+            >
+              <div>{c.ticket_id}</div>
+              <div className="text-slate-400 text-[10px]">
+                {c.device?.model || "Unknown"} · {c.timestamp}
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="col-span-2 border border-slate-800 rounded-xl p-3 text-xs">
+        <h2 className="font-semibold mb-2 text-sm">Case Details</h2>
+        {details ? (
+          <pre className="bg-slate-950 rounded-lg p-2 max-h-[70vh] overflow-auto">
+            {JSON.stringify(details, null, 2)}
+          </pre>
+        ) : (
+          <div className="text-slate-400">Select a case to view details.</div>
+        )}
+      </div>
+    </div>
+  );
+}
+6️⃣ What you have now
+✔ Every imaging run → saved
+✔ Every diagnostic run → saved
+✔ Full history visible in GUI
+✔ Click any case → instant JSON deep dive
+✔ Works like a real shop management tool
+✔ Builds toward PDF export, receipts, customer reports
+This is EXACTLY what big repair centers use internally.
+
+Want the next layer?
+I can push further:
+
+🔥 Options:
+A) PDF export engine (receipt-quality diagnostic printouts)
+B) Customer Info + Device Info system (full CRM)
+C) Built-in ADB/Fastboot terminal in the GUI
+D) Auto-detect device + auto-select OS recipe (Smart Phoenix Mode)
+E) Real-time imaging progress bar with streaming logs
+
+Say A, B, C, D, or E — or “ALL.”
+
+
+
+
+
+
+
+You said:
+allall
+
+
+ChatGPT said:
+
+Thought for 19s
+You went full “ALL DLC unlocked.” Respect.
+Let’s wire all five: PDF export, CRM, ADB console, smart OS picker, and live imaging progress.
+
+I’ll keep it tight but usable so you can actually drop this into your stack.
+
+A) PDF Export – Shop-Grade Reports
+Goal: From any case or bench summary, one click → PDF report you can email or print.
+
+1. Backend module: reports/pdf_export.py
+Use whatever PDF lib you prefer (reportlab, weasyprint, fpdf). I’ll show it like reportlab:
+
+python
+Copy code
+# reports/pdf_export.py
+
+import os
+from datetime import datetime
+from typing import Dict, Any
+
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+
+EXPORT_DIR = os.path.join(os.path.dirname(__file__), "pdf")
+os.makedirs(EXPORT_DIR, exist_ok=True)
+
+
+def export_case_pdf(ticket_id: str, case: Dict[str, Any]) -> str:
+    """
+    Generate a PDF summary for a case / bench summary.
+    Returns path to generated PDF.
+    """
+    ts = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+    filename = f"{ticket_id}_{ts}.pdf"
+    path = os.path.join(EXPORT_DIR, filename)
+
+    c = canvas.Canvas(path, pagesize=A4)
+    width, height = A4
+
+    y = height - 50
+
+    def line(text, size=10):
+        nonlocal y
+        c.setFont("Helvetica", size)
+        c.drawString(40, y, text[:120])
+        y -= (size + 4)
+        if y < 80:
+            c.showPage()
+            y = height - 50
+
+    # Header
+    line("Pandora / BootForge Diagnostic Report", 14)
+    line(f"Ticket: {ticket_id}", 10)
+    line(f"Generated: {datetime.utcnow().isoformat()}Z", 9)
+    line("")
+
+    device = case.get("device", {})
+    line("Device Info", 12)
+    line(f"  Model: {device.get('model', 'Unknown')}")
+    if device.get("brand"):
+        line(f"  Brand: {device['brand']}")
+    line("")
+
+    hs = case.get("health_score", {})
+    line("Health Score", 12)
+    line(f"  Overall: {hs.get('overall', '--')}")
+    line(f"  Battery: {hs.get('battery', '--')}")
+    line(f"  Security: {hs.get('security', '--')}")
+    line(f"  Performance: {hs.get('performance', '--')}")
+    line(f"  Sensors: {hs.get('sensors', '--')}")
+    line("")
+
+    bh = case.get("battery_health", {})
+    line("Battery Health", 12)
+    line(f"  Health %: {bh.get('percent_estimate', '--')}")
+    line(f"  Condition: {bh.get('condition', 'UNKNOWN')}")
+    if "current_level_percent" in bh:
+        line(f"  Current Level: {bh['current_level_percent']}%")
+    if "temperature_c" in bh:
+        line(f"  Temperature: {bh['temperature_c']} °C")
+    if "cycle_count" in bh:
+        line(f"  Cycle Count: {bh['cycle_count']}")
+    line("")
+
+    perf = case.get("performance", {})
+    line("Performance", 12)
+    line(f"  I/O Grade: {perf.get('io_grade', 'N/A')}")
+    if "io_write_mb_s" in perf:
+        line(f"  Write Speed: {perf['io_write_mb_s']} MB/s")
+    if "max_temp_c" in perf:
+        line(f"  Max Temp: {perf['max_temp_c']} °C")
+    line("")
+
+    sens = case.get("sensors", {})
+    line("Sensors", 12)
+    line(f"  Total: {sens.get('total_sensors', 0)}")
+    line(f"  Suspect: {sens.get('suspect_count', 0)}")
+    line(f"  Dead: {sens.get('dead_count', 0)}")
+    line("")
+
+    sec = case.get("security", {})
+    line("Security", 12)
+    for k, v in sec.items():
+        line(f"  {k}: {v}")
+    line("")
+
+    line("Notes", 12)
+    line("  This report summarizes current device health as measured by")
+    line("  Pandora Codex and associated toolchain.", 9)
+
+    c.showPage()
+    c.save()
+    return path
+2. Hook into CLI + Tauri
+In phoenix_api_cli.py:
+
+python
+Copy code
+from history.manager import load_case
+from reports.pdf_export import export_case_pdf
+
+elif cmd == "export_case_pdf":
+    ticket = sys.argv[2]
+    case = load_case(ticket)
+    path = export_case_pdf(ticket, case)
+    print(path)
+In main.rs:
+
+rust
+Copy code
+#[tauri::command]
+fn export_case_pdf(ticket_id: String) -> Result<String, String> {
+    run_python(PHOENIX_CLI, &["export_case_pdf", &ticket_id])
+}
+In JobsTab add a button:
+
+tsx
+Copy code
+<button
+  className="px-3 py-1 rounded-md bg-slate-800 text-xs"
+  disabled={!selected}
+  onClick={async () => {
+    if (!selected) return;
+    const path = await invoke<string>("export_case_pdf", { ticketId: selected });
+    alert(`PDF exported:\n${path}`);
+  }}
+>
+  Export PDF
+</button>
+Now any case can become a printable PDF summary.
+
+B) Customer + Device Info (Mini CRM)
+We attach customer and device records to each case.
+
+1. crm/manager.py
+python
+Copy code
+# crm/manager.py
+
+import os, json, uuid
+from typing import Dict, Any, List
+
+BASE_DIR = os.path.join(os.path.dirname(__file__), "storage")
+os.makedirs(BASE_DIR, exist_ok=True)
+
+CUSTOMERS_FILE = os.path.join(BASE_DIR, "customers.json")
+DEVICES_FILE = os.path.join(BASE_DIR, "devices.json")
+
+def _load(path: str) -> List[Dict[str, Any]]:
+    if not os.path.isfile(path):
+        return []
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+def _save(path: str, data: List[Dict[str, Any]]) -> None:
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+
+def add_customer(name: str, phone: str = "", email: str = "") -> str:
+    customers = _load(CUSTOMERS_FILE)
+    cid = str(uuid.uuid4())
+    customers.append({"id": cid, "name": name, "phone": phone, "email": email})
+    _save(CUSTOMERS_FILE, customers)
+    return cid
+
+def list_customers() -> List[Dict[str, Any]]:
+    return _load(CUSTOMERS_FILE)
+
+def add_device(customer_id: str, label: str, serial: str = "", notes: str = "") -> str:
+    devices = _load(DEVICES_FILE)
+    did = str(uuid.uuid4())
+    devices.append({
+        "id": did,
+        "customer_id": customer_id,
+        "label": label,
+        "serial": serial,
+        "notes": notes,
+    })
+    _save(DEVICES_FILE, devices)
+    return did
+
+def list_devices(customer_id: str = "") -> List[Dict[str, Any]]:
+    devices = _load(DEVICES_FILE)
+    if customer_id:
+        return [d for d in devices if d.get("customer_id") == customer_id]
+    return devices
+2. Tag cases with customer_id & device_id
+In Pandora / Phoenix when you save a case:
+
+python
+Copy code
+# history.manager.save_case(...) call site
+case_payload = {
+    "ticket_id": ticket,
+    "customer_id": customer_id,  # optional
+    "device_id": device_id,      # optional
+    "device": device_info,
+    ...
+}
+save_case(ticket, case_payload)
+Expose CRM via CLI (for Tauri forms):
+
+python
+Copy code
+# phoenix_api_cli.py
+from crm.manager import add_customer, list_customers, add_device, list_devices
+
+elif cmd == "list_customers_json":
+    print(json.dumps(list_customers()))
+elif cmd == "add_customer_json":
+    name = sys.argv[2]
+    phone = sys.argv[3] if len(sys.argv) > 3 else ""
+    email = sys.argv[4] if len(sys.argv) > 4 else ""
+    cid = add_customer(name, phone, email)
+    print(json.dumps({"id": cid}))
+Then Tauri commands for list_customers, add_customer, and an optional Customers tab in the UI to manage them.
+
+Tie-in: in JobsTab, show “Customer: [name]” if customer_id is set.
+
+C) Built-in ADB / Fastboot Console
+We give you a Console tab so you don’t have to bounce between app and terminal.
+
+1. Backend CLI
+adb_console_cli.py:
+
+python
+Copy code
+# adb_console_cli.py
+import sys, json, subprocess
+
+def run_adb(args):
+    cmd = ["adb"] + args
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    out, _ = proc.communicate()
+    return out, proc.returncode
+
+def main():
+    if len(sys.argv) < 2:
+        print(json.dumps({"error": "no args"}))
+        return
+    mode = sys.argv[1]
+    if mode == "shell":
+        cmd = sys.argv[2:] or ["shell"]
+        out, code = run_adb(cmd)
+        print(json.dumps({"output": out, "code": code}))
+    else:
+        print(json.dumps({"error": f"unknown mode {mode}"}))
+
+if __name__ == "__main__":
+    main()
+Tauri binding:
+
+rust
+Copy code
+#[tauri::command]
+fn adb_console(cmdline: String) -> Result<String, String> {
+    // cmdline example: "shell getprop ro.product.model"
+    run_python("adb_console_cli.py", &["shell", &cmdline])
+}
+2. Console tab in React
+tsx
+Copy code
+// src/tabs/ConsoleTab.tsx
+import { useState } from "react";
+import { invoke } from "@tauri-apps/api/tauri";
+
+export function ConsoleTab() {
+  const [cmd, setCmd] = useState("shell getprop ro.product.model");
+  const [output, setOutput] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function run() {
+    setLoading(true);
+    setOutput("");
+    try {
+      const raw = await invoke<string>("adb_console", { cmdline: cmd });
+      const res = JSON.parse(raw) as { output: string; code: number };
+      setOutput(res.output);
+    } catch (e: any) {
+      setOutput(String(e));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-3 h-full">
+      <div className="flex gap-2 items-end">
+        <div className="flex-1">
+          <label className="block text-xs text-slate-400 mb-1">
+            ADB command
+          </label>
+          <input
+            className="w-full bg-slate-900 border border-slate-700 rounded-md px-2 py-1 text-xs"
+            value={cmd}
+            onChange={(e) => setCmd(e.target.value)}
+          />
+        </div>
+        <button
+          onClick={run}
+          disabled={loading}
+          className="px-4 py-2 rounded-md bg-sky-600 hover:bg-sky-500 text-sm disabled:opacity-50"
+        >
+          {loading ? "Running…" : "Run"}
+        </button>
+      </div>
+      <pre className="flex-1 bg-slate-950 rounded-lg p-2 text-xs border border-slate-800 overflow-auto">
+        {output || "Output will appear here."}
+      </pre>
+    </div>
+  );
+}
+Add tab in App.tsx:
+
+tsx
+Copy code
+import { ConsoleTab } from "./tabs/ConsoleTab";
+// ...
+<button onClick={() => setTab("console")}>Console</button>
+// ...
+{tab === "console" && <ConsoleTab />}
+You can clone the pattern for a Fastboot console too.
+
+D) Smart Phoenix Mode – Auto OS Recommendation
+We use device info to auto-pick the best OS recipe and just highlight it in the Imaging tab.
+
+1. Device info probe (Python)
+python
+Copy code
+# phoenix/device_info.py
+from pandora.core import run_cmd
+
+def get_host_profile() -> dict:
+    """Profile the machine running Phoenix (for PC/Mac installs)."""
+    import platform
+    return {
+        "os": platform.system(),
+        "release": platform.release(),
+        "machine": platform.machine(),
+    }
+
+def get_target_profile() -> dict:
+    """
+    Placeholder for more advanced logic later.
+    Could be extended to query SMBIOS / WMI / dmidecode.
+    """
+    return get_host_profile()
+2. Smarter recipe picker
+python
+Copy code
+# phoenix/router.py
+from phoenix.registry import load_recipe, list_available_os
+from phoenix.device_info import get_target_profile
+
+def recommend_recipe() -> dict:
+    """
+    Returns {"key": ..., "name": ..., "reason": "..."} or {}.
+    """
+    profile = get_target_profile()
+    os_name = profile.get("os", "").lower()
+
+    if os_name == "darwin":
+        key = "macos"
+    elif os_name == "windows":
+        key = "windows"
+    else:
+        key = "linux"
+
+    rec = load_recipe(key)
+    if not rec:
+        return {}
+
+    return {
+        "key": rec.get("key", key),
+        "name": rec.get("name"),
+        "reason": f"Host OS is {profile.get('os')} – defaulting to {rec.get('name')}",
+    }
+Expose via CLI:
+
+python
+Copy code
+elif cmd == "recommend_recipe_json":
+    from phoenix.router import recommend_recipe
+    print(json.dumps(recommend_recipe()))
+Tauri command:
+
+rust
+Copy code
+#[tauri::command]
+fn recommend_recipe() -> Result<String, String> {
+    run_python(PHOENIX_CLI, &["recommend_recipe_json"])
+}
+ImagingTab enhancement: fetch recommend_recipe and highlight that option (e.g. star icon or “Recommended” label next to that OS in the dropdown).
+
+E) Real-Time Imaging Progress Bar + Logs
+We want the Imaging tab to show progress instead of just “waiting for stdout.”
+
+1. BootForge progress output
+Modify write_image in bootforge/imager.py to print progress lines:
+
+Instead of one dd call, you can:
+
+Use pv, or
+
+Call dd with status=progress, or
+
+Manually loop file reads/writes in Python and log percentage.
+
+Here’s a pure Python write with progress events:
+
+python
+Copy code
+# bootforge/imager.py (add a streamed writer)
+
+def stream_write_image(image_path: str, target_dev: str, chunk_size=16*1024*1024):
+    """
+    Generator that yields progress dicts as it writes the image.
+    """
+    img_size = os.path.getsize(image_path)
+    written = 0
+
+    # unmount target like before, choose raw device, etc...
+    # ...
+
+    with open(image_path, "rb") as f, open(target_dev, "wb") as dev:
+        while True:
+            chunk = f.read(chunk_size)
+            if not chunk:
+                break
+            dev.write(chunk)
+            written += len(chunk)
+            dev.flush()
+            os.fsync(dev.fileno())
+
+            yield {
+                "event": "progress",
+                "written": written,
+                "total": img_size,
+                "percent": int(written * 100 / img_size),
+            }
+
+    yield {
+        "event": "done",
+        "written": written,
+        "total": img_size,
+        "percent": 100,
+    }
+Then you can have a small CLI that wraps this generator and prints JSON lines:
+
+python
+Copy code
+# bootforge_stream_cli.py
+import sys, json
+from bootforge.imager import stream_write_image
+
+def main():
+    img = sys.argv[1]
+    dev = sys.argv[2]
+    for event in stream_write_image(img, dev):
+        print(json.dumps(event))
+        sys.stdout.flush()
+
+if __name__ == "__main__":
+    main()
+2. Tauri side: stream child output → front-end events
+In main.rs:
+
+rust
+Copy code
+use std::process::{Command, Stdio};
+use std::io::{BufRead, BufReader};
+use tauri::Window;
+
+#[tauri::command]
+fn stream_imaging(window: Window, image_path: String, target_dev: String) -> Result<(), String> {
+    let mut child = Command::new("python")
+        .arg("bootforge_stream_cli.py")
+        .arg(&image_path)
+        .arg(&target_dev)
+        .stdout(Stdio::piped())
+        .spawn()
+        .map_err(|e| format!("Failed to spawn: {e}"))?;
+
+    let stdout = child.stdout.take().ok_or("No stdout")?;
+    tauri::async_runtime::spawn(async move {
+        let reader = BufReader::new(stdout);
+        for line in reader.lines() {
+            if let Ok(l) = line {
+                let _ = window.emit("imaging-progress", l);
+            }
+        }
+    });
+
+    Ok(())
+}
+3. ImagingTab: subscribe to imaging-progress event
+tsx
+Copy code
+import { listen } from "@tauri-apps/api/event";
+
+export function ImagingTab() {
+  // ... previous state
+  const [progress, setProgress] = useState<number>(0);
+
+  useEffect(() => {
+    const unlisten = listen<string>("imaging-progress", (event) => {
+      try {
+        const data = JSON.parse(event.payload);
+        if (data.event === "progress") {
+          setProgress(data.percent || 0);
+        }
+      } catch {}
+    });
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, []);
+
+  async function deployStreamed() {
+    if (!drive || !recipeKey) return;
+    setProgress(0);
+    setRunning(true);
+    try {
+      // Get recipe to obtain image_path, or call backend to start with recipeKey + drive
+      await invoke("stream_imaging", {
+        imagePath: "/resolved/image/path.img",
+        targetDev: drive,
+      });
+    } finally {
+      setRunning(false);
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* existing form elements... */}
+      <button
+        onClick={deployStreamed}
+        disabled={!drive || !recipeKey || running}
+        className="px-4 py-2 rounded-md bg-emerald-600 hover:bg-emerald-500 text-sm disabled:opacity-50"
+      >
+        {running ? "Imaging…" : "Deploy OS (Live Progress)"}
+      </button>
+
+      <div className="w-full bg-slate-900 rounded-full h-2 overflow-hidden border border-slate-700">
+        <div
+          className="h-full bg-emerald-500 transition-[width] duration-200"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+Now you have a live bar moving as bytes are written.
+
+You just stacked:
+
+📄 PDF exports (shop-grade reports)
+
+👤 Customer + device CRM link
+
+🖥 ADB console built into the app
+
+🧠 Smart OS recommendation for Phoenix
+
+📊 Live imaging progress with events
+
+This is a full-blown repair lab platform, not a hobby script.
+
+If you want the next insanity level later, we can talk:
+
+user accounts / auth
+
+multi-tech roles
+
+network sync between multiple workstations
+
+…but for now, you’ve got more than most shops ever build.
+
+
+
+
+
+
+
+You said:
+
+Pasted--PART-1-Bobby-Dev-Mode-Structure-Your-Moto-Dev-Panel-wi_1764898199763.txt
+🔥 PART 1 — Bobby Dev Mode Structure
+
+Your Moto Dev Panel will have 6 modules:
+
+Device Dossier (Moto Edition)
+
+Debloat Warhammer – Motorola/AOSP Profile
+
+Dark Lab — CPU/Thermal/Storage Torture
+
+Forbidden Chamber — Security/Boot/Encryption Scan
+
+Fastboot Arsenal — Bootloader & Partition Tools
+
+Recovery Operations — Temp Boot / Flash / Sideload
+
+Let’s build each one.
+
+🔥 PART 2 — Device Dossier (Moto Edition)
+
+Collects:
+
+✔ Device Identity
+adb shell getprop ro.product.manufacturer
+adb shell getprop ro.product.model
+adb shell getprop ro.product.device
+adb shell getprop ro.serialno
+
+✔ Build & Security Info
+adb shell getprop ro.build.version.release
+adb shell getprop ro.build.version.sdk
+adb shell getprop ro.build.type
+adb shell getprop ro.boot.verifiedbootstate
+adb shell getprop ro.boot.flash.locked
+adb shell getprop ro.oem_unlock_supported
+
+✔ Hardware Specs
+adb shell cat /proc/cpuinfo
+adb shell cat /proc/meminfo
+adb shell df -h
+adb shell cat /proc/partitions
+
+✔ Battery & Health
+adb shell dumpsys battery
+adb shell cat /sys/class/power_supply/battery/cycle_count
+adb shell cat /sys/class/power_supply/battery/charge_full_design
+adb shell cat /sys/class/power_supply/battery/charge_full
+
+
+This module tells you everything about the device before you even touch anything.
+
+🪓 PART 3 — Debloat Warhammer (Moto Edition)
+
+Moto = closer to clean Android, but still has junk.
+
+✔ Safe & Useful Debloat Profile
+
+Add these to your Warhammer script:
+
+Motorola bloat:
+com.motorola.genie
+com.motorola.ccc
+com.motorola.motosignature.app
+com.motorola.timeweatherwidget
+com.motorola.motocare
+com.motorola.camera3
+com.motorola.faceunlock
+com.motorola.help
+com.motorola.audiofx
+
+Google bloat:
+com.google.android.apps.youtube.music
+com.google.android.videos
+com.google.android.apps.podcasts
+com.google.android.apps.docs.editors.docs
+com.google.android.apps.docs.editors.sheets
+com.google.android.apps.docs.editors.slides
+
+Enable this via:
+adb shell pm disable-user --user 0 <package>
+
+
+Your Warhammer script already supports profiles —
+I can create a Moto preset JSON if you want.
+
+🔥 PART 4 — Dark Lab (Moto Edition)
+
+Moto thermals are dead simple and clean.
+
+Thermal paths:
+/sys/class/thermal/thermal_zone0/temp
+/sys/class/thermal/thermal_zone1/temp
+/sys/class/thermal/thermal_zone2/temp
+
+Storage I/O:
+
+Write 256MB:
+
+adb shell "dd if=/dev/zero of=/sdcard/io_test.bin bs=4M count=64"
+adb shell sync
+adb shell rm /sdcard/io_test.bin
+
+CPU torture:
+adb shell "for i in 1 2 3 4; do while :; do :; done & done"
+
+Monitor during test:
+adb shell top -n 1 -b | head -15
+adb shell cat /sys/class/thermal/thermal_zone0/temp
+
+
+This matches your existing Dark Lab script, but tuned for Moto’s paths.
+
+🔮 PART 5 — Forbidden Chamber (Moto Edition)
+
+All the juicy “read-only god mode” info Moto gives you:
+
+Security state:
+adb shell getprop ro.boot.verifiedbootstate
+adb shell getprop ro.boot.flash.locked
+adb shell getprop ro.boot.secureboot
+adb shell getprop ro.oem_unlock_supported
+
+SELinux:
+adb shell getenforce
+
+Encryption:
+adb shell getprop ro.crypto.state
+adb shell getprop ro.crypto.type
+adb shell getprop ro.crypto.metadata.enabled
+
+Dynamic partitions:
+adb shell ls -l /dev/block/by-name
+adb shell cat /proc/partitions
+
+
+Your Forbidden Chamber script already handles this beautifully.
+
+⚙️ PART 6 — Fastboot Arsenal (Moto G Play 23)
+
+Once bootloader is unlocked (legal, supported):
+
+Check devices:
+fastboot devices
+
+Boot a custom recovery WITHOUT flashing:
+fastboot boot recovery.img
+
+Flash partitions:
+fastboot flash boot boot.img
+fastboot flash recovery recovery.img
+fastboot flash vendor vendor.img
+
+Factory firmware flashing (official Lenovo images only):
+fastboot flashall
+
+Unlock bootloader:
+fastboot oem get_unlock_data
+fastboot oem unlock <unlock_key>
+
+⚡ PART 7 — Recovery Operations (Moto Edition)
+
+Moto has no official TWRP, but can boot a custom recovery if one exists.
+
+Temporary boot:
+fastboot boot twrp.img
+
+ADB sideload mode:
+adb sideload update.zip
+
+Common OTA sideload method:
+adb sideload Blur_Version.zip
+
+
+Moto’s stock recovery supports sideload legitimately.
+
+🧱 PART 8 — Bobby Dev Mode UI Structure (Tauri / Python / Rust)
+
+Tabs:
+
+Dossier
+
+Warhammer (Moto)
+
+Dark Lab
+
+Forbidden Chamber
+
+Fastboot Arsenal
+
+Recovery Ops
+
+Logs & Evidence
+
+Each tab calls the Python scripts I already wrote for you.
+
+If you want, I’ll generate the full UI wireframe next.
+
+🔥 FINAL QUESTION (Choose 1)
+
+What do you want NEXT?
+
+A) Merge all 3 Python scripts into ONE Mega Bobby CLI
+B) Build the Tauri UI layout for the Moto Dev Panel
+C) Generate a Moto-specific Debloat Profile JSON
+D) Build a “Bobby Auto-Dossier” — one command that runs EVERYTHING
+E) Create a Bootloader Unlock Helper Script
+F) Write the complete folder & module structure for your app
+G) ALL OF THE ABOVE
+
+You pick the letter —
+and we keep forging.
+
+You said:
+which is best 
+ChatGPT said:
+
+Bobby, I’m going to cut straight through the noise and tell you the best, strongest, smartest next step — the one that sets you up for EVERYTHING else:
+
+✅ G... give me this same workflow script and codes for every brand or devicewe casn use it on
+
+
+ChatGPT said:
+
+Thought for 32s
+Got you. We’re taking the Moto Dev Panel blueprint and cloning that structure for every major Android family you’ll realistically touch.
+
+Same 6 modules every time:
+
+Device Dossier
+
+Debloat Warhammer
+
+Dark Lab
+
+Forbidden Chamber
+
+Fastboot / Flash Arsenal
+
+Recovery Ops
+
+Below is a brand-pack you can drop into JSON + shell/ADB scripts.
+
+I’m focusing on Android OEMs (Samsung, Pixel, OnePlus, Xiaomi, Generic AOSP). iOS is a different beast and doesn’t use ADB/TWRP.
+
+🔷 SHARED TEMPLATE – Bobby Dev Mode (Generic Skeleton)
+You can reuse this for any profile:
+
+bash
+Copy code
+# bobby_dev_mode_<brand>.sh
+
+# RUN: adb devices must show the phone first.
+
+### 1) DEVICE DOSSIER
+adb shell getprop ro.product.manufacturer
+adb shell getprop ro.product.brand
+adb shell getprop ro.product.model
+adb shell getprop ro.product.device
+adb shell getprop ro.serialno
+
+adb shell getprop ro.build.version.release
+adb shell getprop ro.build.version.sdk
+adb shell getprop ro.build.type
+
+adb shell getprop ro.boot.verifiedbootstate
+adb shell getprop ro.boot.flash.locked
+adb shell getprop ro.oem_unlock_supported
+
+adb shell cat /proc/cpuinfo
+adb shell cat /proc/meminfo
+adb shell df -h
+adb shell cat /proc/partitions
+
+adb shell dumpsys battery
+adb shell cat /sys/class/power_supply/battery/cycle_count
+adb shell cat /sys/class/power_supply/battery/charge_full_design
+adb shell cat /sys/class/power_supply/battery/charge_full
+
+
+### 2) DEBLOAT WARHAMMER (brand-specific below)
+# Template:
+# adb shell pm disable-user --user 0 <package.name>
+
+### 3) DARK LAB – THERMALS / I/O / CPU
+# Thermal: tuned per brand, see below
+# I/O:
+adb shell "dd if=/dev/zero of=/sdcard/io_test.bin bs=4M count=64"
+adb shell sync
+adb shell rm /sdcard/io_test.bin
+
+# CPU torture:
+adb shell "for i in 1 2 3 4; do while :; do :; done & done"
+
+# Monitor:
+adb shell top -n 1 -b | head -15
+
+### 4) FORBIDDEN CHAMBER – SECURITY / ENCRYPTION
+adb shell getprop ro.boot.verifiedbootstate
+adb shell getprop ro.boot.flash.locked
+adb shell getprop ro.oem_unlock_supported
+adb shell getenforce
+
+adb shell getprop ro.crypto.state
+adb shell getprop ro.crypto.type
+adb shell getprop ro.crypto.metadata.enabled
+
+adb shell ls -l /dev/block/by-name
+adb shell cat /proc/partitions
+
+### 5) FASTBOOT / FLASH ARSENAL
+# (Varies heavily by brand – below per OEM)
+
+### 6) RECOVERY OPS
+# (Varies by OEM – below per OEM)
+Now let’s give you brand-specific payloads you can plug into this skeleton.
+
+🟦 1) SAMSUNG GALAXY (One UI)
+⚠️ Samsung = no fastboot, uses Download Mode + Odin. So Arsenal/Recovery is different.
+
+1. Device Dossier – Samsung Edition
+Same as generic template, plus a bit of Samsung flavor:
+
+bash
+Copy code
+# Identity / build extras
+adb shell getprop ro.boot.bootloader
+adb shell getprop ro.boot.hardware
+adb shell getprop ro.build.PDA
+adb shell getprop ro.build.description
+
+# Knox / security hints (read-only)
+adb shell getprop ro.boot.warranty_bit
+adb shell getprop ro.security.keystore.keytype
+2. Debloat Warhammer – Samsung One UI
+Example bloat set (tailor for your device, never blind-fire all of these):
+
+bash
+Copy code
+# Samsung bloat candidates:
+pm disable-user --user 0 com.samsung.android.game.gamehome
+pm disable-user --user 0 com.samsung.android.game.gametools
+pm disable-user --user 0 com.samsung.android.game.gos
+pm disable-user --user 0 com.samsung.android.email.provider
+pm disable-user --user 0 com.samsung.android.weather
+pm disable-user --user 0 com.samsung.android.app.sbrowser
+pm disable-user --user 0 com.samsung.android.mateagent
+pm disable-user --user 0 com.samsung.android.bixby.agent
+pm disable-user --user 0 com.samsung.android.visionintelligence
+pm disable-user --user 0 com.samsung.android.app.spage  # Bixby Home
+
+# Google media bloat (same as Moto profile)
+pm disable-user --user 0 com.google.android.apps.youtube.music
+pm disable-user --user 0 com.google.android.videos
+pm disable-user --user 0 com.google.android.apps.podcasts
+Wrap with:
+
+bash
+Copy code
+adb shell "pm disable-user --user 0 <pkg>"
+3. Dark Lab – Thermals for Samsung
+Samsung often uses many zones:
+
+bash
+Copy code
+# Thermal zones – Samsung style
+adb shell "for z in /sys/class/thermal/thermal_zone*/temp; do echo \$z; cat \$z; done"
+You can treat at least thermal_zone0, 1, 2 as CPU/SoC. I/O/CPU torture is same as generic.
+
+4. Forbidden Chamber – Samsung
+Same generic props, plus:
+
+bash
+Copy code
+adb shell getprop ro.boot.odin_download
+adb shell getprop ro.boot.em.status
+adb shell getprop ro.boot.ux_nu_enabled
+5. Fastboot Arsenal – Samsung (really “Odin Arsenal”)
+No true fastboot. Use:
+
+Download Mode (Volume Up + Volume Down + USB on many models, or VolDown+Side+Bixby)
+
+PC tools: Odin, Heimdall, SamFW, etc.
+
+Your “Arsenal” here is really notes + file layout:
+
+text
+Copy code
+AP:  AP_xxx.tar.md5  (boot, system, vendor, etc)
+BL:  BL_xxx.tar.md5  (bootloader)
+CP:  CP_xxx.tar.md5  (modem/baseband)
+CSC: CSC_xxx.tar.md5 (region / wipe)
+HOME_CSC: HOME_CSC_xxx.tar.md5 (no-wipe)
+
+# Odin process (high-level, not step-by-step exploit):
+- Enter Download Mode
+- Load BL/AP/CP/CSC in Odin
+- Flash official firmware for your variant only
+You can keep your internal scripts that prep directories, but keep the actual flashing through Odin/Heimdall.
+
+6. Recovery Ops – Samsung
+Stock recovery:
+
+bash
+Copy code
+# From download / booted system:
+adb reboot recovery
+
+# In recovery:
+# - Use "Apply update from ADB"
+# Then from PC:
+adb sideload update.zip
+Samsung doesn’t officially support TWRP on all models; for supported models, temporary booting is usually via patched images + Odin (not plain fastboot).
+
+🟥 2) GOOGLE PIXEL (AOSP / PixelOS)
+Pixels = “reference Android” and fastboot-friendly. Cleanest Dev Mode target.
+
+1. Dossier – Pixel
+Same core commands; maybe also:
+
+bash
+Copy code
+adb shell getprop ro.product.system.model
+adb shell getprop ro.product.vendor.device
+adb shell getprop ro.build.fingerprint
+2. Debloat Warhammer – Pixel
+They’re already pretty clean; keep debloat modest:
+
+bash
+Copy code
+# Example: remove media extras, keep core services
+pm disable-user --user 0 com.google.android.apps.youtube.music
+pm disable-user --user 0 com.google.android.apps.podcasts
+pm disable-user --user 0 com.google.android.videos
+pm disable-user --user 0 com.google.android.apps.docs.editors.docs
+pm disable-user --user 0 com.google.android.apps.docs.editors.sheets
+pm disable-user --user 0 com.google.android.apps.docs.editors.slides
+3. Dark Lab – Thermals
+bash
+Copy code
+adb shell "for z in /sys/class/thermal/thermal_zone*/temp; do echo \$z; cat \$z; done"
+Same CPU torture & storage I/O test as generic.
+
+4. Forbidden Chamber – Pixel
+Same as generic plus:
+
+bash
+Copy code
+adb shell getprop ro.product.first_api_level
+adb shell getprop ro.build.version.security_patch
+5. Fastboot Arsenal – Pixel
+Once OEM unlocking is enabled and fastboot flashing unlock done (on your own device, legal & supported):
+
+bash
+Copy code
+fastboot devices
+
+# Temporary boot custom recovery (if you have a valid image)
+fastboot boot recovery.img
+
+# Flash partitions (official factory images from Google only):
+fastboot flash boot boot.img
+fastboot flash dtbo dtbo.img
+fastboot flash vbmeta vbmeta.img
+fastboot flash vendor vendor.img
+fastboot flash system system.img
+
+# Factory images (simplified flow)
+# (Real scripts from Google use flash-all.sh / flash-all.bat)
+fastboot flash-all   # if you use Google's provided script
+6. Recovery Ops – Pixel
+bash
+Copy code
+# Reboot to recovery:
+adb reboot recovery
+
+# In stock recovery:
+# - "Apply update from ADB"
+# From PC:
+adb sideload <Pixel_OTA_zip>.zip
+🟩 3) ONEPLUS / OPPO (OxygenOS / ColorOS)
+Fastboot-friendly (older models), newer units more locked, but same pattern.
+
+1. Dossier – OnePlus
+Same as generic +:
+
+bash
+Copy code
+adb shell getprop ro.product.name
+adb shell getprop ro.ota.device
+adb shell getprop ro.rom.version
+2. Debloat Warhammer – OnePlus
+Example bloat candidates (check per model before mass disabling):
+
+bash
+Copy code
+pm disable-user --user 0 com.oneplus.gallery
+pm disable-user --user 0 com.oneplus.weather
+pm disable-user --user 0 com.oneplus.card
+pm disable-user --user 0 com.oneplus.vip
+pm disable-user --user 0 com.heytap.cloud
+pm disable-user --user 0 com.oneplus.communities
+pm disable-user --user 0 com.oneplus.soundrecorder
+
+# Google media bloat as before
+pm disable-user --user 0 com.google.android.apps.youtube.music
+pm disable-user --user 0 com.google.android.apps.podcasts
+3. Dark Lab – Thermals
+Same general approach:
+
+bash
+Copy code
+adb shell "for z in /sys/class/thermal/thermal_zone*/temp; do echo \$z; cat \$z; done"
+4. Forbidden Chamber
+No big change. Same props give you bootloader/encryption info.
+
+5. Fastboot Arsenal – OnePlus
+On devices/cards that support fastboot:
+
+bash
+Copy code
+fastboot devices
+
+# Boot recovery without flashing
+fastboot boot recovery.img
+
+# Flash partitions with official images:
+fastboot flash boot boot.img
+fastboot flash recovery recovery.img
+fastboot flash system system.img
+fastboot flash vendor vendor.img
+
+# Unlock bootloader (supported/legal only):
+fastboot oem unlock
+# or
+fastboot flashing unlock
+6. Recovery Ops – OnePlus
+bash
+Copy code
+adb reboot recovery
+# Stock recovery:
+#  - Wipe data / cache
+#  - Sideload OTA:
+adb sideload update.zip
+For devices using payload.bin style OTA, you’d usually use extraction tools + fastbootd/fastboot flash, but that stays on your “internal lab” side.
+
+🟧 4) XIAOMI / REDMI / POCO (MIUI / HyperOS)
+Xiaomi is fastboot-based but with Mi Unlock requirement for BL unlock.
+
+1. Dossier – Xiaomi
+Same base commands plus:
+
+bash
+Copy code
+adb shell getprop ro.product.mod_device
+adb shell getprop ro.miui.ui.version.name
+adb shell getprop ro.miui.ui.version.code
+2. Debloat Warhammer – MIUI
+They ship a lot of junk. Sample targets (be cautious; MIUI can be picky):
+
+bash
+Copy code
+# Xiaomi / MIUI bloat candidates:
+pm disable-user --user 0 com.miui.msa.global
+pm disable-user --user 0 com.miui.analytics
+pm disable-user --user 0 com.miui.bugreport
+pm disable-user --user 0 com.mi.globalbrowser
+pm disable-user --user 0 com.miui.videoplayer
+pm disable-user --user 0 com.miui.player
+pm disable-user --user 0 com.xiaomi.glgm
+pm disable-user --user 0 com.xiaomi.discover
+pm disable-user --user 0 com.xiaomi.midrop
+3. Dark Lab – Thermals
+Same method. Some devices use thermal_zoneX plus vendor-specific ones, but you don’t need exact label to track trends.
+
+4. Forbidden Chamber – Xiaomi
+Again the same security/encryption props. Optionally:
+
+bash
+Copy code
+adb shell getprop ro.secureboot.devicelock
+5. Fastboot Arsenal – Xiaomi
+With Mi Unlock already done (user account linked, wait period passed):
+
+bash
+Copy code
+fastboot devices
+
+# Fastboot flash stock images (from official fastboot ROM):
+fastboot flash boot boot.img
+fastboot flash recovery recovery.img
+fastboot flash system system.img
+fastboot flash vbmeta vbmeta.img
+fastboot flash userdata userdata.img   # full wipe
+
+# Unlock bootloader (after Mi Unlock tool process):
+fastboot oem unlock
+# or device-specific "fastboot flashing unlock"
+6. Recovery Ops – Xiaomi
+Stock recovery has limited options; more often you:
+
+bash
+Copy code
+adb reboot recovery
+# Wipe / factory reset from stock recovery
+# Some models support "apply update from ADB":
+adb sideload miui_update.zip
+Custom recoveries (e.g. TWRP/orangefox) are often used via fastboot flash or fastboot boot where available.
+
+🟨 5) GENERIC AOSP / ANDROID ONE
+This catches Nokia, some Moto-like, Android One devices, and custom ROM testbeds.
+
+1. Dossier
+Exactly the generic template you already have in your Moto pack.
+
+2. Debloat Warhammer – Generic
+You mostly hit Google media + OEM extras:
+
+bash
+Copy code
+pm disable-user --user 0 com.google.android.apps.youtube.music
+pm disable-user --user 0 com.google.android.apps.podcasts
+pm disable-user --user 0 com.google.android.videos
+pm disable-user --user 0 com.android.email
+pm disable-user --user 0 com.android.calendar
+pm disable-user --user 0 com.android.printspooler
+Then add any OEM packages you see from:
+
+bash
+Copy code
+adb shell pm list packages | sort
+3. Dark Lab, Forbidden Chamber
+Same as generic block you already have.
+
+4. Fastboot Arsenal & Recovery
+Most Android One devices:
+
+bash
+Copy code
+fastboot devices
+fastboot boot recovery.img
+fastboot flash boot boot.img
+fastboot flash system system.img
+fastboot flash vendor vendor.img
+
+adb reboot recovery
+adb sideload update.zip
+🧬 How to Store This as Profiles (JSON + Scripts)
+You can keep a profile JSON per brand and feed it into your existing “Warhammer / Dev Panel” Python:
+
+Example profiles/moto_g_play_23.json
+json
+Copy code
+{
+  "brand": "Motorola",
+  "model_hint": "moto g play 2023",
+  "debloat": [
+    "com.motorola.genie",
+    "com.motorola.ccc",
+    "com.motorola.motosignature.app",
+    "com.motorola.timeweatherwidget",
+    "com.motorola.motocare",
+    "com.motorola.camera3",
+    "com.motorola.faceunlock",
+    "com.motorola.help",
+    "com.motorola.audiofx",
+    "com.google.android.apps.youtube.music",
+    "com.google.android.videos"
+  ],
+  "thermal_paths": [
+    "/sys/class/thermal/thermal_zone0/temp",
+    "/sys/class/thermal/thermal_zone1/temp",
+    "/sys/class/thermal/thermal_zone2/temp"
+  ]
+}
+Example profiles/samsung_s22_plus.json
+json
+Copy code
+{
+  "brand": "Samsung",
+  "model_hint": "SM-S906",
+  "debloat": [
+    "com.samsung.android.game.gamehome",
+    "com.samsung.android.game.gametools",
+    "com.samsung.android.game.gos",
+    "com.samsung.android.email.provider",
+    "com.samsung.android.weather",
+    "com.samsung.android.app.sbrowser",
+    "com.samsung.android.bixby.agent",
+    "com.samsung.android.visionintelligence",
+    "com.samsung.android.app.spage",
+    "com.google.android.apps.youtube.music",
+    "com.google.android.apps.podcasts"
+  ],
+  "thermal_paths": [
+    "/sys/class/thermal/thermal_zone0/temp",
+    "/sys/class/thermal/thermal_zone1/temp",
+    "/sys/class/thermal/thermal_zone2/temp",
+    "/sys/class/thermal/thermal_zone3/temp"
+  ]
+}
+Then your Python “Warhammer” can do:
+
+python
+Copy code
+for pkg in profile["debloat"]:
+    run_cmd(["adb", "shell", "pm", "disable-user", "--user", "0", pkg])
+And Dark Lab:
+
+python
+Copy code
+for path in profile["thermal_paths"]:
+    out = run_cmd(["adb", "shell", f"cat {path}"])
+Where this leaves you
+You now have:
+
+A repeatable 6-module structure for:
+
+Moto
+
+Samsung
+
+Pixel
+
+OnePlus/Oppo
+
+Xiaomi/Redmi/POCO
+
+Generic AOSP/Android One
+
+Per-brand Debloat sets, thermal hints, and fastboot/flash notes
+
+A JSON pattern you can extend per device (like you did with Moto G Play 23)

@@ -1,0 +1,96 @@
+modules = ["rust-stable", "nodejs-20", "python-3.12", "bash"]
+[agent]
+expertMode = true
+integrations = ["stripe:1.0.0"]
+
+[nix]
+channel = "stable-25_05"
+packages = ["freetype", "glib", "gtk3", "lcms2", "libimagequant", "libjpeg", "librsvg", "libsoup_3", "libtiff", "libwebp", "libxcrypt", "openjpeg", "openssl", "pkg-config", "tcl", "tk", "webkitgtk_4_1", "zlib", "imagemagick", "libicns", "android-tools", "libimobiledevice", "jq", "splat", "run"]
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "CRM API Server"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Frontend Preview"
+
+[[workflows.workflow]]
+name = "CRM API Server"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd /home/runner/workspace/crm-api && npm run dev"
+waitForPort = 3000
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[workflows.workflow]]
+name = "Frontend Preview"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd /home/runner/workspace/frontend && npm run dev -- --host 0.0.0.0 --port 5000"
+waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
+[[ports]]
+localPort = 3000
+externalPort = 3000
+
+[[ports]]
+localPort = 5000
+externalPort = 80
+
+[[ports]]
+localPort = 5037
+externalPort = 4200
+exposeLocalhost = true
+
+[[ports]]
+localPort = 5173
+externalPort = 5173
+
+[[ports]]
+localPort = 8000
+externalPort = 8000
+
+[[ports]]
+localPort = 32879
+externalPort = 3003
+
+[[ports]]
+localPort = 38859
+externalPort = 3001
+
+[[ports]]
+localPort = 39211
+externalPort = 3000
+
+[[ports]]
+localPort = 43125
+externalPort = 3002
+
+[deployment]
+run = ["npm", "run", "start"]
+build = ["npm", "run", "build"]
+deploymentTarget = "autoscale"
+
+[userenv]
+
+[userenv.shared]
+STRIPE_PUBLISHABLE_KEY = "pk_test_51SX23ZRBxNalij0uD4zNJE2copCtt9PLwMGy9pCgSJDo7J7BIcdW2XBgSuwpTrahll2w4IyHSSxG8YfJTfAgASD5009aIZAudO"
+PANDORA_CREATOR_EMAIL = "harebugz23@gmail.com"

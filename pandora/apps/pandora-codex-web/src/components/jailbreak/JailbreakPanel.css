@@ -1,0 +1,191 @@
+.jailbreak-panel {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(128, 0, 128, 0.1));
+  border: 2px solid rgba(255, 215, 0, 0.3);
+  border-radius: 12px;
+  padding: 24px;
+  margin: 16px 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.jailbreak-header {
+  margin-bottom: 20px;
+  border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+  padding-bottom: 12px;
+}
+
+.jailbreak-header h3 {
+  color: #ffd700;
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.device-info {
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0;
+  font-size: 13px;
+}
+
+.jailbreak-tools {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin: 16px 0;
+}
+
+.tool-card {
+  background: rgba(30, 30, 30, 0.8);
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  border-radius: 8px;
+  padding: 16px;
+  transition: all 0.3s ease;
+}
+
+.tool-card:hover {
+  border-color: rgba(255, 215, 0, 0.5);
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.tool-info h4 {
+  margin: 0 0 8px 0;
+  color: #ffd700;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.tool-desc {
+  color: rgba(255, 255, 255, 0.8);
+  margin: 0 0 4px 0;
+  font-size: 13px;
+}
+
+.tool-devices {
+  color: rgba(255, 215, 0, 0.6);
+  margin: 0 0 12px 0;
+  font-size: 12px;
+}
+
+.tool-btn {
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.palera1n-btn {
+  background: linear-gradient(135deg, #ffd700, #ffed4e);
+  color: #1a1a1a;
+}
+
+.palera1n-btn:hover:not(:disabled) {
+  transform: scale(1.05);
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+}
+
+.checkra1n-btn {
+  background: linear-gradient(135deg, #9370db, #ba55d3);
+  color: #ffffff;
+}
+
+.checkra1n-btn:hover:not(:disabled) {
+  transform: scale(1.05);
+  box-shadow: 0 0 20px rgba(186, 85, 211, 0.4);
+}
+
+.tool-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.jailbreak-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 16px 0;
+  padding: 12px;
+  background: rgba(30, 30, 30, 0.5);
+  border-radius: 6px;
+}
+
+.option-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 13px;
+}
+
+.option-checkbox input {
+  cursor: pointer;
+  accent-color: #ffd700;
+}
+
+.jailbreak-execution {
+  text-align: center;
+  padding: 20px;
+  background: rgba(30, 30, 30, 0.8);
+  border-radius: 8px;
+}
+
+.spinner {
+  display: inline-block;
+  width: 30px;
+  height: 30px;
+  border: 3px solid rgba(255, 215, 0, 0.2);
+  border-top-color: #ffd700;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 12px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.status-message {
+  color: #ffd700;
+  margin: 12px 0;
+  font-size: 14px;
+  font-weight: 500;
+  word-wrap: break-word;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.device-instructions {
+  background: rgba(255, 215, 0, 0.05);
+  border-left: 3px solid #ffd700;
+  padding: 12px;
+  margin-top: 12px;
+  text-align: left;
+  border-radius: 4px;
+}
+
+.device-instructions p {
+  color: rgba(255, 255, 255, 0.8);
+  margin: 0 0 8px 0;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.device-instructions ol {
+  margin: 8px 0;
+  padding-left: 20px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
+}
+
+.device-instructions li {
+  margin: 4px 0;
+}
