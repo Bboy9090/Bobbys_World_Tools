@@ -10,7 +10,7 @@ YELLOW := \033[0;33m
 NC := \033[0m
 
 help:
-	@echo "$(BLUE)Pandora Codex - Enterprise Device Operations Framework$(NC)"
+	@echo "$(BLUE)Bobby's World - Workshop Toolkit with Pandora Codex Integration$(NC)"
 	@echo ""
 	@echo "$(GREEN)Quick Start:$(NC)"
 	@echo "  make install          Install all dependencies (Node, Python, Rust)"
@@ -27,6 +27,10 @@ help:
 	@echo "  make bootforge:build  Build BootForgeUSB Rust library + CLI"
 	@echo "  make bootforge:test   Run BootForgeUSB tests"
 	@echo "  make bootforge:cli    Build and test CLI"
+	@echo ""
+	@echo "$(GREEN)Trapdoor (Bobby's Secret Room):$(NC)"
+	@echo "  make trapdoor:build   Build Trapdoor CLI for tool execution"
+	@echo "  make trapdoor:test    Test Trapdoor module"
 	@echo ""
 	@echo "$(GREEN)Pandora Core (TypeScript):$(NC)"
 	@echo "  make pandora:build    Build Pandora Core packages"
@@ -74,8 +78,11 @@ build: bootforge:build pandora:build
 	@echo "$(GREEN)✓ All components built$(NC)"
 
 bootforge:build:
-	@echo "$(BLUE)Building BootForgeUSB...$(NC)"
-	@if [ -d "libs/bootforgeusb" ]; then \
+	@echo "$(BLUE)Building BootForgeUSB (including Trapdoor module)...$(NC)"
+	@if [ -d "crates/bootforge-usb" ]; then \
+		cd crates/bootforge-usb && cargo build --release; \
+		echo "$(GREEN)✓ BootForgeUSB built$(NC)"; \
+	elif [ -d "libs/bootforgeusb" ]; then \
 		cd libs/bootforgeusb && cargo build --release; \
 		echo "$(GREEN)✓ BootForgeUSB built$(NC)"; \
 	else \
@@ -84,7 +91,9 @@ bootforge:build:
 
 bootforge:test:
 	@echo "$(BLUE)Testing BootForgeUSB...$(NC)"
-	@if [ -d "libs/bootforgeusb" ]; then \
+	@if [ -d "crates/bootforge-usb" ]; then \
+		cd crates/bootforge-usb && cargo test; \
+	elif [ -d "libs/bootforgeusb" ]; then \
 		cd libs/bootforgeusb && cargo test; \
 	else \
 		echo "$(YELLOW)⚠ BootForgeUSB directory not found$(NC)"; \
@@ -92,7 +101,14 @@ bootforge:test:
 
 bootforge:cli:
 	@echo "$(BLUE)Building and testing BootForgeUSB CLI...$(NC)"
-	@if [ -d "libs/bootforgeusb" ]; then \
+	@if [ -d "crates/bootforge-usb" ]; then \
+		cd crates/bootforge-usb && \
+		cargo build --release && \
+		./target/release/bootforge-cli version 2>/dev/null && \
+		echo "" && \
+		echo "$(GREEN)✓ CLI built and verified$(NC)" && \
+		echo "$(BLUE)Run: ./crates/bootforge-usb/target/release/bootforge-cli scan$(NC)"; \
+	elif [ -d "libs/bootforgeusb" ]; then \
 		cd libs/bootforgeusb && \
 		cargo build --release && \
 		./target/release/bootforgeusb version && \
@@ -101,6 +117,25 @@ bootforge:cli:
 		echo "$(BLUE)Run: ./libs/bootforgeusb/target/release/bootforgeusb scan$(NC)"; \
 	else \
 		echo "$(YELLOW)⚠ BootForgeUSB directory not found$(NC)"; \
+	fi
+
+trapdoor:build:
+	@echo "$(BLUE)Building Trapdoor CLI (Bobby's Secret Room)...$(NC)"
+	@if [ -d "crates/bootforge-usb" ]; then \
+		cd crates/bootforge-usb && \
+		cargo build --release --bin trapdoor_cli && \
+		echo "$(GREEN)✓ Trapdoor CLI built$(NC)" && \
+		echo "$(BLUE)Run: ./crates/bootforge-usb/target/release/trapdoor_cli list$(NC)"; \
+	else \
+		echo "$(YELLOW)⚠ Trapdoor source not found$(NC)"; \
+	fi
+
+trapdoor:test:
+	@echo "$(BLUE)Testing Trapdoor module...$(NC)"
+	@if [ -d "crates/bootforge-usb" ]; then \
+		cd crates/bootforge-usb && cargo test --lib trapdoor; \
+	else \
+		echo "$(YELLOW)⚠ Trapdoor source not found$(NC)"; \
 	fi
 
 pandora:build:
@@ -181,6 +216,9 @@ format:
 clean:
 	@echo "$(BLUE)Cleaning build artifacts...$(NC)"
 	rm -rf dist dist-ssr node_modules/.vite
+	@if [ -d "crates/bootforge-usb" ]; then \
+		cd crates/bootforge-usb && cargo clean; \
+	fi
 	@if [ -d "libs/bootforgeusb" ]; then \
 		cd libs/bootforgeusb && cargo clean; \
 	fi

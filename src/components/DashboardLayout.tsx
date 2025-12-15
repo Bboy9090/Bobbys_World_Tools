@@ -8,6 +8,7 @@ import { TestsTab } from "./tabs/TestsTab";
 import { PluginsTab } from "./tabs/PluginsTab";
 import { CommunityTab } from "./tabs/CommunityTab";
 import { SettingsTab } from "./tabs/SettingsTab";
+import { PandorasRoom } from "./SecretRoom";
 import { DeviceSidebar } from "./DeviceSidebar";
 import { LogsPanel } from "./LogsPanel";
 import { useApp } from "@/lib/app-context";
@@ -18,7 +19,8 @@ import {
     Plug, 
     Users, 
     Gear,
-    Wrench
+    Wrench,
+    LockKey
 } from '@phosphor-icons/react';
 
 export function DashboardLayout() {
@@ -66,6 +68,14 @@ export function DashboardLayout() {
                                     <span className="font-medium">Diagnostics</span>
                                 </TabsTrigger>
                                 <TabsTrigger 
+                                    value="pandoras-room" 
+                                    className="gap-1.5 px-4 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+                                >
+                                    <LockKey weight="duotone" size={18} />
+                                    <span className="font-medium">Pandora's Room</span>
+                                    <Badge variant="secondary" className="ml-1.5 text-[10px] px-1.5 py-0">NEW</Badge>
+                                </TabsTrigger>
+                                <TabsTrigger 
                                     value="reports" 
                                     className="gap-1.5 px-4 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
                                 >
@@ -107,6 +117,9 @@ export function DashboardLayout() {
                             <div className="p-4">
                                 <TabsContent value="diagnostics" className="mt-0">
                                     <DiagnosticsTab />
+                                </TabsContent>
+                                <TabsContent value="pandoras-room" className="mt-0 p-0">
+                                    <PandorasRoom />
                                 </TabsContent>
                                 <TabsContent value="reports" className="mt-0">
                                     <ReportsTab />
