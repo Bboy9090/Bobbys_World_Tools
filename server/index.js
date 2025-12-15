@@ -456,6 +456,60 @@ app.get('/api/adb/devices', (req, res) => {
   });
 });
 
+app.post('/api/adb/trigger-auth', (req, res) => {
+  if (!commandExists("adb")) {
+    return res.status(404).json({ 
+      success: false,
+      message: "ADB not installed on system" 
+    });
+  }
+  
+  const { serial } = req.body;
+  
+  if (!serial) {
+    return res.status(400).json({ 
+      success: false,
+      message: "Device serial is required" 
+    });
+  }
+  
+  try {
+    execSync(`adb -s ${serial} shell echo "auth_trigger" 2>&1`, { 
+      encoding: "utf-8", 
+      timeout: 3000 
+    });
+    
+    res.json({
+      success: true,
+      message: "Authorization request sent. Check your device for the USB debugging dialog.",
+      serial
+    });
+  } catch (error) {
+    const errorMessage = error.stderr?.toString() || error.message || 'Unknown error';
+    
+    if (errorMessage.includes('unauthorized')) {
+      res.json({
+        success: true,
+        message: "Authorization dialog triggered on device. Please check your phone and tap 'Allow'.",
+        serial,
+        note: "Device is unauthorized - this is expected. The prompt should appear on the device."
+      });
+    } else if (errorMessage.includes('device offline')) {
+      res.status(400).json({
+        success: false,
+        message: "Device is offline. Please check USB connection.",
+        serial
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: `Failed to trigger authorization: ${errorMessage}`,
+        serial
+      });
+    }
+  }
+});
+
 app.get('/api/fastboot/devices', (req, res) => {
   if (!commandExists("fastboot")) {
     return res.status(404).json({ error: "Fastboot not installed" });

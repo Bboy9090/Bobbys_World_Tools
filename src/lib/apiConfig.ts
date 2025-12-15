@@ -10,6 +10,7 @@ export const API_CONFIG = {
     SYSTEM_INFO: '/api/system-info',
     ADB_DEVICES: '/api/adb/devices',
     ADB_COMMAND: '/api/adb/command',
+    ADB_TRIGGER_AUTH: '/api/adb/trigger-auth',
     FASTBOOT_DEVICES: '/api/fastboot/devices',
     FASTBOOT_DEVICE_INFO: '/api/fastboot/device-info',
     FASTBOOT_FLASH: '/api/fastboot/flash',

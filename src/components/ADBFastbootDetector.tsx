@@ -14,10 +14,12 @@ import {
   Info,
   Circle,
   AndroidLogo,
-  Warning
+  Warning,
+  HandTap
 } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { useAndroidDevices } from '@/hooks/use-android-devices';
+import { triggerADBAuthorization } from '@/lib/adb-authorization';
 import type { 
   AndroidDevice, 
   AndroidDeviceProperties, 
@@ -36,11 +38,49 @@ const DEVICE_MODE_LABELS: Record<string, { label: string; color: string; icon: a
 
 export function ADBFastbootDetector() {
   const [autoRefresh, setAutoRefresh] = useState(false);
+  const [authorizingDevices, setAuthorizingDevices] = useState<Set<string>>(new Set());
   const { data, devices, loading, error, refresh, adbAvailable, fastbootAvailable, adbCount, fastbootCount } = useAndroidDevices(autoRefresh, 3000);
 
   const toggleAutoRefresh = () => {
     setAutoRefresh(prev => !prev);
     toast.success(autoRefresh ? 'Auto-refresh disabled' : 'Auto-refresh enabled');
+  };
+
+  const handleTriggerAuth = async (device: AndroidDevice) => {
+    setAuthorizingDevices(prev => new Set(prev).add(device.serial));
+    
+    toast.info(`Check your device: ${device.serial.substring(0, 8)}...`, {
+      description: 'Tap "Allow" on the USB debugging authorization dialog',
+      duration: 8000,
+    });
+
+    try {
+      const result = await triggerADBAuthorization(device.serial);
+      
+      if (result.success) {
+        toast.success('Authorization prompt sent', {
+          description: 'Please check your device and tap "Allow"',
+        });
+        
+        setTimeout(() => {
+          refresh();
+        }, 2000);
+      } else {
+        toast.error('Failed to trigger authorization', {
+          description: result.message,
+        });
+      }
+    } catch (err) {
+      toast.error('Authorization request failed', {
+        description: err instanceof Error ? err.message : 'Unknown error',
+      });
+    } finally {
+      setAuthorizingDevices(prev => {
+        const next = new Set(prev);
+        next.delete(device.serial);
+        return next;
+      });
+    }
   };
 
   const getBootloaderStatusIcon = (device: AndroidDevice) => {
@@ -272,6 +312,9 @@ export function ADBFastbootDetector() {
                   const modeInfo = DEVICE_MODE_LABELS[device.deviceMode] || DEVICE_MODE_LABELS.unknown;
                   const ModeIcon = modeInfo.icon;
                   
+                  const isUnauthorized = device.deviceMode === 'unauthorized';
+                  const isAuthorizing = authorizingDevices.has(device.serial);
+                  
                   return (
                     <div
                       key={device.id}
@@ -300,6 +343,26 @@ export function ADBFastbootDetector() {
                       </div>
                       
                       {renderDeviceDetails(device)}
+                      
+                      {isUnauthorized && device.source === 'adb' && (
+                        <div className="pt-3 border-t">
+                          <Alert className="mb-3">
+                            <Info size={16} />
+                            <AlertDescription className="text-xs">
+                              This device needs USB debugging authorization. Click the button below to trigger the trust dialog on your phone.
+                            </AlertDescription>
+                          </Alert>
+                          <Button
+                            size="sm"
+                            onClick={() => handleTriggerAuth(device)}
+                            disabled={isAuthorizing}
+                            className="w-full"
+                          >
+                            <HandTap size={16} className={isAuthorizing ? 'animate-pulse' : ''} />
+                            {isAuthorizing ? 'Requesting Authorization...' : 'Trigger Authorization Dialog'}
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
