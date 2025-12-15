@@ -19,6 +19,7 @@ import {
 } from '@phosphor-icons/react';
 import type { AuthorizationTrigger } from '@/lib/authorization-triggers';
 import { executeTrigger, logTriggerAction } from '@/lib/authorization-triggers';
+import { useAuthorizationHistory } from '@/hooks/use-authorization-history';
 
 interface AuthorizationTriggerModalProps {
   trigger: AuthorizationTrigger | null;
@@ -44,6 +45,7 @@ export function AuthorizationTriggerModal({
   const [confirmationInput, setConfirmationInput] = useState('');
   const [isExecuting, setIsExecuting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { addHistoryEntry, updateHistoryEntry } = useAuthorizationHistory();
 
   if (!trigger) return null;
 
@@ -86,7 +88,20 @@ export function AuthorizationTriggerModal({
     setIsExecuting(true);
     setError(null);
 
+    const historyEntry = addHistoryEntry({
+      triggerId: trigger.id,
+      triggerName: trigger.name,
+      category: trigger.category,
+      deviceId,
+      deviceName,
+      status: 'pending',
+      userResponse: 'approved',
+      metadata: additionalData,
+    });
+
+    const startTime = Date.now();
     const result = await executeTrigger(trigger, deviceId, additionalData);
+    const executionTime = Date.now() - startTime;
 
     await logTriggerAction(
       trigger.id,
@@ -98,6 +113,21 @@ export function AuthorizationTriggerModal({
         error: result.error,
       }
     );
+
+    updateHistoryEntry(historyEntry.id, {
+      status: result.success ? 'success' : 'failed',
+      executionTime,
+      errorMessage: result.error,
+      auditLog: {
+        action: trigger.id,
+        triggerId: trigger.id,
+        deviceId,
+        userResponse: result.success ? 'approved' : 'rejected',
+        timestamp: Date.now(),
+        executionResult: result.data,
+        errorDetails: result.error,
+      },
+    });
 
     setIsExecuting(false);
 
