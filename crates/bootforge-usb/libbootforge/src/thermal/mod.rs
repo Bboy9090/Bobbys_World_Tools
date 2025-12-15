@@ -248,9 +248,9 @@ impl ThermalMonitor {
                     .parse()
                     .unwrap_or(0.0);
 
-                let temp_celsius = if temp > 100.0 {
+                let temp_celsius = if temp > 1000.0 {
                     temp / 1000.0
-                } else if temp > 1000.0 {
+                } else if temp > 100.0 {
                     temp / 10.0
                 } else {
                     temp

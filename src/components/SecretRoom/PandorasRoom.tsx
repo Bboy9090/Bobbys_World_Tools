@@ -24,11 +24,11 @@ export const PandorasRoom: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const tabs = [
-    { id: 'overview', name: 'Overview', icon: Smartphone },
-    { id: 'trapdoor', name: 'Trapdoor Tools', icon: Shield },
-    { id: 'diagnostics', name: 'Advanced Diagnostics', icon: Activity },
-    { id: 'deployment', name: 'Deployment', icon: Upload },
-  ] as const;
+    { id: 'overview' as const, name: 'Overview', icon: Smartphone },
+    { id: 'trapdoor' as const, name: 'Trapdoor Tools', icon: Shield },
+    { id: 'diagnostics' as const, name: 'Advanced Diagnostics', icon: Activity },
+    { id: 'deployment' as const, name: 'Deployment', icon: Upload },
+  ];
 
   return (
     <div className="min-h-screen bg-[#0B0F14] text-white p-6">
@@ -64,7 +64,7 @@ export const PandorasRoom: React.FC = () => {
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
+                onClick={() => setActiveTab(tab.id)}
                 className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-md font-medium text-sm transition-all ${
                   isActive
                     ? 'bg-[#2FD3FF] text-black'
