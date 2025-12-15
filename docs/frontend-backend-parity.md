@@ -114,7 +114,8 @@ For each frontend feature, we verify:
 - Typed confirmations (CONFIRM/UNLOCK/RESET) validated by backend
 - Retry mechanism uses exponential backoff configured in backend
 
-**Issue:** Trigger catalog is currently static JSON in frontend. Should be backend-served for consistency.
+**Issue:** Trigger catalog is currently static JSON in frontend. Should be backend-served for consistency.  
+**Priority:** Medium - This contradicts truth-first design principle but catalog is largely static. Should be addressed in Q1 2025 to enable dynamic trigger additions.
 
 ---
 

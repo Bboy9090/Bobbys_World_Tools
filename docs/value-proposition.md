@@ -6,7 +6,7 @@ Pandora Codex is a **unified, vendor-agnostic, truth-first device operations pla
 
 **What Makes Pandora Superior:**
 1. Unified multi-platform console (Android + iOS in one tool)
-2. Truth-first design (no fake outputs, evidence-based detection)
+2. Truth-first design (every claim backed by verifiable evidence, no fake outputs or simulated success)
 3. Vendor-agnostic architecture (no cloud lock-in)
 4. Comprehensive audit trail (forensic-grade logging)
 5. Real-time operation tracking (WebSocket-based progress)

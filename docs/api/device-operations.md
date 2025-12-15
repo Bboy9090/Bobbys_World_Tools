@@ -683,7 +683,15 @@ All endpoints follow consistent error structure:
 ## Authentication
 
 **Current**: Open (no authentication required)  
-**Planned**: Bearer token authentication via `Authorization: Bearer <token>` header
+**⚠️ WARNING**: Current open authentication is for development only. **DO NOT use in production environments** without implementing proper authentication and authorization.  
+
+**Security Implications of Open Mode:**
+- Any user with network access can execute operations
+- No audit trail of which user performed actions
+- No role-based access control
+- Vulnerable to unauthorized access
+
+**Planned**: Bearer token authentication via `Authorization: Bearer <token>` header with RBAC support
 
 ---
 
