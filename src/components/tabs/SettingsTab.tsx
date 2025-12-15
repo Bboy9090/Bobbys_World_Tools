@@ -2,13 +2,15 @@ import { SettingsPanel } from "../SettingsPanel";
 import { BootForgeUSBSupportMatrix } from "../BootForgeUSBSupportMatrix";
 import { SecurityLockEducationPanel } from "../SecurityLockEducationPanel";
 import { AboutBobby } from "../AboutBobby";
+import { AuthorizationTriggersGuide } from "../AuthorizationTriggersGuide";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { 
     SlidersHorizontal, 
     DeviceTablet, 
     ShieldWarning, 
     Info,
-    Gear
+    Gear,
+    Book
 } from '@phosphor-icons/react';
 
 export function SettingsTab() {
@@ -38,6 +40,10 @@ export function SettingsTab() {
                         <DeviceTablet weight="duotone" size={16} />
                         Devices
                     </TabsTrigger>
+                    <TabsTrigger value="api" className="gap-1.5 text-xs">
+                        <Book weight="duotone" size={16} />
+                        API Docs
+                    </TabsTrigger>
                     <TabsTrigger value="legal" className="gap-1.5 text-xs">
                         <ShieldWarning weight="duotone" size={16} />
                         Legal
@@ -54,6 +60,10 @@ export function SettingsTab() {
 
                 <TabsContent value="devices" className="mt-4">
                     <BootForgeUSBSupportMatrix />
+                </TabsContent>
+
+                <TabsContent value="api" className="mt-4">
+                    <AuthorizationTriggersGuide />
                 </TabsContent>
 
                 <TabsContent value="legal" className="mt-4">

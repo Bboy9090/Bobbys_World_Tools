@@ -2,13 +2,15 @@ import { RealTimeUSBDiagnostics } from "../RealTimeUSBDiagnostics";
 import { BatchDiagnosticsPanel } from "../BatchDiagnosticsPanel";
 import { PandoraCodexControlRoom } from "../PandoraCodexControlRoom";
 import { MultiBrandFlashDashboard } from "../MultiBrandFlashDashboard";
+import { DeviceAuthorizationTriggersPanel } from "../DeviceAuthorizationTriggersPanel";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { 
     Scan, 
     Lightning, 
     Gauge, 
     DeviceMobile,
-    Cpu
+    Cpu,
+    ShieldCheck
 } from '@phosphor-icons/react';
 
 export function DiagnosticsTab() {
@@ -46,6 +48,10 @@ export function DiagnosticsTab() {
                         <DeviceMobile weight="duotone" size={16} />
                         Multi-Brand
                     </TabsTrigger>
+                    <TabsTrigger value="auth" className="gap-1.5 text-xs">
+                        <ShieldCheck weight="duotone" size={16} />
+                        Auth Triggers
+                    </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="device" className="mt-4">
@@ -62,6 +68,13 @@ export function DiagnosticsTab() {
 
                 <TabsContent value="flash" className="mt-4">
                     <MultiBrandFlashDashboard />
+                </TabsContent>
+
+                <TabsContent value="auth" className="mt-4">
+                    <div className="text-center py-8 text-muted-foreground">
+                        <p className="text-sm mb-2">Select a device from the sidebar to trigger authorizations</p>
+                        <p className="text-xs">Available triggers: ADB USB debugging, iOS Trust Computer, File Transfer, Backup Auth, and more</p>
+                    </div>
                 </TabsContent>
             </Tabs>
         </div>
