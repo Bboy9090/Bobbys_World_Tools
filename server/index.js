@@ -1423,26 +1423,521 @@ app.post('/api/bootforgeusb/build', async (req, res) => {
 
 
 let flashHistory = [];
+let activeFlashJobs = new Map();
+let jobCounter = 1;
 let monitoringActive = false;
 let testHistory = [];
 
-app.get('/api/flash/history', (req, res) => {
-  res.json(flashHistory);
+const wssFlashProgress = new WebSocketServer({ server, path: '/ws/flash-progress' });
+const flashProgressClients = new Map();
+
+wssFlashProgress.on('connection', (ws, req) => {
+  const pathParts = req.url.split('/');
+  const jobId = pathParts[pathParts.length - 1];
+  
+  if (!jobId || jobId === 'flash-progress') {
+    console.log('[Flash WS] Client connected without job ID');
+    ws.close();
+    return;
+  }
+  
+  console.log(`[Flash WS] Client connected for job ${jobId}`);
+  flashProgressClients.set(jobId, ws);
+  
+  ws.on('close', () => {
+    console.log(`[Flash WS] Client disconnected for job ${jobId}`);
+    flashProgressClients.delete(jobId);
+  });
+  
+  ws.on('error', (error) => {
+    console.error(`[Flash WS] Error for job ${jobId}:`, error);
+    flashProgressClients.delete(jobId);
+  });
 });
 
-app.post('/api/flash/start', (req, res) => {
-  const entry = {
-    id: Date.now(),
-    name: 'Demo Flash Operation',
-    status: 'started',
-    startTime: new Date().toISOString(),
-    progress: 0,
-    speed: '0 MB/s'
-  };
-  flashHistory.unshift(entry);
-  if (flashHistory.length > 50) flashHistory = flashHistory.slice(0, 50);
+function broadcastFlashProgress(jobId, data) {
+  const ws = flashProgressClients.get(jobId);
+  if (ws && ws.readyState === ws.OPEN) {
+    ws.send(JSON.stringify(data));
+  }
+}
+
+app.get('/api/flash/devices', async (req, res) => {
+  try {
+    const devices = [];
+    
+    if (commandExists('adb')) {
+      const adbOutput = safeExec('adb devices -l');
+      if (adbOutput) {
+        const lines = adbOutput.split('\n').slice(1).filter(l => l.trim());
+        for (const line of lines) {
+          const parts = line.trim().split(/\s+/);
+          const serial = parts[0];
+          const state = parts[1];
+          const infoStr = parts.slice(2).join(' ');
+          
+          if (serial && state && state !== 'unauthorized' && state !== 'offline') {
+            const model = infoStr.match(/model:(\S+)/)?.[1] || 'Unknown';
+            const product = infoStr.match(/product:(\S+)/)?.[1] || 'Unknown';
+            
+            devices.push({
+              serial,
+              brand: 'Android',
+              model: model.replace(/_/g, ' '),
+              mode: state === 'device' ? 'Normal OS' : state,
+              capabilities: state === 'device' 
+                ? ['adb-sideload'] 
+                : state === 'recovery' 
+                ? ['adb-sideload'] 
+                : [],
+              connectionType: 'usb',
+              isBootloader: state === 'bootloader',
+              isRecovery: state === 'recovery',
+              isDFU: false,
+              isEDL: false
+            });
+          }
+        }
+      }
+    }
+    
+    if (commandExists('fastboot')) {
+      const fastbootOutput = safeExec('fastboot devices');
+      if (fastbootOutput) {
+        const lines = fastbootOutput.split('\n').filter(l => l.trim());
+        for (const line of lines) {
+          const parts = line.trim().split(/\s+/);
+          const serial = parts[0];
+          const mode = parts[1] || 'fastboot';
+          
+          if (serial) {
+            const existing = devices.find(d => d.serial === serial);
+            if (existing) {
+              existing.isBootloader = true;
+              existing.capabilities.push('fastboot');
+            } else {
+              devices.push({
+                serial,
+                brand: 'Android',
+                model: 'Unknown',
+                mode: 'Fastboot',
+                capabilities: ['fastboot'],
+                connectionType: 'usb',
+                isBootloader: true,
+                isRecovery: false,
+                isDFU: false,
+                isEDL: false
+              });
+            }
+          }
+        }
+      }
+    }
+    
+    res.json({
+      success: true,
+      count: devices.length,
+      devices,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[Flash API] Device scan failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Device scan failed',
+      devices: [],
+      count: 0
+    });
+  }
+});
+
+app.get('/api/flash/devices/:serial', async (req, res) => {
+  const { serial } = req.params;
   
-  res.json({ status: 'started', entry });
+  try {
+    let deviceInfo = {
+      serial,
+      found: false
+    };
+    
+    if (commandExists('adb')) {
+      const adbDevices = safeExec('adb devices');
+      if (adbDevices && adbDevices.includes(serial)) {
+        const props = safeExec(`adb -s ${serial} shell getprop 2>/dev/null`);
+        if (props) {
+          deviceInfo = {
+            serial,
+            found: true,
+            source: 'adb',
+            manufacturer: props.match(/\[ro\.product\.manufacturer\]:\s*\[(.*?)\]/)?.[1],
+            brand: props.match(/\[ro\.product\.brand\]:\s*\[(.*?)\]/)?.[1],
+            model: props.match(/\[ro\.product\.model\]:\s*\[(.*?)\]/)?.[1],
+            androidVersion: props.match(/\[ro\.build\.version\.release\]:\s*\[(.*?)\]/)?.[1],
+            sdkVersion: props.match(/\[ro\.build\.version\.sdk\]:\s*\[(.*?)\]/)?.[1],
+            buildId: props.match(/\[ro\.build\.id\]:\s*\[(.*?)\]/)?.[1]
+          };
+        }
+      }
+    }
+    
+    if (!deviceInfo.found && commandExists('fastboot')) {
+      const fastbootDevices = safeExec('fastboot devices');
+      if (fastbootDevices && fastbootDevices.includes(serial)) {
+        const extractValue = (output) => {
+          if (!output) return null;
+          const match = output.match(/:\s*(.+)/);
+          return match ? match[1].trim() : null;
+        };
+        
+        deviceInfo = {
+          serial,
+          found: true,
+          source: 'fastboot',
+          product: extractValue(safeExec(`fastboot -s ${serial} getvar product 2>&1`)),
+          variant: extractValue(safeExec(`fastboot -s ${serial} getvar variant 2>&1`)),
+          bootloaderVersion: extractValue(safeExec(`fastboot -s ${serial} getvar version-bootloader 2>&1`)),
+          unlocked: extractValue(safeExec(`fastboot -s ${serial} getvar unlocked 2>&1`))
+        };
+      }
+    }
+    
+    if (!deviceInfo.found) {
+      return res.status(404).json({
+        success: false,
+        error: 'Device not found',
+        serial
+      });
+    }
+    
+    res.json({
+      success: true,
+      device: deviceInfo,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[Flash API] Get device info failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get device info'
+    });
+  }
+});
+
+app.get('/api/flash/devices/:serial/partitions', async (req, res) => {
+  const { serial } = req.params;
+  
+  try {
+    const partitions = ['boot', 'system', 'vendor', 'recovery', 'userdata', 
+                       'cache', 'vbmeta', 'dtbo', 'persist'];
+    
+    res.json({
+      success: true,
+      serial,
+      partitions,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get partitions'
+    });
+  }
+});
+
+app.post('/api/flash/validate-image', async (req, res) => {
+  const { filePath } = req.body;
+  
+  if (!filePath) {
+    return res.status(400).json({
+      valid: false,
+      error: 'File path required'
+    });
+  }
+  
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    
+    if (!fs.existsSync(filePath)) {
+      return res.json({
+        valid: false,
+        error: 'File does not exist'
+      });
+    }
+    
+    const stats = fs.statSync(filePath);
+    const ext = path.extname(filePath).toLowerCase();
+    
+    const validExtensions = ['.img', '.zip', '.tar', '.bin'];
+    if (!validExtensions.includes(ext)) {
+      return res.json({
+        valid: false,
+        error: 'Invalid file type'
+      });
+    }
+    
+    res.json({
+      valid: true,
+      type: ext.substring(1),
+      size: stats.size,
+      path: filePath
+    });
+  } catch (error) {
+    res.json({
+      valid: false,
+      error: error.message
+    });
+  }
+});
+
+app.post('/api/flash/start', async (req, res) => {
+  const config = req.body;
+  
+  if (!config.deviceSerial || !config.flashMethod || !config.partitions || config.partitions.length === 0) {
+    return res.status(400).json({
+      success: false,
+      error: 'Missing required fields: deviceSerial, flashMethod, partitions'
+    });
+  }
+  
+  const jobId = `flash-job-${jobCounter++}-${Date.now()}`;
+  
+  const jobStatus = {
+    jobId,
+    status: 'queued',
+    progress: 0,
+    currentStep: 'Initializing',
+    totalSteps: config.partitions.length,
+    completedSteps: 0,
+    bytesWritten: 0,
+    totalBytes: config.partitions.reduce((sum, p) => sum + (p.size || 100000000), 0),
+    speed: 0,
+    timeElapsed: 0,
+    timeRemaining: 0,
+    logs: [`[${new Date().toISOString()}] Flash job ${jobId} created`],
+    startTime: Date.now()
+  };
+  
+  activeFlashJobs.set(jobId, { config, status: jobStatus });
+  
+  simulateFlashOperation(jobId, config);
+  
+  res.json({
+    success: true,
+    jobId,
+    status: 'queued',
+    deviceSerial: config.deviceSerial,
+    startTime: Date.now(),
+    message: 'Flash operation queued'
+  });
+});
+
+function simulateFlashOperation(jobId, config) {
+  const job = activeFlashJobs.get(jobId);
+  if (!job) return;
+  
+  job.status.status = 'running';
+  job.status.logs.push(`[${new Date().toISOString()}] Starting flash operation`);
+  job.status.currentStep = `Flashing ${config.partitions[0].name}`;
+  
+  broadcastFlashProgress(jobId, {
+    type: 'progress',
+    status: job.status
+  });
+  
+  let stepIndex = 0;
+  const stepInterval = setInterval(() => {
+    const job = activeFlashJobs.get(jobId);
+    if (!job) {
+      clearInterval(stepInterval);
+      return;
+    }
+    
+    job.status.progress += 10;
+    job.status.timeElapsed = Math.floor((Date.now() - job.status.startTime) / 1000);
+    job.status.speed = Math.floor(Math.random() * 20 + 10);
+    
+    if (job.status.progress >= 100) {
+      job.status.progress = 100;
+      job.status.status = 'completed';
+      job.status.currentStep = 'Completed';
+      job.status.logs.push(`[${new Date().toISOString()}] Flash operation completed successfully`);
+      
+      flashHistory.unshift({
+        jobId,
+        deviceSerial: config.deviceSerial,
+        deviceBrand: config.deviceBrand,
+        flashMethod: config.flashMethod,
+        partitions: config.partitions.map(p => p.name),
+        status: 'completed',
+        startTime: job.status.startTime,
+        endTime: Date.now(),
+        duration: Math.floor((Date.now() - job.status.startTime) / 1000),
+        bytesWritten: job.status.totalBytes,
+        averageSpeed: Math.floor(Math.random() * 20 + 10)
+      });
+      
+      if (flashHistory.length > 50) {
+        flashHistory = flashHistory.slice(0, 50);
+      }
+      
+      broadcastFlashProgress(jobId, {
+        type: 'completed',
+        status: job.status
+      });
+      
+      clearInterval(stepInterval);
+      setTimeout(() => activeFlashJobs.delete(jobId), 5000);
+    } else if (job.status.progress % 30 === 0 && stepIndex < config.partitions.length - 1) {
+      stepIndex++;
+      job.status.completedSteps = stepIndex;
+      job.status.currentStep = `Flashing ${config.partitions[stepIndex].name}`;
+      job.status.logs.push(`[${new Date().toISOString()}] Flashing partition: ${config.partitions[stepIndex].name}`);
+    }
+    
+    broadcastFlashProgress(jobId, {
+      type: 'progress',
+      status: job.status
+    });
+  }, 1000);
+}
+
+app.post('/api/flash/pause/:jobId', async (req, res) => {
+  const { jobId } = req.params;
+  const job = activeFlashJobs.get(jobId);
+  
+  if (!job) {
+    return res.status(404).json({
+      success: false,
+      error: 'Job not found'
+    });
+  }
+  
+  if (job.status.status !== 'running') {
+    return res.status(400).json({
+      success: false,
+      error: 'Job is not running'
+    });
+  }
+  
+  job.status.status = 'paused';
+  job.status.logs.push(`[${new Date().toISOString()}] Flash operation paused`);
+  
+  res.json({
+    success: true,
+    jobId,
+    status: 'paused'
+  });
+});
+
+app.post('/api/flash/resume/:jobId', async (req, res) => {
+  const { jobId } = req.params;
+  const job = activeFlashJobs.get(jobId);
+  
+  if (!job) {
+    return res.status(404).json({
+      success: false,
+      error: 'Job not found'
+    });
+  }
+  
+  if (job.status.status !== 'paused') {
+    return res.status(400).json({
+      success: false,
+      error: 'Job is not paused'
+    });
+  }
+  
+  job.status.status = 'running';
+  job.status.logs.push(`[${new Date().toISOString()}] Flash operation resumed`);
+  
+  res.json({
+    success: true,
+    jobId,
+    status: 'running'
+  });
+});
+
+app.post('/api/flash/cancel/:jobId', async (req, res) => {
+  const { jobId } = req.params;
+  const job = activeFlashJobs.get(jobId);
+  
+  if (!job) {
+    return res.status(404).json({
+      success: false,
+      error: 'Job not found'
+    });
+  }
+  
+  job.status.status = 'cancelled';
+  job.status.logs.push(`[${new Date().toISOString()}] Flash operation cancelled`);
+  
+  broadcastFlashProgress(jobId, {
+    type: 'cancelled',
+    status: job.status
+  });
+  
+  flashHistory.unshift({
+    jobId,
+    deviceSerial: job.config.deviceSerial,
+    deviceBrand: job.config.deviceBrand,
+    flashMethod: job.config.flashMethod,
+    partitions: job.config.partitions.map(p => p.name),
+    status: 'cancelled',
+    startTime: job.status.startTime,
+    endTime: Date.now(),
+    duration: Math.floor((Date.now() - job.status.startTime) / 1000),
+    bytesWritten: 0,
+    averageSpeed: 0
+  });
+  
+  activeFlashJobs.delete(jobId);
+  
+  res.json({
+    success: true,
+    jobId,
+    status: 'cancelled'
+  });
+});
+
+app.get('/api/flash/status/:jobId', async (req, res) => {
+  const { jobId } = req.params;
+  const job = activeFlashJobs.get(jobId);
+  
+  if (!job) {
+    return res.status(404).json({
+      success: false,
+      error: 'Job not found'
+    });
+  }
+  
+  res.json({
+    success: true,
+    ...job.status
+  });
+});
+
+app.get('/api/flash/operations/active', async (req, res) => {
+  const operations = Array.from(activeFlashJobs.values()).map(job => job.status);
+  
+  res.json({
+    success: true,
+    count: operations.length,
+    operations,
+    timestamp: new Date().toISOString()
+  });
+});
+
+app.get('/api/flash/history', (req, res) => {
+  const limit = parseInt(req.query.limit) || 50;
+  const limitedHistory = flashHistory.slice(0, limit);
+  
+  res.json({
+    success: true,
+    count: limitedHistory.length,
+    history: limitedHistory,
+    timestamp: new Date().toISOString()
+  });
 });
 
 app.post('/api/monitor/start', (req, res) => {

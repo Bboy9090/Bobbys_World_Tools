@@ -19,12 +19,12 @@ This is a comprehensive repair utility dashboard with real-time device monitorin
 - **Progression**: App opens → Dashboard loads → Sidebar shows devices → User clicks tab → Content switches → Logs panel shows activity
 - **Success criteria**: Device sidebar updates in real-time, tab switching instant, logs panel expandable/collapsible, no nested navigation, all tools 1-2 clicks away
 
-### Diagnostics Tab
-- **Functionality**: Four sub-sections: Device Diagnostics (ADB/Fastboot/USB detection), Batch Diagnostics (multi-device runs), Flash Monitoring (Pandora Codex integration with benchmarking), Multi-Brand Flash (iOS DFU, Odin, EDL, Fastboot, MTK)
-- **Purpose**: Centralize all device testing and flashing operations in one location with proper categorization
-- **Trigger**: User clicks Diagnostics tab in top navigation
-- **Progression**: Click tab → Sub-tabs appear → User selects diagnostic type → Operations panel loads → User runs tests → Results display → Logs update
-- **Success criteria**: All diagnostic modules accessible, flash progress real-time, WebSocket connection stable, benchmarking metrics accurate, multi-brand protocols working
+### Diagnostics Tab (Real Backend Integration)
+- **Functionality**: Four sub-sections: Device Diagnostics (ADB/Fastboot/USB detection via real API), Batch Diagnostics (multi-device runs), Flash Monitoring (Pandora Codex integration with real-time WebSocket benchmarking), Multi-Brand Flash (iOS DFU, Odin, EDL, Fastboot, MTK) - all connected to backend Express server
+- **Purpose**: Centralize all device testing and flashing operations with real backend API connectivity - no mock data
+- **Trigger**: User clicks Diagnostics tab → Frontend queries `/api/flash/devices` → Real device scan via ADB/Fastboot
+- **Progression**: Click tab → Backend API scans devices → Real device list populates → User selects flash operation → POST to `/api/flash/start` → WebSocket streams progress → Operation completes → History stored
+- **Success criteria**: Backend server running on port 3001, real device detection working, WebSocket progress streaming functional, flash history persisted, all operations use backend API endpoints (no mock responses)
 
 ### Reports Tab (Evidence & Backups)
 - **Functionality**: Four sub-sections: Evidence Bundles (signed reports with chain-of-custody), Backups (snapshot retention with auto-cleanup), Evidence Dashboard (authority signing, correlation tracking), Repair Library (teardown guides, tutorials)
