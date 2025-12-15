@@ -1,8 +1,0 @@
-.cache/
-.git/
-*.log
-.npm/
-.pnpm-store/
-frontend/node_modules/
-frontend/src-tauri/
-bootforge/target/
