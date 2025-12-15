@@ -4,6 +4,7 @@ import { PandoraCodexControlRoom } from "../PandoraCodexControlRoom";
 import { MultiBrandFlashDashboard } from "../MultiBrandFlashDashboard";
 import { DeviceAuthorizationTriggersPanel } from "../DeviceAuthorizationTriggersPanel";
 import { ComprehensiveAuthorizationTriggersGuide } from "../ComprehensiveAuthorizationTriggersGuide";
+import { TriggerCatalog } from "../TriggerCatalog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { 
     Scan, 
@@ -11,7 +12,8 @@ import {
     Gauge, 
     DeviceMobile,
     Cpu,
-    ShieldCheck
+    ShieldCheck,
+    ListChecks
 } from '@phosphor-icons/react';
 
 export function DiagnosticsTab() {
@@ -49,9 +51,13 @@ export function DiagnosticsTab() {
                         <DeviceMobile weight="duotone" size={16} />
                         Multi-Brand
                     </TabsTrigger>
+                    <TabsTrigger value="catalog" className="gap-1.5 text-xs">
+                        <ListChecks weight="duotone" size={16} />
+                        Trigger Catalog
+                    </TabsTrigger>
                     <TabsTrigger value="auth" className="gap-1.5 text-xs">
                         <ShieldCheck weight="duotone" size={16} />
-                        Auth Triggers
+                        Auth Guide
                     </TabsTrigger>
                 </TabsList>
 
@@ -69,6 +75,10 @@ export function DiagnosticsTab() {
 
                 <TabsContent value="flash" className="mt-4">
                     <MultiBrandFlashDashboard />
+                </TabsContent>
+
+                <TabsContent value="catalog" className="mt-4">
+                    <TriggerCatalog />
                 </TabsContent>
 
                 <TabsContent value="auth" className="mt-4">

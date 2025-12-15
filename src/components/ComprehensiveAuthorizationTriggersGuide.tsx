@@ -1,750 +1,538 @@
-import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Separator } from '@/components/ui/separator';
-import {
-  ShieldCheck,
-  ShieldWarning,
-  DeviceMobile,
-  Lightning,
-  LockKey,
-  FileArrowUp,
-  Database,
-  Fingerprint,
-  CheckCircle,
-  XCircle,
-  Clock,
-  Info,
-  Warning,
-  AndroidLogo,
-  AppleLogo,
-  Terminal,
-  Cpu,
-  HardDrive,
-  UserCircle,
-  Eye,
-  Fire
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { 
+  ShieldCheck, 
+  Lightning, 
+  TestTube, 
+  Archive, 
+  ShieldWarning, 
+  Plug, 
+  Package,
+  BookOpen,
+  Code,
+  ListChecks
 } from '@phosphor-icons/react';
 
-interface TriggerInfo {
-  id: string;
-  name: string;
-  description: string;
-  icon: React.ReactNode;
-  command: string;
-  userSees: string;
-  requiresUserAction: boolean;
-  destructive: boolean;
-  platforms: string[];
-  category: 'trust' | 'operation' | 'diagnostic' | 'policy' | 'connection' | 'advanced';
-}
-
-const ALL_TRIGGERS: TriggerInfo[] = [
-  {
-    id: 'adb_usb_debug',
-    name: 'USB Debugging Authorization',
-    description: 'Triggers the "Allow USB debugging?" dialog on Android device with computer fingerprint',
-    icon: <AndroidLogo className="w-4 h-4" />,
-    command: 'adb -s {serial} shell getprop',
-    userSees: '"Allow USB debugging?" dialog with RSA key fingerprint',
-    requiresUserAction: true,
-    destructive: false,
-    platforms: ['Android', 'Samsung'],
-    category: 'trust',
-  },
-  {
-    id: 'adb_file_transfer',
-    name: 'File Transfer Permission',
-    description: 'Triggers file transfer permission dialog by attempting to push a test file',
-    icon: <FileArrowUp className="w-4 h-4" />,
-    command: 'adb -s {serial} push test.txt /sdcard/',
-    userSees: '"Allow access to device files?" prompt',
-    requiresUserAction: true,
-    destructive: false,
-    platforms: ['Android', 'Samsung'],
-    category: 'trust',
-  },
-  {
-    id: 'adb_backup_auth',
-    name: 'Backup Authorization',
-    description: 'Triggers backup authorization and optional encryption password dialog',
-    icon: <Database className="w-4 h-4" />,
-    command: 'adb -s {serial} backup -noapk com.android.settings',
-    userSees: '"Allow backup?" with optional encryption password field',
-    requiresUserAction: true,
-    destructive: false,
-    platforms: ['Android', 'Samsung'],
-    category: 'trust',
-  },
-  {
-    id: 'adb_install_confirm',
-    name: 'App Installation Confirmation',
-    description: 'Triggers app installation confirmation dialog from computer',
-    icon: <AndroidLogo className="w-4 h-4" />,
-    command: 'adb -s {serial} install -r app.apk',
-    userSees: '"Install this app from your computer?" prompt',
-    requiresUserAction: true,
-    destructive: false,
-    platforms: ['Android', 'Samsung'],
-    category: 'operation',
-  },
-  {
-    id: 'ios_trust_computer',
-    name: 'Trust This Computer',
-    description: 'Triggers the iOS "Trust This Computer?" dialog requiring passcode entry',
-    icon: <AppleLogo className="w-4 h-4" />,
-    command: 'ideviceinfo -u {udid}',
-    userSees: '"Trust This Computer?" dialog + passcode entry',
-    requiresUserAction: true,
-    destructive: false,
-    platforms: ['iOS'],
-    category: 'trust',
-  },
-  {
-    id: 'ios_pairing',
-    name: 'iOS Pairing Request',
-    description: 'Sends pairing request requiring user to enter device passcode',
-    icon: <Fingerprint className="w-4 h-4" />,
-    command: 'idevicepair -u {udid} pair',
-    userSees: 'Pairing notification + passcode entry requirement',
-    requiresUserAction: true,
-    destructive: false,
-    platforms: ['iOS'],
-    category: 'trust',
-  },
-  {
-    id: 'ios_backup_encryption',
-    name: 'iOS Backup Encryption',
-    description: 'Triggers backup encryption setup dialog on iOS device',
-    icon: <LockKey className="w-4 h-4" />,
-    command: 'idevicebackup2 -u {udid} info',
-    userSees: '"Would you like to encrypt your backups?" with password setup',
-    requiresUserAction: true,
-    destructive: false,
-    platforms: ['iOS'],
-    category: 'trust',
-  },
-  {
-    id: 'ios_app_install_trust',
-    name: 'iOS App Installation Trust',
-    description: 'Prompts user to trust developer for non-App Store app installation',
-    icon: <AppleLogo className="w-4 h-4" />,
-    command: 'ideviceinstaller -u {udid} -i app.ipa',
-    userSees: '"Do you want to install this app?" on device',
-    requiresUserAction: true,
-    destructive: false,
-    platforms: ['iOS'],
-    category: 'trust',
-  },
-  {
-    id: 'flash_firmware',
-    name: 'Flash Firmware Partition',
-    description: 'Flashes firmware to specific partition - CANNOT BE UNDONE',
-    icon: <Fire className="w-4 h-4" />,
-    command: 'fastboot -s {serial} flash system system.img',
-    userSees: 'Confirmation dialog: "Flash system partition? This cannot be undone"',
-    requiresUserAction: true,
-    destructive: true,
-    platforms: ['Android', 'Samsung'],
-    category: 'operation',
-  },
-  {
-    id: 'batch_flash',
-    name: 'Batch Flash Multiple Partitions',
-    description: 'Flashes multiple partitions sequentially - DESTRUCTIVE',
-    icon: <Lightning className="w-4 h-4" />,
-    command: 'fastboot flash {partition1} {img1} && fastboot flash {partition2} {img2}',
-    userSees: 'Partition list + "Type CONFIRM to proceed"',
-    requiresUserAction: true,
-    destructive: true,
-    platforms: ['Android', 'Samsung'],
-    category: 'operation',
-  },
-  {
-    id: 'factory_reset',
-    name: 'Factory Reset Device',
-    description: 'Completely erases all user data - PERMANENT DATA LOSS',
-    icon: <ShieldWarning className="w-4 h-4" />,
-    command: 'fastboot -w',
-    userSees: '"Type FACTORY RESET to confirm data erasure"',
-    requiresUserAction: true,
-    destructive: true,
-    platforms: ['Android', 'Samsung', 'iOS'],
-    category: 'operation',
-  },
-  {
-    id: 'bootloader_unlock',
-    name: 'Unlock Bootloader',
-    description: 'Unlocks bootloader - ERASES ALL DATA and voids warranty',
-    icon: <LockKey className="w-4 h-4" />,
-    command: 'fastboot oem unlock',
-    userSees: '"This will ERASE ALL DATA. Type UNLOCK to confirm"',
-    requiresUserAction: true,
-    destructive: true,
-    platforms: ['Android', 'Samsung'],
-    category: 'operation',
-  },
-  {
-    id: 'format_userdata',
-    name: 'Format Userdata Partition',
-    description: 'Formats userdata partition - ALL USER DATA PERMANENTLY ERASED',
-    icon: <HardDrive className="w-4 h-4" />,
-    command: 'fastboot format:ext4 userdata',
-    userSees: '"All user data will be permanently erased"',
-    requiresUserAction: true,
-    destructive: true,
-    platforms: ['Android', 'Samsung'],
-    category: 'operation',
-  },
-  {
-    id: 'reboot_recovery',
-    name: 'Reboot to Recovery Mode',
-    description: 'Reboots device into recovery menu for advanced operations',
-    icon: <Terminal className="w-4 h-4" />,
-    command: 'adb reboot recovery',
-    userSees: 'Device automatically reboots into recovery menu',
-    requiresUserAction: false,
-    destructive: false,
-    platforms: ['Android', 'Samsung'],
-    category: 'operation',
-  },
-  {
-    id: 'reboot_bootloader',
-    name: 'Reboot to Bootloader',
-    description: 'Reboots device into fastboot/bootloader mode',
-    icon: <Cpu className="w-4 h-4" />,
-    command: 'adb reboot bootloader',
-    userSees: 'Device reboots into fastboot mode (shows fastboot logo)',
-    requiresUserAction: false,
-    destructive: false,
-    platforms: ['Android', 'Samsung'],
-    category: 'operation',
-  },
-  {
-    id: 'reboot_edl',
-    name: 'Reboot to EDL Mode',
-    description: 'Reboots Qualcomm device into Emergency Download Mode',
-    icon: <Lightning className="w-4 h-4" />,
-    command: 'adb reboot edl',
-    userSees: 'Device screen goes black (EDL mode - low-level flash)',
-    requiresUserAction: false,
-    destructive: false,
-    platforms: ['Qualcomm'],
-    category: 'operation',
-  },
-  {
-    id: 'ios_dfu_mode',
-    name: 'iOS DFU Mode Entry',
-    description: 'Guides user into DFU mode for device restore',
-    icon: <AppleLogo className="w-4 h-4" />,
-    command: 'ideviceenterrecovery {udid}',
-    userSees: 'On-screen instructions: "Hold Power + Home for 10 seconds..."',
-    requiresUserAction: true,
-    destructive: false,
-    platforms: ['iOS'],
-    category: 'operation',
-  },
-  {
-    id: 'run_diagnostics',
-    name: 'Run Full Device Diagnostics',
-    description: 'Executes comprehensive health check (battery, storage, sensors, connectivity)',
-    icon: <CheckCircle className="w-4 h-4" />,
-    command: 'Multiple diagnostic probes',
-    userSees: '"Run diagnostics on {device}?" confirmation',
-    requiresUserAction: true,
-    destructive: false,
-    platforms: ['Android', 'Samsung', 'iOS'],
-    category: 'diagnostic',
-  },
-  {
-    id: 'export_evidence',
-    name: 'Export Evidence Bundle',
-    description: 'Generates signed diagnostic report with chain-of-custody',
-    icon: <FileArrowUp className="w-4 h-4" />,
-    command: 'Generate + GPG sign evidence bundle',
-    userSees: '"Export evidence for {device}?" with recipient email',
-    requiresUserAction: true,
-    destructive: false,
-    platforms: ['All'],
-    category: 'diagnostic',
-  },
-  {
-    id: 'collect_adb_logs',
-    name: 'Collect ADB Logs',
-    description: 'Captures system logs via ADB logcat',
-    icon: <Terminal className="w-4 h-4" />,
-    command: 'adb logcat -d > logs.txt',
-    userSees: 'No prompt (automatic log collection)',
-    requiresUserAction: false,
-    destructive: false,
-    platforms: ['Android', 'Samsung'],
-    category: 'diagnostic',
-  },
-  {
-    id: 'collect_ios_crash_logs',
-    name: 'Capture iOS Crash Logs',
-    description: 'Retrieves crash reports from iOS device',
-    icon: <AppleLogo className="w-4 h-4" />,
-    command: 'idevicecrashreport -e',
-    userSees: 'No prompt (automatic crash log extraction)',
-    requiresUserAction: false,
-    destructive: false,
-    platforms: ['iOS'],
-    category: 'diagnostic',
-  },
-  {
-    id: 'benchmark_flash_speed',
-    name: 'Benchmark Flash Speed',
-    description: 'Runs timed flash operations to profile device performance',
-    icon: <Lightning className="w-4 h-4" />,
-    command: 'Timed fastboot flash operations',
-    userSees: '"Start benchmark?" with warning about test duration',
-    requiresUserAction: true,
-    destructive: false,
-    platforms: ['Android', 'Samsung'],
-    category: 'diagnostic',
-  },
-  {
-    id: 'auto_snapshot',
-    name: 'Automatic Snapshot After Diagnostics',
-    description: 'Automatically saves diagnostic results to snapshots',
-    icon: <Database className="w-4 h-4" />,
-    command: 'Save to .pandora_private/snapshots/',
-    userSees: 'No prompt (automatic after diagnostic completion)',
-    requiresUserAction: false,
-    destructive: false,
-    platforms: ['All'],
-    category: 'diagnostic',
-  },
-  {
-    id: 'manual_snapshot',
-    name: 'Manual Device Snapshot',
-    description: 'Creates timestamped snapshot of current device state',
-    icon: <Database className="w-4 h-4" />,
-    command: 'Create snapshot with metadata',
-    userSees: '"Save current device state?" confirmation',
-    requiresUserAction: true,
-    destructive: false,
-    platforms: ['All'],
-    category: 'diagnostic',
-  },
-  {
-    id: 'workspace_backup',
-    name: 'Workspace Backup',
-    description: 'Archives entire workspace including evidence bundles',
-    icon: <FileArrowUp className="w-4 h-4" />,
-    command: 'tar + compress workspace directory',
-    userSees: '"Backup workspace now?" with destination path',
-    requiresUserAction: true,
-    destructive: false,
-    platforms: ['All'],
-    category: 'diagnostic',
-  },
-  {
-    id: 'bootloader_unlock_policy',
-    name: 'Bootloader Unlock (Policy Enforced)',
-    description: 'Bootloader unlock with RBAC policy and typed confirmation',
-    icon: <UserCircle className="w-4 h-4" />,
-    command: 'fastboot oem unlock',
-    userSees: 'Role check + "Type UNLOCK to confirm" + audit log',
-    requiresUserAction: true,
-    destructive: true,
-    platforms: ['Android', 'Samsung'],
-    category: 'policy',
-  },
-  {
-    id: 'supervisor_approval',
-    name: 'Supervisor Approval Required',
-    description: 'High-risk operation requiring supervisor PIN entry',
-    icon: <LockKey className="w-4 h-4" />,
-    command: 'Any high-risk operation',
-    userSees: '"Supervisor approval required. Enter supervisor PIN"',
-    requiresUserAction: true,
-    destructive: true,
-    platforms: ['All'],
-    category: 'policy',
-  },
-  {
-    id: 'evidence_audit_consent',
-    name: 'Evidence Recording Consent',
-    description: 'Confirms user consent for operation to be recorded and audited',
-    icon: <Eye className="w-4 h-4" />,
-    command: 'Any auditable operation',
-    userSees: '"This operation will be recorded and signed. Continue?"',
-    requiresUserAction: true,
-    destructive: false,
-    platforms: ['All'],
-    category: 'policy',
-  },
-  {
-    id: 'hotplug_connect',
-    name: 'USB Device Attached',
-    description: 'New USB device detected via hotplug event',
-    icon: <DeviceMobile className="w-4 h-4" />,
-    command: 'USB hotplug detection',
-    userSees: 'Toast: "New device detected. Do you want to connect?"',
-    requiresUserAction: true,
-    destructive: false,
-    platforms: ['All'],
-    category: 'connection',
-  },
-  {
-    id: 'driver_install_prompt',
-    name: 'Driver Installation Prompt',
-    description: 'Device detected but driver missing',
-    icon: <Warning className="w-4 h-4" />,
-    command: 'USB device enumeration',
-    userSees: 'Alert: "Driver not found. Install driver for {device}?"',
-    requiresUserAction: true,
-    destructive: false,
-    platforms: ['All'],
-    category: 'connection',
-  },
-  {
-    id: 'samsung_download_mode',
-    name: 'Samsung Download Mode Verification',
-    description: 'Verifies Samsung device in Odin/Download mode',
-    icon: <DeviceMobile className="w-4 h-4" />,
-    command: 'heimdall detect',
-    userSees: '"Samsung device in Download Mode detected"',
-    requiresUserAction: false,
-    destructive: false,
-    platforms: ['Samsung'],
-    category: 'advanced',
-  },
-  {
-    id: 'samsung_pit_read',
-    name: 'Samsung PIT Partition Table Read',
-    description: 'Reads Samsung partition layout via Heimdall',
-    icon: <HardDrive className="w-4 h-4" />,
-    command: 'heimdall print-pit',
-    userSees: 'Partition table displayed in UI',
-    requiresUserAction: false,
-    destructive: false,
-    platforms: ['Samsung'],
-    category: 'advanced',
-  },
-  {
-    id: 'edl_verify',
-    name: 'Qualcomm EDL Mode Verification',
-    description: 'Verifies Qualcomm device in Emergency Download Mode',
-    icon: <Lightning className="w-4 h-4" />,
-    command: 'edl printgpt',
-    userSees: '"EDL mode verified. Partition table:"',
-    requiresUserAction: false,
-    destructive: false,
-    platforms: ['Qualcomm'],
-    category: 'advanced',
-  },
-  {
-    id: 'edl_full_erase',
-    name: 'EDL Full Device Erase',
-    description: 'DESTRUCTIVE: Erases all partitions via EDL mode',
-    icon: <ShieldWarning className="w-4 h-4" />,
-    command: 'edl e',
-    userSees: '"DESTRUCTIVE: Erase all partitions? Type ERASE to confirm"',
-    requiresUserAction: true,
-    destructive: true,
-    platforms: ['Qualcomm'],
-    category: 'advanced',
-  },
-  {
-    id: 'mtk_connection',
-    name: 'MediaTek Connection Verification',
-    description: 'Verifies MediaTek device connection via mtkclient',
-    icon: <Cpu className="w-4 h-4" />,
-    command: 'python3 mtk_cli.py printgpt',
-    userSees: '"MediaTek device detected. Chip: MT6765"',
-    requiresUserAction: false,
-    destructive: false,
-    platforms: ['MediaTek'],
-    category: 'advanced',
-  },
-  {
-    id: 'mtk_bootloader_unlock',
-    name: 'MediaTek Bootloader Unlock',
-    description: 'Unlocks MediaTek bootloader - voids warranty',
-    icon: <LockKey className="w-4 h-4" />,
-    command: 'python3 mtk_cli.py da seccfg unlock',
-    userSees: '"Unlock bootloader? This voids warranty"',
-    requiresUserAction: true,
-    destructive: true,
-    platforms: ['MediaTek'],
-    category: 'advanced',
-  },
-];
-
 export function ComprehensiveAuthorizationTriggersGuide() {
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [searchQuery, setSearchQuery] = useState('');
-
-  const categories = [
-    { id: 'all', label: 'All Triggers', icon: <ShieldCheck className="w-4 h-4" /> },
-    { id: 'trust', label: 'Trust & Security', icon: <ShieldCheck className="w-4 h-4" /> },
-    { id: 'operation', label: 'Device Operations', icon: <Lightning className="w-4 h-4" /> },
-    { id: 'diagnostic', label: 'Diagnostics & Evidence', icon: <CheckCircle className="w-4 h-4" /> },
-    { id: 'policy', label: 'Policy & Compliance', icon: <UserCircle className="w-4 h-4" /> },
-    { id: 'connection', label: 'Connection & Hotplug', icon: <DeviceMobile className="w-4 h-4" /> },
-    { id: 'advanced', label: 'Advanced Platform-Specific', icon: <Cpu className="w-4 h-4" /> },
-  ];
-
-  const filteredTriggers = ALL_TRIGGERS.filter((trigger) => {
-    const matchesCategory = selectedCategory === 'all' || trigger.category === selectedCategory;
-    const matchesSearch = trigger.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          trigger.description.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
-  });
-
-  const destructiveCount = filteredTriggers.filter(t => t.destructive).length;
-  const requiresUserActionCount = filteredTriggers.filter(t => t.requiresUserAction).length;
-
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <div className="flex items-start justify-between">
+          <div className="flex items-center gap-2">
+            <BookOpen className="h-5 w-5 text-primary" />
             <div>
-              <CardTitle className="flex items-center gap-2 text-2xl">
-                <ShieldCheck className="w-6 h-6" />
-                Comprehensive Authorization Triggers Guide
-              </CardTitle>
-              <CardDescription className="mt-2">
-                Every possible trigger that prompts user interaction, device authorization, or system-level confirmations
+              <CardTitle>Comprehensive Authorization Triggers Guide</CardTitle>
+              <CardDescription>
+                Complete reference for device authorization, user prompts, and backend API integration
               </CardDescription>
             </div>
-            <Badge variant="outline" className="text-lg px-3 py-1">
-              {ALL_TRIGGERS.length} Triggers
-            </Badge>
           </div>
         </CardHeader>
-
-        <CardContent className="space-y-6">
-          <Alert>
-            <Info className="w-4 h-4" />
-            <AlertTitle>Real Commands Only</AlertTitle>
+        <CardContent>
+          <Alert className="border-primary/50 bg-primary/5">
+            <ShieldCheck className="h-4 w-4 text-primary" />
             <AlertDescription>
-              All triggers execute <strong>real commands</strong> that result in <strong>real device prompts</strong> or <strong>real system checks</strong>. 
-              No simulated responses, no ghost values, no placeholders.
+              All triggers are backed by <strong>real backend endpoints</strong> with{' '}
+              <strong>audit logging</strong>. No simulated values, no ghost connections.
             </AlertDescription>
           </Alert>
+        </CardContent>
+      </Card>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-primary/10 rounded-lg">
-                    <ShieldCheck className="w-5 h-5 text-primary" />
+      <Tabs defaultValue="overview" className="space-y-4">
+        <ScrollArea className="w-full">
+          <TabsList>
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="trust">Trust & Security</TabsTrigger>
+            <TabsTrigger value="flash">Flash Operations</TabsTrigger>
+            <TabsTrigger value="diagnostics">Diagnostics</TabsTrigger>
+            <TabsTrigger value="evidence">Evidence & Reports</TabsTrigger>
+            <TabsTrigger value="policy">Policy & Compliance</TabsTrigger>
+            <TabsTrigger value="hotplug">Hotplug Events</TabsTrigger>
+            <TabsTrigger value="plugins">Plugin Actions</TabsTrigger>
+            <TabsTrigger value="implementation">Implementation</TabsTrigger>
+          </TabsList>
+        </ScrollArea>
+
+        <TabsContent value="overview" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">What Are Authorization Triggers?</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Authorization triggers are interactive prompts that request explicit user confirmation
+                before executing sensitive operations. Each trigger is mapped to a real backend API
+                endpoint and produces structured audit logs for compliance and traceability.
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <ListChecks className="h-4 w-4 text-primary" />
+                    Key Principles
                   </div>
-                  <div>
-                    <p className="text-2xl font-bold">{ALL_TRIGGERS.length}</p>
-                    <p className="text-sm text-muted-foreground">Total Triggers</p>
+                  <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+                    <li>Truth-only data - no placeholders</li>
+                    <li>Explicit confirmation required</li>
+                    <li>Real backend execution</li>
+                    <li>Structured audit logging</li>
+                    <li>Risk-based validation</li>
+                  </ul>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <ShieldWarning className="h-4 w-4 text-warning" />
+                    Risk Levels
+                  </div>
+                  <div className="space-y-1">
+                    <Badge className="bg-success/20 text-success border-success/50">Low - Safe operations</Badge>
+                    <Badge className="bg-warning/20 text-warning border-warning/50 ml-2">Medium - Caution required</Badge>
+                    <Badge className="bg-accent/20 text-accent border-accent/50 ml-2">High - Elevated risk</Badge>
+                    <Badge className="bg-destructive/20 text-destructive border-destructive/50 ml-2">Destructive - Cannot undo</Badge>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-destructive/10 rounded-lg">
-                    <ShieldWarning className="w-5 h-5 text-destructive" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">{ALL_TRIGGERS.filter(t => t.destructive).length}</p>
-                    <p className="text-sm text-muted-foreground">Destructive Operations</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-accent/10 rounded-lg">
-                    <UserCircle className="w-5 h-5 text-accent" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">{ALL_TRIGGERS.filter(t => t.requiresUserAction).length}</p>
-                    <p className="text-sm text-muted-foreground">Require User Action</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <Separator />
-
-          <div className="space-y-4">
-            <div className="flex items-center gap-4">
-              <input
-                type="text"
-                placeholder="Search triggers..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="flex-1 px-4 py-2 border border-input rounded-lg bg-background"
+        <TabsContent value="trust" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="h-5 w-5 text-primary" />
+                <CardTitle>Trust & Security Triggers</CardTitle>
+              </div>
+              <CardDescription>Device authorization and permission management</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <TriggerSection
+                title="Trust Device"
+                endpoint="POST /api/devices/trust"
+                prompt="Do you want to trust this device?"
+                modal="Authorize this device for diagnostics and flashing?"
+                riskLevel="medium"
+                auditFields={['deviceId', 'userResponse', 'timestamp']}
               />
-            </div>
+              
+              <TriggerSection
+                title="Grant USB Debugging"
+                endpoint="POST /api/devices/authorize-debugging"
+                prompt="Allow USB debugging?"
+                modal="Enable USB debugging for this device?"
+                riskLevel="medium"
+                auditFields={['deviceId', 'adbAuth', 'timestamp']}
+              />
 
-            <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
-              <TabsList className="grid w-full grid-cols-7">
-                {categories.map((cat) => (
-                  <TabsTrigger key={cat.id} value={cat.id} className="flex items-center gap-2">
-                    {cat.icon}
-                    <span className="hidden lg:inline">{cat.label}</span>
-                  </TabsTrigger>
-                ))}
-              </TabsList>
+              <TriggerSection
+                title="Authorize File Transfer"
+                endpoint="POST /api/devices/authorize-transfer"
+                prompt="Allow file transfer access?"
+                modal="Grant file transfer permissions for this device?"
+                riskLevel="low"
+                auditFields={['deviceId', 'transferMode', 'timestamp']}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-              <TabsContent value={selectedCategory} className="mt-6">
-                <ScrollArea className="h-[600px] pr-4">
-                  <div className="space-y-4">
-                    {filteredTriggers.map((trigger) => (
-                      <Card key={trigger.id} className={trigger.destructive ? 'border-destructive/50' : ''}>
-                        <CardHeader>
-                          <div className="flex items-start justify-between">
-                            <div className="flex items-start gap-3">
-                              <div className={`p-2 rounded-lg ${
-                                trigger.destructive 
-                                  ? 'bg-destructive/10 text-destructive'
-                                  : 'bg-primary/10 text-primary'
-                              }`}>
-                                {trigger.icon}
-                              </div>
-                              <div>
-                                <CardTitle className="text-lg flex items-center gap-2">
-                                  {trigger.name}
-                                  {trigger.destructive && (
-                                    <Badge variant="destructive" className="text-xs">
-                                      DESTRUCTIVE
-                                    </Badge>
-                                  )}
-                                  {trigger.requiresUserAction && (
-                                    <Badge variant="outline" className="text-xs">
-                                      User Action Required
-                                    </Badge>
-                                  )}
-                                </CardTitle>
-                                <CardDescription className="mt-1">
-                                  {trigger.description}
-                                </CardDescription>
-                              </div>
-                            </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <p className="text-sm font-medium flex items-center gap-2">
-                                <Terminal className="w-4 h-4 text-muted-foreground" />
-                                Command Executed
-                              </p>
-                              <code className="block text-xs bg-muted p-2 rounded font-mono">
-                                {trigger.command}
-                              </code>
-                            </div>
-                            <div className="space-y-2">
-                              <p className="text-sm font-medium flex items-center gap-2">
-                                <Eye className="w-4 h-4 text-muted-foreground" />
-                                User Sees
-                              </p>
-                              <p className="text-xs bg-muted p-2 rounded">
-                                {trigger.userSees}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Badge variant="secondary" className="text-xs">
-                              {trigger.platforms.join(', ')}
-                            </Badge>
-                            <Badge variant="outline" className="text-xs">
-                              {trigger.category}
-                            </Badge>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+        <TabsContent value="flash" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Lightning className="h-5 w-5 text-warning" />
+                <CardTitle>Flash Operations Triggers</CardTitle>
+              </div>
+              <CardDescription>Firmware flashing and bootloader operations</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <TriggerSection
+                title="Flash Firmware"
+                endpoint="POST /api/flash/start"
+                prompt="Do you want to flash this firmware?"
+                modal="Confirm flashing firmware to device. This will overwrite partitions."
+                typedConfirm="CONFIRM"
+                riskLevel="destructive"
+                auditFields={['deviceId', 'partitions', 'firmwareHash', 'userResponse', 'timestamp']}
+              />
 
-                    {filteredTriggers.length === 0 && (
-                      <Card>
-                        <CardContent className="py-12 text-center">
-                          <p className="text-muted-foreground">
-                            No triggers found matching your search.
-                          </p>
-                        </CardContent>
-                      </Card>
-                    )}
+              <TriggerSection
+                title="Unlock Bootloader"
+                endpoint="POST /api/flash/unlock-bootloader"
+                prompt="Unlock bootloader?"
+                modal="This will erase all data and void warranty. Type UNLOCK to confirm."
+                typedConfirm="UNLOCK"
+                riskLevel="destructive"
+                auditFields={['deviceId', 'unlockToken', 'userResponse', 'timestamp']}
+              />
+
+              <TriggerSection
+                title="Factory Reset"
+                endpoint="POST /api/devices/factory-reset"
+                prompt="Factory reset device?"
+                modal="This will erase all data. Type RESET to confirm."
+                typedConfirm="RESET"
+                riskLevel="destructive"
+                auditFields={['deviceId', 'resetType', 'userResponse', 'timestamp']}
+              />
+
+              <TriggerSection
+                title="Reboot to Bootloader"
+                endpoint="POST /api/devices/reboot-bootloader"
+                prompt="Reboot to bootloader?"
+                modal="Reboot device into bootloader/fastboot mode?"
+                riskLevel="low"
+                auditFields={['deviceId', 'rebootMode', 'timestamp']}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="diagnostics" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <TestTube className="h-5 w-5 text-success" />
+                <CardTitle>Diagnostics Triggers</CardTitle>
+              </div>
+              <CardDescription>Device health checks and performance testing</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <TriggerSection
+                title="Run Diagnostics"
+                endpoint="POST /api/diagnostics/run"
+                prompt="Run full diagnostics on connected devices?"
+                modal="Run health checks (CPU, memory, storage, battery) on device?"
+                riskLevel="low"
+                auditFields={['deviceId', 'diagnosticSuite', 'results', 'timestamp']}
+              />
+
+              <TriggerSection
+                title="Collect Logs"
+                endpoint="POST /api/diagnostics/logs"
+                prompt="Collect device logs?"
+                modal="Capture ADB logcat, fastboot logs, and system logs from device?"
+                riskLevel="low"
+                auditFields={['deviceId', 'logTypes', 'logSize', 'timestamp']}
+              />
+
+              <TriggerSection
+                title="Benchmark Device"
+                endpoint="POST /api/diagnostics/benchmark"
+                prompt="Run performance benchmark?"
+                modal="Run flash speed and performance profiling on device?"
+                riskLevel="low"
+                auditFields={['deviceId', 'benchmarkType', 'results', 'timestamp']}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="evidence" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Archive className="h-5 w-5 text-accent" />
+                <CardTitle>Evidence & Reports Triggers</CardTitle>
+              </div>
+              <CardDescription>Signed evidence bundles and audit reports</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <TriggerSection
+                title="Export Evidence Bundle"
+                endpoint="POST /api/evidence/export"
+                prompt="Export signed evidence bundle?"
+                modal="Generate cryptographically signed diagnostic report for device?"
+                riskLevel="low"
+                auditFields={['deviceId', 'bundleId', 'signature', 'timestamp']}
+              />
+
+              <TriggerSection
+                title="Sign Evidence"
+                endpoint="POST /api/evidence/sign"
+                prompt="Sign evidence bundle?"
+                modal="Apply cryptographic signature to evidence bundle?"
+                riskLevel="medium"
+                auditFields={['bundleId', 'signerId', 'signatureHash', 'timestamp']}
+              />
+
+              <TriggerSection
+                title="Create Snapshot"
+                endpoint="POST /api/snapshots/create"
+                prompt="Create diagnostic snapshot?"
+                modal="Capture current device state for backup?"
+                riskLevel="low"
+                auditFields={['deviceId', 'snapshotId', 'dataSize', 'timestamp']}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="policy" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <ShieldWarning className="h-5 w-5 text-destructive" />
+                <CardTitle>Policy & Compliance Triggers</CardTitle>
+              </div>
+              <CardDescription>Compliance gates and supervisor approvals</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <TriggerSection
+                title="Policy Gate Confirmation"
+                endpoint="POST /api/policy/confirm"
+                prompt="This is a destructive action. Do you want to continue?"
+                modal="This action cannot be undone. Type YES to proceed."
+                typedConfirm="YES"
+                riskLevel="destructive"
+                auditFields={['action', 'riskLevel', 'userResponse', 'timestamp']}
+              />
+
+              <TriggerSection
+                title="Supervisor Approval"
+                endpoint="POST /api/policy/supervisor-approval"
+                prompt="High-risk action requires supervisor approval"
+                modal="Submit request for supervisor approval of this action?"
+                riskLevel="high"
+                auditFields={['requestId', 'supervisorId', 'approvalStatus', 'timestamp']}
+              />
+
+              <TriggerSection
+                title="Audit Consent"
+                endpoint="POST /api/policy/audit-consent"
+                prompt="Consent to audit logging?"
+                modal="Agree to record this operation in audit log?"
+                riskLevel="low"
+                auditFields={['userId', 'consentGiven', 'timestamp']}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="hotplug" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Plug className="h-5 w-5 text-primary" />
+                <CardTitle>Hotplug Events Triggers</CardTitle>
+              </div>
+              <CardDescription>USB device connection and driver management</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <TriggerSection
+                title="Authorize Hotplug Device"
+                endpoint="POST /api/hotplug/authorize"
+                prompt="New device detected. Do you want to connect?"
+                modal="Device connected via USB. Authorize for monitoring?"
+                riskLevel="medium"
+                auditFields={['deviceId', 'vendorId', 'productId', 'userResponse', 'timestamp']}
+              />
+
+              <TriggerSection
+                title="Install Device Driver"
+                endpoint="POST /api/devices/install-driver"
+                prompt="Install missing driver?"
+                modal="Device requires driver installation. Download and install?"
+                riskLevel="medium"
+                auditFields={['deviceId', 'driverName', 'driverVersion', 'timestamp']}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="plugins" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Package className="h-5 w-5 text-accent" />
+                <CardTitle>Plugin Actions Triggers</CardTitle>
+              </div>
+              <CardDescription>Plugin installation, updates, and removal</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <TriggerSection
+                title="Install Plugin"
+                endpoint="POST /api/plugins/install"
+                prompt="Install plugin?"
+                modal="Install certified plugin?"
+                riskLevel="medium"
+                auditFields={['pluginId', 'pluginVersion', 'userResponse', 'timestamp']}
+              />
+
+              <TriggerSection
+                title="Update Plugin"
+                endpoint="PUT /api/plugins/update"
+                prompt="Update plugin?"
+                modal="Update plugin to latest version?"
+                riskLevel="low"
+                auditFields={['pluginId', 'oldVersion', 'newVersion', 'timestamp']}
+              />
+
+              <TriggerSection
+                title="Uninstall Plugin"
+                endpoint="DELETE /api/plugins/uninstall"
+                prompt="Uninstall plugin?"
+                modal="Remove plugin and all associated data?"
+                riskLevel="medium"
+                auditFields={['pluginId', 'userResponse', 'timestamp']}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="implementation" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Code className="h-5 w-5 text-primary" />
+                <CardTitle>Backend Implementation Guide</CardTitle>
+              </div>
+              <CardDescription>How to implement authorization triggers in your backend</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Alert>
+                <BookOpen className="h-4 w-4" />
+                <AlertDescription>
+                  All trigger endpoints must return real data from device probes (ADB, Fastboot, libusb).
+                  No simulated responses.
+                </AlertDescription>
+              </Alert>
+
+              <div className="space-y-3">
+                <div className="text-sm font-medium">Endpoint Structure</div>
+                <div className="bg-card border border-border rounded-md p-4 font-mono text-xs space-y-2">
+                  <div className="text-muted-foreground">// Request</div>
+                  <div className="text-primary">POST /api/devices/trust</div>
+                  <div className="text-foreground">
+                    {`{
+  "triggerId": "trust_device",
+  "deviceId": "XYZ123",
+  "timestamp": "2024-01-15T10:30:00Z"
+}`}
                   </div>
-                </ScrollArea>
-              </TabsContent>
-            </Tabs>
-          </div>
+                  
+                  <div className="text-muted-foreground mt-4">// Response</div>
+                  <div className="text-foreground">
+                    {`{
+  "success": true,
+  "deviceId": "XYZ123",
+  "trustedAt": "2024-01-15T10:30:05Z",
+  "auditLogId": "audit_abc123"
+}`}
+                  </div>
+                </div>
+              </div>
 
-          <Alert>
-            <Warning className="w-4 h-4" />
-            <AlertTitle>Security Best Practices</AlertTitle>
-            <AlertDescription>
-              <ul className="list-disc list-inside space-y-1 mt-2 text-sm">
-                <li><strong>Destructive operations</strong> require typed confirmation (e.g., "Type UNLOCK to confirm")</li>
-                <li><strong>High-risk actions</strong> may require supervisor approval or role-based access control</li>
-                <li><strong>All operations</strong> are audit-logged with timestamp, device serial, and user identity</li>
-                <li><strong>Evidence bundles</strong> are GPG-signed for chain-of-custody verification</li>
-              </ul>
-            </AlertDescription>
-          </Alert>
-        </CardContent>
-      </Card>
+              <div className="space-y-3">
+                <div className="text-sm font-medium">Audit Log Structure</div>
+                <div className="bg-card border border-border rounded-md p-4 font-mono text-xs">
+                  <div className="text-foreground">
+                    {`{
+  "id": "audit_abc123",
+  "action": "trust_device",
+  "triggerId": "trust_device",
+  "deviceId": "XYZ123",
+  "userResponse": "approved",
+  "timestamp": "2024-01-15T10:30:05Z",
+  "userId": "user_456",
+  "metadata": {
+    "deviceName": "Samsung Galaxy S21",
+    "ipAddress": "192.168.1.100"
+  }
+}`}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileArrowUp className="w-5 h-5" />
-            Implementation Resources
-          </CardTitle>
-          <CardDescription>
-            Backend API documentation and frontend integration guides
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Button variant="outline" className="justify-start h-auto py-4">
-              <div className="text-left">
-                <p className="font-medium">Backend API Guide</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  AUTHORIZATION_TRIGGERS_API.md
-                </p>
-              </div>
-            </Button>
-            <Button variant="outline" className="justify-start h-auto py-4">
-              <div className="text-left">
-                <p className="font-medium">Comprehensive Triggers Guide</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  COMPREHENSIVE_AUTHORIZATION_TRIGGERS.md
-                </p>
-              </div>
-            </Button>
-            <Button variant="outline" className="justify-start h-auto py-4">
-              <div className="text-left">
-                <p className="font-medium">ADB Authorization Example</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  ADB_AUTHORIZATION_TRIGGER.md
-                </p>
-              </div>
-            </Button>
-            <Button variant="outline" className="justify-start h-auto py-4">
-              <div className="text-left">
-                <p className="font-medium">Backend Authorization Guide</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  BACKEND_AUTHORIZATION_API_GUIDE.md
-                </p>
-              </div>
-            </Button>
+interface TriggerSectionProps {
+  title: string;
+  endpoint: string;
+  prompt: string;
+  modal: string;
+  typedConfirm?: string;
+  riskLevel: 'low' | 'medium' | 'high' | 'destructive';
+  auditFields: string[];
+}
+
+function TriggerSection({
+  title,
+  endpoint,
+  prompt,
+  modal,
+  typedConfirm,
+  riskLevel,
+  auditFields,
+}: TriggerSectionProps) {
+  const getRiskLevelColor = (level: string) => {
+    switch (level) {
+      case 'low':
+        return 'bg-success/20 text-success border-success/50';
+      case 'medium':
+        return 'bg-warning/20 text-warning border-warning/50';
+      case 'high':
+        return 'bg-accent/20 text-accent border-accent/50';
+      case 'destructive':
+        return 'bg-destructive/20 text-destructive border-destructive/50';
+      default:
+        return 'bg-muted text-muted-foreground';
+    }
+  };
+
+  return (
+    <div className="border border-border rounded-md p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <h4 className="font-medium text-foreground">{title}</h4>
+        <Badge className={getRiskLevelColor(riskLevel)}>
+          <span className="text-[10px] uppercase tracking-wider font-bold">{riskLevel}</span>
+        </Badge>
+      </div>
+
+      <div className="space-y-2 text-sm">
+        <div>
+          <span className="text-muted-foreground font-medium">Frontend Prompt: </span>
+          <span className="text-foreground">"{prompt}"</span>
+        </div>
+        
+        <div>
+          <span className="text-muted-foreground font-medium">Backend Endpoint: </span>
+          <code className="text-primary font-mono text-xs">{endpoint}</code>
+        </div>
+
+        <div>
+          <span className="text-muted-foreground font-medium">Modal Text: </span>
+          <span className="text-foreground">"{modal}"</span>
+        </div>
+
+        {typedConfirm && (
+          <div>
+            <span className="text-muted-foreground font-medium">Typed Confirmation: </span>
+            <code className="text-primary font-mono">{typedConfirm}</code>
           </div>
-        </CardContent>
-      </Card>
+        )}
+
+        <div>
+          <span className="text-muted-foreground font-medium">Audit Fields: </span>
+          <div className="flex flex-wrap gap-1 mt-1">
+            {auditFields.map((field) => (
+              <Badge key={field} variant="outline" className="text-xs font-mono">
+                {field}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
