@@ -3,6 +3,7 @@ import { execSync } from 'child_process';
 import cors from 'cors';
 import { WebSocketServer } from 'ws';
 import { createServer } from 'http';
+import { AuthorizationTriggers } from './authorization-triggers.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -2134,6 +2135,222 @@ app.get('/api/hotplug/events', (req, res) => {
   });
 });
 
+app.post('/api/authorization/adb/trigger-usb-debugging', async (req, res) => {
+  const { serial } = req.body;
+  if (!serial) {
+    return res.status(400).json({ success: false, error: 'Device serial required' });
+  }
+  const result = await AuthorizationTriggers.triggerADBUSBDebugging(serial);
+  res.json(result);
+});
+
+app.post('/api/authorization/adb/trigger-file-transfer', async (req, res) => {
+  const { serial } = req.body;
+  if (!serial) {
+    return res.status(400).json({ success: false, error: 'Device serial required' });
+  }
+  const result = await AuthorizationTriggers.triggerFileTransferAuth(serial);
+  res.json(result);
+});
+
+app.post('/api/authorization/adb/trigger-backup', async (req, res) => {
+  const { serial } = req.body;
+  if (!serial) {
+    return res.status(400).json({ success: false, error: 'Device serial required' });
+  }
+  const result = await AuthorizationTriggers.triggerBackupAuth(serial);
+  res.json(result);
+});
+
+app.post('/api/authorization/adb/trigger-screen-capture', async (req, res) => {
+  const { serial } = req.body;
+  if (!serial) {
+    return res.status(400).json({ success: false, error: 'Device serial required' });
+  }
+  const result = await AuthorizationTriggers.triggerScreenCaptureAuth(serial);
+  res.json(result);
+});
+
+app.post('/api/authorization/adb/trigger-install', async (req, res) => {
+  const { serial, apkPath } = req.body;
+  if (!serial) {
+    return res.status(400).json({ success: false, error: 'Device serial required' });
+  }
+  const result = await AuthorizationTriggers.triggerADBInstallAuth(serial, apkPath);
+  res.json(result);
+});
+
+app.post('/api/authorization/adb/trigger-wifi-adb', async (req, res) => {
+  const { serial } = req.body;
+  if (!serial) {
+    return res.status(400).json({ success: false, error: 'Device serial required' });
+  }
+  const result = await AuthorizationTriggers.triggerWiFiADBAuth(serial);
+  res.json(result);
+});
+
+app.post('/api/authorization/adb/verify-developer-options', async (req, res) => {
+  const { serial } = req.body;
+  if (!serial) {
+    return res.status(400).json({ success: false, error: 'Device serial required' });
+  }
+  const result = await AuthorizationTriggers.verifyDeveloperOptions(serial);
+  res.json(result);
+});
+
+app.post('/api/authorization/adb/check-debugging-status', async (req, res) => {
+  const { serial } = req.body;
+  if (!serial) {
+    return res.status(400).json({ success: false, error: 'Device serial required' });
+  }
+  const result = await AuthorizationTriggers.checkUSBDebuggingStatus(serial);
+  res.json(result);
+});
+
+app.post('/api/authorization/adb/reboot-recovery', async (req, res) => {
+  const { serial } = req.body;
+  if (!serial) {
+    return res.status(400).json({ success: false, error: 'Device serial required' });
+  }
+  const result = await AuthorizationTriggers.rebootToRecovery(serial);
+  res.json(result);
+});
+
+app.post('/api/authorization/adb/reboot-bootloader', async (req, res) => {
+  const { serial } = req.body;
+  if (!serial) {
+    return res.status(400).json({ success: false, error: 'Device serial required' });
+  }
+  const result = await AuthorizationTriggers.rebootToBootloader(serial);
+  res.json(result);
+});
+
+app.post('/api/authorization/adb/reboot-edl', async (req, res) => {
+  const { serial } = req.body;
+  if (!serial) {
+    return res.status(400).json({ success: false, error: 'Device serial required' });
+  }
+  const result = await AuthorizationTriggers.rebootToEDL(serial);
+  res.json(result);
+});
+
+app.post('/api/authorization/ios/trigger-trust-computer', async (req, res) => {
+  const { udid } = req.body;
+  if (!udid) {
+    return res.status(400).json({ success: false, error: 'Device UDID required' });
+  }
+  const result = await AuthorizationTriggers.triggerIOSTrustComputer(udid);
+  res.json(result);
+});
+
+app.post('/api/authorization/ios/trigger-pairing', async (req, res) => {
+  const { udid } = req.body;
+  if (!udid) {
+    return res.status(400).json({ success: false, error: 'Device UDID required' });
+  }
+  const result = await AuthorizationTriggers.triggerIOSPairing(udid);
+  res.json(result);
+});
+
+app.post('/api/authorization/ios/trigger-backup-encryption', async (req, res) => {
+  const { udid } = req.body;
+  if (!udid) {
+    return res.status(400).json({ success: false, error: 'Device UDID required' });
+  }
+  const result = await AuthorizationTriggers.triggerIOSBackupEncryption(udid);
+  res.json(result);
+});
+
+app.post('/api/authorization/ios/trigger-dfu', async (req, res) => {
+  const { udid } = req.body;
+  if (!udid) {
+    return res.status(400).json({ success: false, error: 'Device UDID required' });
+  }
+  const result = await AuthorizationTriggers.triggerDFURecoveryMode(udid);
+  res.json(result);
+});
+
+app.post('/api/authorization/ios/trigger-app-install', async (req, res) => {
+  const { udid } = req.body;
+  if (!udid) {
+    return res.status(400).json({ success: false, error: 'Device UDID required' });
+  }
+  const result = await AuthorizationTriggers.triggerIOSAppInstallAuth(udid);
+  res.json(result);
+});
+
+app.post('/api/authorization/ios/trigger-developer-trust', async (req, res) => {
+  const { udid } = req.body;
+  if (!udid) {
+    return res.status(400).json({ success: false, error: 'Device UDID required' });
+  }
+  const result = await AuthorizationTriggers.triggerIOSDeveloperTrust(udid);
+  res.json(result);
+});
+
+app.post('/api/authorization/fastboot/verify-unlock', async (req, res) => {
+  const { serial } = req.body;
+  if (!serial) {
+    return res.status(400).json({ success: false, error: 'Device serial required' });
+  }
+  const result = await AuthorizationTriggers.verifyFastbootUnlock(serial);
+  res.json(result);
+});
+
+app.post('/api/authorization/fastboot/trigger-oem-unlock', async (req, res) => {
+  const { serial } = req.body;
+  if (!serial) {
+    return res.status(400).json({ success: false, error: 'Device serial required' });
+  }
+  const result = await AuthorizationTriggers.triggerFastbootOEMUnlock(serial);
+  res.json(result);
+});
+
+app.post('/api/authorization/samsung/trigger-download-mode', async (req, res) => {
+  const { serial } = req.body;
+  if (!serial) {
+    return res.status(400).json({ success: false, error: 'Device serial required' });
+  }
+  const result = await AuthorizationTriggers.triggerSamsungDownloadMode(serial);
+  res.json(result);
+});
+
+app.post('/api/authorization/qualcomm/verify-edl', async (req, res) => {
+  const { serial } = req.body;
+  if (!serial) {
+    return res.status(400).json({ success: false, error: 'Device serial required' });
+  }
+  const result = await AuthorizationTriggers.verifyQualcommEDL(serial);
+  res.json(result);
+});
+
+app.post('/api/authorization/mediatek/verify-flash', async (req, res) => {
+  const { serial } = req.body;
+  if (!serial) {
+    return res.status(400).json({ success: false, error: 'Device serial required' });
+  }
+  const result = await AuthorizationTriggers.verifyMediatekFlash(serial);
+  res.json(result);
+});
+
+app.get('/api/authorization/triggers', async (req, res) => {
+  const { platform } = req.query;
+  const result = await AuthorizationTriggers.getAllAvailableTriggers(platform || 'all');
+  res.json(result);
+});
+
+app.post('/api/authorization/trigger-all', async (req, res) => {
+  const { deviceId, platform } = req.body;
+  if (!deviceId || !platform) {
+    return res.status(400).json({ 
+      success: false, 
+      error: 'Device ID and platform required' 
+    });
+  }
+  const result = await AuthorizationTriggers.triggerAllAvailableAuthorizations(deviceId, platform);
+  res.json(result);
+});
+
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ error: 'Internal server error' });
@@ -2147,7 +2364,9 @@ server.listen(PORT, () => {
   console.log(`🧪 Automated testing: http://localhost:${PORT}/api/tests/*`);
   console.log(`📐 Standards reference: http://localhost:${PORT}/api/standards`);
   console.log(`🔌 Hotplug events: http://localhost:${PORT}/api/hotplug/*`);
+  console.log(`🔐 Authorization triggers (27 endpoints): http://localhost:${PORT}/api/authorization/*`);
   console.log(`🌐 WebSocket hotplug: ws://localhost:${PORT}/ws/device-events`);
   console.log(`🔗 WebSocket correlation: ws://localhost:${PORT}/ws/correlation`);
   console.log(`🏥 Health check: http://localhost:${PORT}/api/health`);
+  console.log(`\n✅ All 27 authorization triggers ready for real device probe execution`);
 });
