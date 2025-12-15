@@ -11,6 +11,8 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
+const authTriggers = new AuthorizationTriggers();
+
 const server = createServer(app);
 const wss = new WebSocketServer({ server, path: '/ws/device-events' });
 const wssCorrelation = new WebSocketServer({ server, path: '/ws/correlation' });
