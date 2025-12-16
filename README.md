@@ -1,6 +1,7 @@
 # Bobby's World - Workshop Toolkit
 
-> **🔓 Now featuring Pandora's Room** - Advanced device management with The-Pandora-Codex integration
+> **🔓 Now featuring Pandora's Room** - Advanced device management with The-Pandora-Codex integration  
+> **🔐 Bobby's Secret Workshop** - Modular workflows, Trapdoor API, and shadow logging
 
 Professional repair diagnostic and flashing toolkit with comprehensive multi-brand support, educational security lock resources, real-time device monitoring, and the powerful **Trapdoor module** for advanced device operations.
 
@@ -17,6 +18,49 @@ The application uses a professional, field-ready aesthetic inspired by operator-
 - **Typography**: Outfit (UI), Space Mono (code), Bebas Neue (headers)
 
 Clean, authoritative, and honest about capabilities.
+
+## 🔐 What's New: Bobby's Secret Workshop
+
+**Bobby's Secret Workshop** introduces a comprehensive workflow-based system for device operations:
+
+### ✨ Key Features
+
+#### 🔓 **Modular Workflow System**
+JSON-defined workflows for reproducible device operations:
+- **Android Workflows**: ADB diagnostics, FRP bypass, Fastboot unlock, partition mapping
+- **iOS Workflows**: Device restore, DFU detection, comprehensive diagnostics
+- **Bypass Workflows**: FRP/MDM bypass with authorization tracking
+- **Custom Workflows**: Create and execute custom operation sequences
+
+#### 🔒 **Trapdoor API**
+Secure REST endpoints for sensitive operations (admin-only access):
+- `POST /api/trapdoor/frp` - Execute FRP bypass workflow
+- `POST /api/trapdoor/unlock` - Unlock bootloader workflow
+- `POST /api/trapdoor/workflow/execute` - Execute custom workflows
+- `GET /api/trapdoor/workflows` - List available workflows
+- `GET /api/trapdoor/logs/shadow` - Access encrypted shadow logs
+
+#### 📝 **Shadow Logging System**
+Encrypted, append-only audit logs for compliance:
+- **AES-256 Encryption** - All sensitive operations encrypted at rest
+- **Immutable Audit Trail** - Append-only logs for compliance
+- **Anonymous Mode** - Optional operational deniability
+- **Automatic Rotation** - 90-day retention for shadow logs
+
+#### 📚 **Core Libraries**
+Device management libraries for ADB, Fastboot, and iOS:
+- `core/lib/adb.js` - Android Debug Bridge operations
+- `core/lib/fastboot.js` - Fastboot device management
+- `core/lib/ios.js` - iOS device operations (libimobiledevice)
+- `core/lib/shadow-logger.js` - Encrypted logging infrastructure
+
+#### 🎨 **React Components**
+Integrated UI components for workflow execution:
+- **Trapdoor Control Panel** - Execute sensitive operations with authorization
+- **Workflow Execution Console** - Browse and run workflows
+- **Shadow Logs Viewer** - View encrypted audit logs (admin only)
+
+**Complete documentation: [BOBBY_SECRET_WORKSHOP.md](./BOBBY_SECRET_WORKSHOP.md)**
 
 ## 🔥 What's New: Pandora Codex Integration
 
@@ -295,6 +339,7 @@ cargo build --release --bin trapdoor_cli
 
 ### Core Documentation
 - [Bobby's World Complete README](./README_COMPLETE.md)
+- [Bobby's Secret Workshop Integration](./BOBBY_SECRET_WORKSHOP.md) - **NEW**
 - [iOS DFU Flash Guide](./docs/IOS_DFU_FLASH.md)
 - [MediaTek SP Flash Tool Integration](./MEDIATEK_FLASH_GUIDE.md)
 - [Security Lock Detection](./SECURITY_LOCK_EDU_GUIDE.md)

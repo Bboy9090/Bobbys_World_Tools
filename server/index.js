@@ -4,6 +4,7 @@ import cors from 'cors';
 import { WebSocketServer } from 'ws';
 import { createServer } from 'http';
 import { AuthorizationTriggers } from './authorization-triggers.js';
+import trapdoorRouter from '../core/api/trapdoor.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -677,7 +678,7 @@ app.get('/api/android-devices/all', async (req, res) => {
       Object.assign(existing, device);
     }
     return acc;
-  }, [] as any[]);
+  }, []);
   
   res.json({
     count: uniqueDevices.length,
@@ -2420,6 +2421,9 @@ app.post('/api/firmware/download', async (req, res) => {
   }
 });
 
+// Trapdoor API - Secure endpoints for sensitive operations (Bobby's Secret Workshop)
+app.use('/api/trapdoor', trapdoorRouter);
+
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ error: 'Internal server error' });
@@ -2435,9 +2439,11 @@ server.listen(PORT, () => {
   console.log(`🔌 Hotplug events: http://localhost:${PORT}/api/hotplug/*`);
   console.log(`🔐 Authorization triggers (27 endpoints): http://localhost:${PORT}/api/authorization/*`);
   console.log(`📦 Firmware library: http://localhost:${PORT}/api/firmware/*`);
+  console.log(`🔓 Trapdoor API (Bobby's Secret Workshop): http://localhost:${PORT}/api/trapdoor/*`);
   console.log(`🌐 WebSocket hotplug: ws://localhost:${PORT}/ws/device-events`);
   console.log(`🔗 WebSocket correlation: ws://localhost:${PORT}/ws/correlation`);
   console.log(`🏥 Health check: http://localhost:${PORT}/api/health`);
   console.log(`\n✅ All 27 authorization triggers ready for real device probe execution`);
   console.log(`✅ Firmware Library with brand-organized downloads available`);
+  console.log(`✅ Trapdoor API with workflow execution and shadow logging enabled`);
 });

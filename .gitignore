@@ -69,3 +69,14 @@ wheels/
 .installed.cfg
 *.egg
 server/node_modules
+
+# Bobby's Secret Workshop - NEVER COMMIT SENSITIVE DATA
+secrets/
+logs/shadow/
+pandora_box/binaries/
+pandora_box/exploits/
+tools/binaries/
+devices/*.json
+!devices/README.md
+logs/public/*.log
+logs/shadow/*.enc
