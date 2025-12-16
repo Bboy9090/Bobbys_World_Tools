@@ -9,6 +9,10 @@ import { Button } from '../ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Smartphone, Activity, Upload, FileText, Wrench, Shield, Lock } from 'lucide-react';
+import { TrapdoorControlPanel } from '../TrapdoorControlPanel';
+import { ShadowLogsViewer } from '../ShadowLogsViewer';
+import { WorkflowExecutionConsole } from '../WorkflowExecutionConsole';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 
 interface Device {
   id: string;
@@ -121,43 +125,112 @@ export const PandorasRoom: React.FC = () => {
           )}
 
           {activeTab === 'trapdoor' && (
-            <Card className="bg-[#141922] border-[#FF6B9D]/20">
-              <CardHeader>
-                <CardTitle className="text-white flex items-center gap-2">
-                  <Shield className="h-5 w-5 text-[#FF6B9D]" />
-                  Trapdoor Tool Execution
-                </CardTitle>
-                <CardDescription className="text-gray-400">
-                  Execute bypass tools with sandboxing and verification
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="text-gray-300">
-                <Alert className="mb-4 bg-[#0B0F14] border-yellow-500/50">
-                  <AlertDescription className="text-yellow-300 text-sm">
-                    Trapdoor CLI is available via Rust crates. Build with: <code className="text-[#2FD3FF]">cargo build --release --bin trapdoor_cli</code>
-                  </AlertDescription>
-                </Alert>
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="font-semibold text-white mb-2">Documentation</h4>
-                    <ul className="space-y-1 text-sm">
-                      <li>• TRAPDOOR_CLI_USAGE.md - Command-line interface guide</li>
-                      <li>• TRAPDOOR_IMPLEMENTATION_SUMMARY.md - Technical implementation</li>
-                      <li>• TRAPDOOR_BOBBY_DEV_INTEGRATION.md - Integration architecture</li>
-                    </ul>
+            <div className="space-y-6">
+              <Alert className="bg-[#0B0F14] border-[#FF6B9D]/50">
+                <Shield className="h-4 w-4 text-[#FF6B9D]" />
+                <AlertDescription className="text-gray-300">
+                  <strong className="text-[#FF6B9D]">Bobby's Secret Workshop Integration</strong>
+                  <br />
+                  Full Trapdoor API with workflow execution, shadow logging, and secure operations.
+                </AlertDescription>
+              </Alert>
+
+              <Tabs defaultValue="control" className="w-full">
+                <TabsList className="grid w-full grid-cols-3 bg-[#141922]">
+                  <TabsTrigger value="control" className="data-[state=active]:bg-[#2FD3FF] data-[state=active]:text-black">
+                    Control Panel
+                  </TabsTrigger>
+                  <TabsTrigger value="workflows" className="data-[state=active]:bg-[#2FD3FF] data-[state=active]:text-black">
+                    Workflows
+                  </TabsTrigger>
+                  <TabsTrigger value="logs" className="data-[state=active]:bg-[#2FD3FF] data-[state=active]:text-black">
+                    Shadow Logs
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="control" className="mt-6">
+                  <Card className="bg-[#141922] border-[#2FD3FF]/20">
+                    <CardHeader>
+                      <CardTitle className="text-white">Trapdoor Control Panel</CardTitle>
+                      <CardDescription className="text-gray-400">
+                        Execute sensitive operations with proper authorization
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <TrapdoorControlPanel />
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                <TabsContent value="workflows" className="mt-6">
+                  <Card className="bg-[#141922] border-[#2FD3FF]/20">
+                    <CardHeader>
+                      <CardTitle className="text-white">Workflow Execution Console</CardTitle>
+                      <CardDescription className="text-gray-400">
+                        Browse and execute available workflows
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <WorkflowExecutionConsole />
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                <TabsContent value="logs" className="mt-6">
+                  <Card className="bg-[#141922] border-[#2FD3FF]/20">
+                    <CardHeader>
+                      <CardTitle className="text-white">Shadow Logs Viewer</CardTitle>
+                      <CardDescription className="text-gray-400">
+                        View encrypted audit logs (admin only)
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ShadowLogsViewer />
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              </Tabs>
+
+              <Card className="bg-[#141922] border-[#2FD3FF]/20">
+                <CardHeader>
+                  <CardTitle className="text-white">Implementation Details</CardTitle>
+                </CardHeader>
+                <CardContent className="text-gray-300">
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="font-semibold text-white mb-2">Documentation</h4>
+                      <ul className="space-y-1 text-sm">
+                        <li>• BOBBY_SECRET_WORKSHOP.md - Complete integration guide</li>
+                        <li>• TRAPDOOR_CLI_USAGE.md - Command-line interface guide</li>
+                        <li>• TRAPDOOR_IMPLEMENTATION_SUMMARY.md - Technical implementation</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-white mb-2">API Endpoints</h4>
+                      <ul className="space-y-1 text-sm">
+                        <li>• POST /api/trapdoor/frp - Execute FRP bypass</li>
+                        <li>• POST /api/trapdoor/unlock - Execute bootloader unlock</li>
+                        <li>• POST /api/trapdoor/workflow/execute - Execute custom workflow</li>
+                        <li>• GET /api/trapdoor/workflows - List available workflows</li>
+                        <li>• GET /api/trapdoor/logs/shadow - View shadow logs</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-white mb-2">Location</h4>
+                      <p className="text-sm text-gray-400">
+                        Core API: <code className="text-[#2FD3FF]">core/api/trapdoor.js</code>
+                      </p>
+                      <p className="text-sm text-gray-400">
+                        Workflows: <code className="text-[#2FD3FF]">workflows/</code>
+                      </p>
+                      <p className="text-sm text-gray-400">
+                        Shadow Logs: <code className="text-[#2FD3FF]">logs/shadow/</code>
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="font-semibold text-white mb-2">Location</h4>
-                    <p className="text-sm text-gray-400">
-                      Rust source: <code className="text-[#2FD3FF]">crates/bootforge-usb/libbootforge/src/trapdoor/</code>
-                    </p>
-                    <p className="text-sm text-gray-400">
-                      Python bridge: <code className="text-[#2FD3FF]">trapdoor_bridge.py</code>
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </div>
           )}
 
           {activeTab === 'diagnostics' && (

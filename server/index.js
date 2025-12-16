@@ -678,7 +678,7 @@ app.get('/api/android-devices/all', async (req, res) => {
       Object.assign(existing, device);
     }
     return acc;
-  }, [] as any[]);
+  }, []);
   
   res.json({
     count: uniqueDevices.length,
