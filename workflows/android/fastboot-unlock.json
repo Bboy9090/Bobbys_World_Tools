@@ -53,7 +53,8 @@
       "type": "command",
       "action": "fastboot oem unlock",
       "success_criteria": "unlock command sent",
-      "on_failure": "retry"
+      "on_failure": "retry",
+      "note": "Command varies by manufacturer. Modern devices may require 'fastboot flashing unlock' (Pixel), 'fastboot oem unlock' (older devices), or manufacturer-specific commands. Verify compatibility before execution."
     },
     {
       "id": "wait-device",

@@ -45,7 +45,8 @@
       "type": "command",
       "action": "adb shell content delete --uri content://settings/secure --where \"name='lock_screen_owner_info'\"",
       "success_criteria": "command executed",
-      "on_failure": "continue"
+      "on_failure": "continue",
+      "note": "This is a basic FRP bypass method. Effectiveness varies by Android version and manufacturer. Modern devices (Android 8+) may require alternative methods. Always verify device compatibility before execution."
     },
     {
       "id": "verify-bypass",

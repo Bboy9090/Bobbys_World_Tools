@@ -112,6 +112,8 @@ export function TrapdoorControlPanel() {
               />
               <p className="text-xs text-muted-foreground mt-1">
                 Set via ADMIN_API_KEY environment variable (default: dev-admin-key for development)
+                <br />
+                <strong className="text-orange-500">⚠️ Production: Use JWT tokens instead of static API keys</strong>
               </p>
             </div>
 

@@ -29,7 +29,7 @@ function requireAdmin(req, res, next) {
         method: req.method,
         ip: req.ip
       }
-    });
+    }).catch(err => console.error('Shadow log error:', err));
 
     return res.status(403).json({
       error: 'Unauthorized',
