@@ -1,10 +1,11 @@
 // Fastboot Library - Fastboot device management
 // Provides core Fastboot functionality for bootloader operations
 
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import { promisify } from 'util';
+import shellQuote from 'shell-quote';
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 /**
  * Fastboot Library for bootloader operations
@@ -51,16 +52,29 @@ class FastbootLibrary {
    */
   async executeCommand(serial, command) {
     try {
-      const fastbootCommand = serial 
-        ? `fastboot -s ${serial} ${command}` 
-        : `fastboot ${command}`;
-      
-      const { stdout, stderr } = await execAsync(fastbootCommand, { timeout: 60000 });
+      // Sanitize serial (allow only alphanum + dot, colon, dash, underscore)
+      let args = [];
+      if (serial) {
+        if (!/^[\w.\-:]+$/.test(serial)) {
+          throw new Error('Invalid device serial');
+        }
+        args.push('-s', serial);
+      }
+      // Parse command string into args using shell-quote (handles quoting/escaping)
+      if (typeof command === 'string') {
+        args = args.concat(shellQuote.parse(command).filter(a => typeof a === 'string'));
+      } else if (Array.isArray(command)) {
+        args = args.concat(command);
+      } else {
+        throw new Error('Invalid fastboot command');
+      }
+      // Run execFileAsync instead of execAsync (shell not used)
+      const { stdout, stderr } = await execFileAsync('fastboot', args, { timeout: 60000 });
       
       return {
         success: true,
-        stdout: stdout.trim(),
-        stderr: stderr.trim()
+        stdout: stdout ? stdout.toString().trim() : '',
+        stderr: stderr ? stderr.toString().trim() : ''
       };
     } catch (error) {
       return {
