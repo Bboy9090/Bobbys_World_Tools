@@ -70,6 +70,10 @@ wheels/
 *.egg
 server/node_modules
 
+# Exception: Allow core/lib directory
+!core/lib/
+!core/lib/*.js
+
 # Bobby's Secret Workshop - NEVER COMMIT SENSITIVE DATA
 secrets/
 logs/shadow/
