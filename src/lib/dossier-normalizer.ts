@@ -19,6 +19,7 @@ export interface NormalizedScanResult {
 export function normalizeScan(devices: any[]): NormalizedScanResult {
   // Mock implementation - just passes through devices
   const normalized: DeviceRecord[] = devices.map((device, index) => ({
+    ...device,
     id: device.id || device.serial || `device-${index}`,
     serial: device.serial || device.device_uid,
     vendorId: device.vendorId || device.vendor_id,
@@ -27,7 +28,6 @@ export function normalizeScan(devices: any[]): NormalizedScanResult {
     mode: device.mode || device.device_mode,
     confidence: device.confidence || 0.8,
     matched_tool_ids: device.matched_tool_ids || [],
-    ...device,
   }));
 
   const summary = {
@@ -58,6 +58,7 @@ export function normalizeScan(devices: any[]): NormalizedScanResult {
 export function normalizeBootForgeUSBRecord(record: any): DeviceRecord {
   // Mock implementation
   return {
+    ...record,
     id: record.id || record.serial || 'unknown',
     serial: record.serial,
     vendorId: record.vendor_id,
@@ -65,6 +66,5 @@ export function normalizeBootForgeUSBRecord(record: any): DeviceRecord {
     platform: record.platform,
     mode: record.mode,
     confidence: record.confidence || 0.8,
-    ...record,
   };
 }

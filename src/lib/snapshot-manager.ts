@@ -18,6 +18,7 @@ export const snapshotManager = {
 
   /**
    * Format timestamp to human-readable age
+   * Note: Uses approximate day/month/year calculations for simplicity
    */
   formatAge(timestamp: number): string {
     const now = Date.now();
@@ -27,8 +28,11 @@ export const snapshotManager = {
     const minutes = Math.floor(seconds / 60);
     const hours = Math.floor(minutes / 60);
     const days = Math.floor(hours / 24);
-    const months = Math.floor(days / 30);
-    const years = Math.floor(days / 365);
+    // Approximate values for display purposes
+    const APPROX_DAYS_PER_MONTH = 30;
+    const APPROX_DAYS_PER_YEAR = 365;
+    const months = Math.floor(days / APPROX_DAYS_PER_MONTH);
+    const years = Math.floor(days / APPROX_DAYS_PER_YEAR);
     
     if (years > 0) return `${years} year${years > 1 ? 's' : ''}`;
     if (months > 0) return `${months} month${months > 1 ? 's' : ''}`;
