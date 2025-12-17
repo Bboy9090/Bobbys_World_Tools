@@ -25,7 +25,7 @@ export const snapshotManager = {
   /**
    * Create a snapshot
    * @param deviceId Device ID
-   * @returns null (stub)
+   * @returns Snapshot object with id, deviceId, timestamp, size, and type (stub: returns null)
    */
   createSnapshot: async (deviceId: string): Promise<Snapshot | null> => {
     console.warn('[SnapshotManager] Using stub implementation');

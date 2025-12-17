@@ -41,12 +41,10 @@ export const pluginAPI = {
   /**
    * Install a plugin
    * @param pluginId Plugin ID to install
-   * @param onProgress Progress callback
-   * @returns Success: false (stub implementation)
+   * @returns Success: false (stub implementation - not yet available)
    */
   installPlugin: async (
-    pluginId: string, 
-    onProgress?: (progress: PluginDownloadProgress) => void
+    pluginId: string
   ): Promise<{ success: boolean; error?: string }> => {
     console.warn('[PluginAPI] Using stub implementation - installation not available');
     return { 

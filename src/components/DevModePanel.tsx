@@ -236,26 +236,24 @@ function WorkflowCard({ workflow, onExecute }: { workflow: WorkflowInfo; onExecu
           </Badge>
         </div>
         
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="w-full inline-block">
-                <Button
-                  onClick={() => onExecute(workflow.id)}
-                  className="w-full"
-                  size="sm"
-                  disabled={true}
-                >
-                  <PlayCircle className="mr-2" size={16} />
-                  Execute Workflow
-                </Button>
-              </span>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Coming soon - workflow execution engine in development</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="w-full inline-block">
+              <Button
+                onClick={() => onExecute(workflow.id)}
+                className="w-full"
+                size="sm"
+                disabled={true}
+              >
+                <PlayCircle className="mr-2" size={16} />
+                Execute Workflow
+              </Button>
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Coming soon - workflow execution engine in development</p>
+          </TooltipContent>
+        </Tooltip>
       </CardContent>
     </Card>
   );
