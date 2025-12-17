@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Bobby's Workshop (Pandora Codex) — Copilot Repo Instructions
 
 ## Prime Directive: Truth + Production
@@ -7,8 +6,6 @@
 - Mocks are allowed ONLY inside tests.
 - If something isn't ready: disable/hide OR gate behind EXPERIMENTAL (OFF by default).
 - Never claim tests/builds/CI ran unless you actually ran them.
-
-# Bobby's Workshop — Copilot Repo Instructions
 
 ## Core Principles
 - Truth-first: no placeholders, mocks, or fake success in production paths.
@@ -47,4 +44,3 @@ npm run dev           # Start development server
 - [ ] Build succeeds
 - [ ] No linting errors
 - [ ] PR is small and focused
-```
