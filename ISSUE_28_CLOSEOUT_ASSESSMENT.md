@@ -284,15 +284,38 @@ Before merging each PR:
 9. **Handle PR #23** (@octokit major version)
 10. **Close Issue #28** with summary
 
+## Security Fixes Applied
+
+### ✅ CRITICAL: Multer Vulnerabilities Resolved (This PR)
+
+**Fixed in this PR before any other merges:**
+
+Updated `server/package.json`: `multer` from `^1.4.5-lts.1` → `^2.0.2`
+
+**Vulnerabilities Fixed:**
+1. ❌ **CVE - Multer DoS via unhandled exception from malformed request** (Affected: >= 1.4.4-lts.1, < 2.0.2)
+2. ❌ **CVE - Multer DoS via unhandled exception** (Affected: >= 1.4.4-lts.1, < 2.0.1)
+3. ❌ **CVE - Multer DoS from maliciously crafted requests** (Affected: >= 1.4.4-lts.1, < 2.0.0)
+4. ❌ **CVE - Multer DoS via memory leaks from unclosed streams** (Affected: < 2.0.0)
+
+**Verification:**
+- ✅ Updated to multer@2.0.2
+- ✅ `npm audit` shows 0 vulnerabilities
+- ✅ Code compatibility verified (API unchanged)
+- ✅ Dynamic import with `.default` still works
+
+**Impact:** Protects file upload endpoint (`/api/flash/fastboot`) from DoS attacks.
+
 ## Conclusion
 
 Issue #28 can be closed systematically over 2-3 weeks by following the phased approach above. The key is to:
 
-1. **Start with low-risk changes** (dependency updates)
-2. **Fix failing tests** before merging anything that's broken
-3. **Complete draft PRs** or close them if redundant
-4. **Thoroughly review** large feature changes
-5. **Test at each step** to maintain stability
+1. **✅ Fix critical security vulnerabilities FIRST** (multer - DONE in this PR)
+2. **Start with low-risk changes** (dependency updates)
+3. **Fix failing tests** before merging anything that's broken
+4. **Complete draft PRs** or close them if redundant
+5. **Thoroughly review** large feature changes
+6. **Test at each step** to maintain stability
 
 The biggest immediate blocker is **PR #29** which has consistent test failures. This must be investigated and resolved before merging.
 
@@ -300,4 +323,4 @@ The biggest immediate blocker is **PR #29** which has consistent test failures. 
 
 **Prepared by:** GitHub Copilot Coding Agent  
 **For:** Issue #28 Closeout  
-**Status:** Assessment Complete - Awaiting User Action
+**Status:** Security Fix Applied - Assessment Complete - Awaiting User Action
