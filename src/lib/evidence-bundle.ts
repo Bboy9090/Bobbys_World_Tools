@@ -67,7 +67,7 @@ const signatures: Map<string, string> = new Map();
 export const evidenceBundle: EvidenceBundleAPI = {
   async create(name: string, deviceSerial: string): Promise<EvidenceBundle> {
     const bundle: EvidenceBundle = {
-      id: `bundle-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: `bundle-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
       name,
       timestamp: Date.now(),
       items: [{
@@ -108,7 +108,7 @@ export const evidenceBundle: EvidenceBundleAPI = {
     }
     
     // Generate mock signature
-    const signature = 'sig-' + Math.random().toString(36).substr(2, 32);
+    const signature = 'sig-' + Math.random().toString(36).slice(2, 34);
     signatures.set(bundleId, signature);
     return signature;
   },

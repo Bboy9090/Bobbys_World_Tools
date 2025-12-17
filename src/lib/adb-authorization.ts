@@ -45,7 +45,7 @@ export const adbAuthorization: ADBAuthorizationAPI = {
       deviceSerial,
       authorized: false,
       pendingApproval: true,
-      publicKeyHash: 'sha256:' + Math.random().toString(36).substr(2, 16)
+      publicKeyHash: 'sha256:' + Math.random().toString(36).slice(2, 18)
     };
 
     authorizedDevices.set(deviceSerial, state);

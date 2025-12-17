@@ -40,8 +40,10 @@ class ShadowLogger {
     if (envKey) {
       return Buffer.from(envKey, 'hex');
     }
-    // Generate a deterministic key for development (NOT secure for production)
-    return crypto.scryptSync('dev-shadow-key', 'shadow-salt', KEY_LENGTH);
+    // Generate a random key for development - logs will not persist across restarts
+    // This ensures development mode doesn't use predictable keys
+    console.warn('[ShadowLogger] No SHADOW_LOG_KEY set - using random key (logs will not persist)');
+    return crypto.randomBytes(KEY_LENGTH);
   }
 
   /**

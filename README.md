@@ -309,6 +309,38 @@ Bypassing security features on devices you do not own is **illegal** under:
 
 ## 🛠️ Development
 
+### How to Run
+
+```bash
+# 1. Install dependencies
+npm install
+
+# 2. Start the development server
+npm run dev
+
+# 3. (Optional) Start the backend API server
+cd server && npm install && npm start
+
+# 4. Open the browser at http://localhost:5000
+```
+
+### How to Test
+
+```bash
+# Run all tests
+npm test
+
+# Run specific test suites
+npm run test:workflow    # Workflow system tests
+npm run test:trapdoor    # Trapdoor API tests (requires server running)
+
+# Run linting
+npm run lint
+
+# Build for production
+npm run build
+```
+
 ### Start Development Server
 ```bash
 # Install dependencies

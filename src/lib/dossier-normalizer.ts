@@ -48,7 +48,7 @@ export function normalizeBootForgeUSBRecord(record: Record<string, any>): Normal
 }
 
 function generateDeviceUid(): string {
-  return `device-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  return `device-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 }
 
 function detectPlatform(record: Record<string, any>): 'android' | 'ios' | 'unknown' {

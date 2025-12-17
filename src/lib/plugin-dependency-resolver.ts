@@ -67,7 +67,7 @@ export const pluginDependencyResolver: PluginDependencyResolver = {
       this.calculateLevel(d.to, edges, depth + 1) + 1
     );
 
-    return Math.max(...depLevels);
+    return depLevels.length > 0 ? Math.max(...depLevels) : 0;
   },
 
   resolve(

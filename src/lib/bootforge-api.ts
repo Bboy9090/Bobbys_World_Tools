@@ -19,7 +19,7 @@ const mockOperations: Map<string, FlashOperation> = new Map();
 const mockHistory: FlashOperation[] = [];
 
 function generateJobId(): string {
-  return `flash-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  return `flash-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 }
 
 export interface BootForgeAPI {
