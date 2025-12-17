@@ -34,6 +34,7 @@ import {
 import { toast } from 'sonner';
 import { useKV } from '@github/spark/hooks';
 import type { AndroidDevice } from '@/types/android-devices';
+import { useAudioNotifications } from '@/hooks/use-audio-notifications';
 
 interface PartitionInfo {
   name: string;
@@ -117,6 +118,8 @@ export function BatchFlashingPanel() {
   const [continueOnError, setContinueOnError] = useState(false);
   const [rebootAfter, setRebootAfter] = useState(false);
   const [verifyAfterFlash, setVerifyAfterFlash] = useState(true);
+  
+  const { handleJobStart, handleJobError, handleJobComplete } = useAudioNotifications();
 
   useEffect(() => {
     fetchDevices();
@@ -389,6 +392,9 @@ export function BatchFlashingPanel() {
     };
 
     setSession(updatedSession);
+    
+    // Start audio atmosphere for batch flash operation
+    handleJobStart(updatedSession.id);
 
     for (let i = 0; i < session.items.length; i++) {
       const item = session.items[i];
@@ -443,6 +449,10 @@ export function BatchFlashingPanel() {
           } : null);
 
           toast.error('Batch flash stopped due to error');
+          
+          // Audio notification for batch error
+          handleJobError();
+          
           setLoading(false);
           setCurrentItemIndex(-1);
           return;
@@ -500,6 +510,10 @@ export function BatchFlashingPanel() {
     }
 
     toast.success('Batch flash completed!');
+    
+    // Audio notification for successful completion
+    handleJobComplete();
+    
     setLoading(false);
     setCurrentItemIndex(-1);
   };

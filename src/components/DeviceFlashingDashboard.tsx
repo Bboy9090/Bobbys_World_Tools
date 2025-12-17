@@ -28,6 +28,7 @@ import { toast } from 'sonner';
 import { FlashProgressMonitor, useFlashProgressSimulator } from './FlashProgressMonitor';
 import type { FlashProgress } from './FlashProgressMonitor';
 import { LiveProgressMonitor } from './LiveProgressMonitor';
+import { useAudioNotifications } from '@/hooks/use-audio-notifications';
 
 interface Device {
   serial: string;
@@ -83,6 +84,7 @@ export function DeviceFlashingDashboard() {
   });
 
   const { progress, startFlashing, stopFlashing } = useFlashProgressSimulator();
+  const { handleJobStart, handleJobError, handleJobComplete } = useAudioNotifications();
 
   useEffect(() => {
     scanForDevices();
@@ -205,6 +207,9 @@ export function DeviceFlashingDashboard() {
     setActiveJob(job);
     setFlashJobs(prev => [job, ...(prev || [])]);
     
+    // Start audio atmosphere for flash operation
+    handleJobStart(job.id);
+    
     startFlashing(selectedPartition, imageSize);
     toast.success(`Started flashing ${selectedPartition} to ${device.serial}`);
   };
@@ -225,6 +230,10 @@ export function DeviceFlashingDashboard() {
       (prev || []).map(j => j.id === activeJob.id ? completedJob : j)
     );
     setActiveJob(null);
+    
+    // Audio notification for successful completion
+    handleJobComplete();
+    
     toast.success('Flash operation completed successfully');
   };
 
@@ -242,6 +251,10 @@ export function DeviceFlashingDashboard() {
       (prev || []).map(j => j.id === activeJob.id ? failedJob : j)
     );
     setActiveJob(null);
+    
+    // Audio notification for error
+    handleJobError();
+    
     toast.error(`Flash operation failed: ${error}`);
   };
 
