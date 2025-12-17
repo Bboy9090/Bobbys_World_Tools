@@ -22,11 +22,11 @@ import { toast } from 'sonner';
 export function CorrelationDashboard() {
   const [mockDevices, setMockDevices] = useState<DeviceRecord[]>([]);
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null);
+  const [isDemoMode, setIsDemoMode] = useState(false);
   const { updateDevice, isTracking } = useCorrelationTracking();
 
-  useEffect(() => {
-    generateMockDevices();
-  }, []);
+  // REMOVED: Automatic mock device generation on mount
+  // Demo data only generated when user explicitly clicks "Load Demo Data"
 
   const generateMockDevices = () => {
     const devices: DeviceRecord[] = [
@@ -91,9 +91,14 @@ export function CorrelationDashboard() {
     ];
 
     setMockDevices(devices);
+    setIsDemoMode(true);
     if (devices.length > 0) {
       setSelectedDevice(devices[0].id);
     }
+    
+    toast.info('Demo Mode Active', {
+      description: 'Showing simulated device data for testing. Connect real devices for actual correlation tracking.',
+    });
     
     if (isTracking) {
       const { devices: normalizedDevices } = normalizeScan(devices);
@@ -121,6 +126,19 @@ export function CorrelationDashboard() {
 
   return (
     <div className="space-y-6">
+      {isDemoMode && (
+        <Card className="bg-yellow-500/10 border-yellow-500/50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-yellow-600 dark:text-yellow-400">
+              <Sparkle className="w-5 h-5" weight="fill" />
+              <p className="text-sm font-medium">
+                Demo Mode: Showing simulated device data. Connect real devices for actual correlation tracking.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-bold tracking-tight flex items-center gap-3">
@@ -139,7 +157,7 @@ export function CorrelationDashboard() {
         </div>
         <Button onClick={generateMockDevices} variant="outline" className="gap-2">
           <ArrowsClockwise className="w-4 h-4" weight="bold" />
-          Refresh Mock Data
+          {isDemoMode ? 'Refresh Demo Data' : 'Load Demo Data'}
         </Button>
       </div>
 

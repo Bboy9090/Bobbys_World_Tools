@@ -99,25 +99,14 @@ export function XiaomiEDLFlashPanel() {
         setError('Failed to scan for EDL devices');
       }
     } catch (err) {
-      if (isDemoMode) {
-        const mockDevices: EDLDevice[] = [
-          {
-            port: '/dev/ttyUSB0',
-            serial: '[DEMO] 9c7bd9a4',
-            model: '[DEMO] Redmi Note 11',
-            chipset: 'qualcomm',
-            socName: 'Snapdragon 680 (SM6225)',
-            isAuthenticated: true,
-            partitionTable: ['boot', 'system', 'vendor', 'userdata', 'recovery', 'dtbo', 'vbmeta', 'persist', 'modem', 'fsg'],
-          },
-        ];
-        setDevices(mockDevices);
-        toast.info('Running in demo mode with simulated devices');
-      } else {
-        setDevices([]);
-        setError('Backend API unavailable - cannot scan for EDL devices');
-        console.error('Failed to scan devices:', err);
-      }
+      // No mock devices - show real error
+      setDevices([]);
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      setError(`Backend API unavailable: ${errorMessage}`);
+      console.error('Failed to scan EDL devices:', err);
+      toast.error('EDL device scan failed', {
+        description: 'Cannot connect to backend API. Please ensure server is running on port 3001.',
+      });
     } finally {
       setIsScanning(false);
     }
