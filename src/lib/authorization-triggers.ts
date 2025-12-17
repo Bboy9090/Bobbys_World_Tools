@@ -49,3 +49,77 @@ export function getTriggerById(id: string): AuthorizationTrigger | undefined {
 export function getTriggersByCategory(category: string): AuthorizationTrigger[] {
   return AUTHORIZATION_TRIGGERS.filter(t => t.category === category);
 }
+
+export interface TriggerExecutionResult {
+  success: boolean;
+  triggerId: string;
+  message: string;
+  timestamp: number;
+}
+
+export interface TriggerLog {
+  triggerId: string;
+  action: string;
+  timestamp: number;
+  userId?: string;
+  deviceId?: string;
+  metadata?: Record<string, any>;
+}
+
+const triggerLogs: TriggerLog[] = [];
+
+export async function executeTrigger(triggerId: string, deviceId?: string): Promise<TriggerExecutionResult> {
+  const trigger = getTriggerById(triggerId);
+  
+  if (!trigger) {
+    return {
+      success: false,
+      triggerId,
+      message: 'Trigger not found',
+      timestamp: Date.now(),
+    };
+  }
+
+  // Log the execution
+  logTriggerAction(triggerId, 'execute', { deviceId });
+
+  // Stub implementation - always succeeds
+  return {
+    success: true,
+    triggerId,
+    message: `Executed ${trigger.name} successfully`,
+    timestamp: Date.now(),
+  };
+}
+
+export function logTriggerAction(
+  triggerId: string,
+  action: string,
+  metadata?: Record<string, any>
+): void {
+  triggerLogs.push({
+    triggerId,
+    action,
+    timestamp: Date.now(),
+    metadata,
+  });
+}
+
+export function getTriggerLogs(triggerId?: string): TriggerLog[] {
+  if (triggerId) {
+    return triggerLogs.filter(log => log.triggerId === triggerId);
+  }
+  return [...triggerLogs];
+}
+
+export function clearTriggerLogs(triggerId?: string): void {
+  if (triggerId) {
+    const indices = triggerLogs
+      .map((log, index) => (log.triggerId === triggerId ? index : -1))
+      .filter(index => index !== -1)
+      .reverse();
+    indices.forEach(index => triggerLogs.splice(index, 1));
+  } else {
+    triggerLogs.length = 0;
+  }
+}
