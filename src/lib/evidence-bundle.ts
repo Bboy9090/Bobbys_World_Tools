@@ -11,7 +11,7 @@ export interface EvidenceBundle {
 
 export interface EvidenceBundleItem {
   type: string;
-  data: any;
+  data: unknown;
   timestamp: number;
 }
 
@@ -24,7 +24,7 @@ export function createEvidenceBundle(name: string): EvidenceBundle {
   };
 }
 
-export function addEvidenceItem(bundle: EvidenceBundle, type: string, data: any): void {
+export function addEvidenceItem(bundle: EvidenceBundle, type: string, data: unknown): void {
   bundle.items.push({
     type,
     data,
@@ -39,3 +39,46 @@ export function exportEvidenceBundle(bundle: EvidenceBundle): string {
 export function importEvidenceBundle(json: string): EvidenceBundle {
   return JSON.parse(json);
 }
+
+class EvidenceBundleManager {
+  private bundles: Map<string, EvidenceBundle> = new Map();
+
+  create(name: string): EvidenceBundle {
+    const bundle = createEvidenceBundle(name);
+    this.bundles.set(bundle.id, bundle);
+    return bundle;
+  }
+
+  get(id: string): EvidenceBundle | undefined {
+    return this.bundles.get(id);
+  }
+
+  list(): EvidenceBundle[] {
+    return Array.from(this.bundles.values());
+  }
+
+  delete(id: string): boolean {
+    return this.bundles.delete(id);
+  }
+
+  addItem(bundleId: string, type: string, data: unknown): boolean {
+    const bundle = this.bundles.get(bundleId);
+    if (!bundle) return false;
+    
+    addEvidenceItem(bundle, type, data);
+    return true;
+  }
+
+  export(bundleId: string): string | null {
+    const bundle = this.bundles.get(bundleId);
+    return bundle ? exportEvidenceBundle(bundle) : null;
+  }
+
+  import(json: string): EvidenceBundle {
+    const bundle = importEvidenceBundle(json);
+    this.bundles.set(bundle.id, bundle);
+    return bundle;
+  }
+}
+
+export const evidenceBundle = new EvidenceBundleManager();
