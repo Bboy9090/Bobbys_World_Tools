@@ -1,29 +1,112 @@
 // Unit tests for ADB Library
-import { describe, it, expect, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-// Mock child_process
 vi.mock('child_process', () => ({
   exec: vi.fn()
 }));
 
+import { exec as execMock } from 'child_process';
+import ADBLibrary from '../../core/lib/adb.js';
+
+const mockExecSuccess = (stdout, stderr = '') => {
+  execMock.mockImplementation((cmd, options, callback) => {
+    if (typeof options === 'function') {
+      callback = options;
+    }
+    callback(null, { stdout, stderr });
+    return {};
+  });
+};
+
+const mockExecFailure = (error) => {
+  execMock.mockImplementation((cmd, options, callback) => {
+    if (typeof options === 'function') {
+      callback = options;
+    }
+    error.stdout = error.stdout || '';
+    error.stderr = error.stderr || '';
+    callback(error, { stdout: error.stdout, stderr: error.stderr });
+    return {};
+  });
+};
+
 describe('ADB Library', () => {
-  it('should check if ADB is available', () => {
-    expect(true).toBe(true);
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
-  it('should list connected devices', () => {
-    expect(true).toBe(true);
+  it('checks if ADB is available', async () => {
+    mockExecSuccess('Android Debug Bridge version 1.0.41\n');
+    const result = await ADBLibrary.isAvailable();
+    expect(result.success).toBe(true);
+    expect(result.version).toContain('Android Debug Bridge');
   });
 
-  it('should execute ADB commands', () => {
-    expect(true).toBe(true);
+  it('reports unavailable ADB when exec fails', async () => {
+    mockExecFailure(new Error('adb missing'));
+    const result = await ADBLibrary.isAvailable();
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('ADB not found');
   });
 
-  it('should get device information', () => {
-    expect(true).toBe(true);
+  it('lists connected devices with states', async () => {
+    mockExecSuccess(`List of devices attached\nabc123\tdevice usb:1 product:sdk_gphone model:Pixel9\nxyz456\toffline\n`);
+    const result = await ADBLibrary.listDevices();
+    expect(result.success).toBe(true);
+    expect(result.devices).toEqual([
+      { serial: 'abc123', state: 'device', info: 'usb:1 product:sdk_gphone model:Pixel9' },
+      { serial: 'xyz456', state: 'offline', info: '' }
+    ]);
   });
 
-  it('should check FRP status', () => {
-    expect(true).toBe(true);
+  it('executes commands on a specific device', async () => {
+    mockExecSuccess('command output', '');
+    const result = await ADBLibrary.executeCommand('abc123', 'shell getprop ro.serialno');
+    expect(execMock).toHaveBeenCalledWith(
+      expect.stringContaining('adb -s abc123 shell getprop ro.serialno'),
+      expect.objectContaining({ timeout: 30000 }),
+      expect.any(Function)
+    );
+    expect(result).toMatchObject({ success: true, stdout: 'command output' });
+  });
+
+  it('surfaces command failures with stderr', async () => {
+    const err = new Error('command failed');
+    err.stdout = '';
+    err.stderr = 'device not found';
+    mockExecFailure(err);
+    const result = await ADBLibrary.executeCommand('missing', 'devices');
+    expect(result.success).toBe(false);
+    expect(result.stderr).toBe('device not found');
+  });
+
+  it('aggregates device info from multiple properties', async () => {
+    const spy = vi.spyOn(ADBLibrary, 'executeCommand');
+    spy
+      .mockResolvedValueOnce({ success: true, stdout: 'Google' })
+      .mockResolvedValueOnce({ success: true, stdout: 'Pixel 9' })
+      .mockResolvedValueOnce({ success: true, stdout: '15' })
+      .mockResolvedValueOnce({ success: true, stdout: 'ABC123' });
+
+    const result = await ADBLibrary.getDeviceInfo('abc123');
+    expect(result.success).toBe(true);
+    expect(result).toMatchObject({
+      manufacturer: 'Google',
+      model: 'Pixel 9',
+      androidVersion: '15',
+      deviceSerial: 'ABC123'
+    });
+    spy.mockRestore();
+  });
+
+  it('checks FRP status and returns confidence', async () => {
+    const spy = vi.spyOn(ADBLibrary, 'executeCommand');
+    spy.mockResolvedValueOnce({ success: true, stdout: 'abcd123456789' });
+
+    const result = await ADBLibrary.checkFRPStatus('abc123');
+    expect(result.success).toBe(true);
+    expect(result.androidId).toBe('abcd123456789');
+    expect(result.confidence).toBe('low');
+    spy.mockRestore();
   });
 });
