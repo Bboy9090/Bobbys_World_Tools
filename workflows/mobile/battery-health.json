@@ -47,5 +47,15 @@
   "output": {
     "format": "json",
     "sections": ["battery_level", "battery_health", "cycle_count", "temperature", "recommendations"]
+  },
+  "metadata": {
+    "status": "done",
+    "pr_link": null,
+    "placeholder_found": false,
+    "version": "1.0.0",
+    "author": "Bobby's World Tools",
+    "created_at": 1734220800000,
+    "updated_at": 1734426000000,
+    "tags": ["diagnostics", "mobile", "battery", "health-check"]
   }
 }
