@@ -432,6 +432,10 @@ This repository uses GitHub Rulesets to enforce code quality standards. All pull
 
 See [.github/BRANCH_PROTECTION.md](.github/BRANCH_PROTECTION.md) for complete details on branch protection rules and setup.
 
+### 🧠 Auto-merge Enabled
+
+This repository has auto-merge enabled for pull requests. Once your PR is approved and all checks pass, it will automatically merge without requiring manual intervention. See [docs/AUTO_MERGE.md](./docs/AUTO_MERGE.md) for more details.
+
 ## 📄 License
 
 MIT License - See LICENSE file for details
