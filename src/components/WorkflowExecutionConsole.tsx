@@ -113,7 +113,7 @@ export function WorkflowExecutionConsole() {
   };
 
   const formatStatusText = (status: string) => {
-    return status.replace('_', ' ').toUpperCase();
+    return status.replaceAll('_', ' ').toUpperCase();
   };
 
   const getPlatformIcon = (platform: string) => {

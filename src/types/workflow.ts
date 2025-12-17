@@ -58,7 +58,7 @@ export interface WorkflowOutput {
 
 export interface WorkflowMetadata {
   status: WorkflowStatus;
-  pr_link?: string | null;
+  pr_link: string | null;
   placeholder_found?: boolean;
   created_at?: number;
   updated_at?: number;
