@@ -47,7 +47,7 @@ async function validateWorkflowFile(filePath) {
       }
 
       // Validate step type
-      const validTypes = ['command', 'check', 'wait', 'prompt', 'log', 'calculate', 'manual'];
+      const validTypes = ['command', 'check', 'wait', 'prompt', 'log', 'calculate', 'manual', 'probe', 'analysis', 'report'];
       if (!validTypes.includes(step.type)) {
         return {
           valid: false,
