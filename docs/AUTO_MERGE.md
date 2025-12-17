@@ -21,7 +21,7 @@ When a pull request is opened, the auto-merge workflow automatically enables Git
 ## Workflow Triggers
 
 The auto-merge workflow is triggered on:
-- Pull request opened, synchronized, or reopened
+- Pull request opened, synchronized (new commits pushed), reopened, or marked ready for review
 - Pull request reviews submitted
 - Check suites completed
 - Status updates
@@ -31,6 +31,7 @@ The auto-merge workflow is triggered on:
 The workflow attempts to merge using:
 1. **Squash merge** (preferred) - Creates a single commit with all changes
 2. **Standard merge** (fallback) - If squash is not available
+3. If both fail, assumes auto-merge is already enabled or cannot be enabled
 
 ## Manual Control
 
@@ -49,6 +50,8 @@ gh pr merge <PR_NUMBER> --auto --squash
 ## Branch Protection
 
 Auto-merge respects all branch protection rules configured for the repository. PRs will only merge when all protection requirements are satisfied.
+
+**Security Note**: Auto-merge is only enabled for PRs from branches within the same repository, not for PRs from forks. This prevents external contributors from auto-merging their own PRs.
 
 ## Troubleshooting
 
