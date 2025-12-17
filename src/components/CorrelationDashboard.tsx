@@ -13,19 +13,22 @@ import {
   Sparkle, 
   ArrowsClockwise,
   ChartBar,
-  Link
+  Link,
+  Warning
 } from '@phosphor-icons/react';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Info } from '@phosphor-icons/react';
 
 export function CorrelationDashboard() {
   const [demoDevices, setDemoDevices] = useState<DeviceRecord[]>([]);
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null);
-  const [isDemoMode, setIsDemoMode] = useState(false);
   const { updateDevice, isTracking } = useCorrelationTracking();
+
+  useEffect(() => {
+    generateDemoDevices();
+  }, []);
 
   const generateDemoDevices = () => {
     const devices: DeviceRecord[] = [
@@ -37,7 +40,7 @@ export function CorrelationDashboard() {
         platform: 'android',
         mode: 'confirmed_android_os',
         confidence: 0.95,
-        matched_tool_ids: ['ABC123XYZ', 'adb-ABC123XYZ'],
+        matched_tool_ids: ['[DEMO] ABC123XYZ', '[DEMO] adb-ABC123XYZ'],
       },
       {
         id: '[DEMO] device-2',
@@ -47,7 +50,7 @@ export function CorrelationDashboard() {
         platform: 'ios',
         mode: 'confirmed_ios',
         confidence: 0.92,
-        matched_tool_ids: ['00008030-001A1B2C3D4E567F'],
+        matched_tool_ids: ['[DEMO] 00008030-001A1B2C3D4E567F'],
       },
       {
         id: '[DEMO] device-3',
@@ -57,7 +60,7 @@ export function CorrelationDashboard() {
         platform: 'android',
         mode: 'bootloader',
         confidence: 0.88,
-        matched_tool_ids: ['GHI789RST'],
+        matched_tool_ids: ['[DEMO] GHI789RST'],
       },
       {
         id: '[DEMO] device-4',
@@ -90,7 +93,6 @@ export function CorrelationDashboard() {
     ];
 
     setDemoDevices(devices);
-    setIsDemoMode(true);
     if (devices.length > 0) {
       setSelectedDevice(devices[0].id);
     }
@@ -111,7 +113,7 @@ export function CorrelationDashboard() {
           productId: demoDevices.find(d => d.id === device.id)?.productId,
         });
       });
-      toast.success(`[DEMO] Pushed ${normalizedDevices.length} demo devices to correlation tracker`);
+      toast.success(`Pushed ${normalizedDevices.length} demo devices to correlation tracker`);
     }
   };
 
@@ -121,21 +123,23 @@ export function CorrelationDashboard() {
 
   return (
     <div className="space-y-6">
-      {isDemoMode && (
-        <Alert className="border-amber-500/50 bg-amber-500/10">
-          <Info className="h-4 w-4 text-amber-500" />
-          <AlertTitle className="text-amber-600 dark:text-amber-400">Demo Mode</AlertTitle>
-          <AlertDescription className="text-amber-600/90 dark:text-amber-400/90">
-            Showing demonstration data to illustrate correlation tracking features. Connect real devices to see live correlation.
-          </AlertDescription>
-        </Alert>
-      )}
+      {/* Demo Mode Banner */}
+      <Alert className="border-amber-500/30 bg-amber-600/10">
+        <Warning className="w-4 h-4 text-amber-400" />
+        <AlertDescription className="text-amber-300">
+          <strong>[DEMO MODE]</strong> This dashboard is displaying simulated correlation data for demonstration purposes.
+          Connect real devices to see actual correlation tracking.
+        </AlertDescription>
+      </Alert>
 
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-bold tracking-tight flex items-center gap-3">
             <Sparkle className="w-8 h-8 text-accent" weight="duotone" />
             Correlation Tracking Dashboard
+            <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30">
+              DEMO
+            </Badge>
             {isTracking && (
               <Badge className="bg-accent/20 text-accent border-accent/30">
                 <Link className="w-3 h-3 mr-1" weight="bold" />
@@ -149,21 +153,21 @@ export function CorrelationDashboard() {
         </div>
         <Button onClick={generateDemoDevices} variant="outline" className="gap-2">
           <ArrowsClockwise className="w-4 h-4" weight="bold" />
-          Load Demo Data
+          Refresh Demo Data
         </Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-3">
-            <CardDescription>Total Devices</CardDescription>
+            <CardDescription>Total Devices [DEMO]</CardDescription>
             <CardTitle className="text-3xl">{summary.total}</CardTitle>
           </CardHeader>
         </Card>
 
         <Card className="border-accent">
           <CardHeader className="pb-3">
-            <CardDescription>Correlated</CardDescription>
+            <CardDescription>Correlated [DEMO]</CardDescription>
             <CardTitle className="text-3xl text-accent">{summary.correlated}</CardTitle>
           </CardHeader>
           <CardContent>
@@ -176,7 +180,7 @@ export function CorrelationDashboard() {
 
         <Card className="border-primary">
           <CardHeader className="pb-3">
-            <CardDescription>System Confirmed</CardDescription>
+            <CardDescription>System Confirmed [DEMO]</CardDescription>
             <CardTitle className="text-3xl text-primary">{summary.system_confirmed}</CardTitle>
           </CardHeader>
           <CardContent>
@@ -189,7 +193,7 @@ export function CorrelationDashboard() {
 
         <Card className="border-destructive">
           <CardHeader className="pb-3">
-            <CardDescription>Unconfirmed</CardDescription>
+            <CardDescription>Unconfirmed [DEMO]</CardDescription>
             <CardTitle className="text-3xl text-destructive">{summary.unconfirmed}</CardTitle>
           </CardHeader>
           <CardContent>

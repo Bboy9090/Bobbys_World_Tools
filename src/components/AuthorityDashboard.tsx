@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   ShieldCheck, 
   Certificate, 
@@ -14,7 +15,8 @@ import {
   Timer,
   CheckCircle,
   XCircle,
-  Clock
+  Clock,
+  Warning
 } from '@phosphor-icons/react';
 import { PluginManager } from './PluginManager';
 import { EvidenceBundleViewer, EvidenceBundleList, type EvidenceBundle } from './EvidenceBundleViewer';
@@ -36,26 +38,22 @@ interface AuthorityDashboardProps {
 export function AuthorityDashboard({ onNavigate }: AuthorityDashboardProps = {}) {
   const [selectedBundle, setSelectedBundle] = useState<EvidenceBundle | null>(null);
 
-  // Real stats should come from backend API
-  const stats: AuthorityStats = {
-    totalDevices: 0,
-    correlatedDevices: 0,
-    evidenceBundles: 0,
-    activePlugins: 0,
-    averageConfidence: 0,
-    disputesResolved: 0,
+  // Demo stats - all data is simulated for demonstration purposes
+  const demoStats: AuthorityStats = {
+    totalDevices: 156,
+    correlatedDevices: 142,
+    evidenceBundles: 89,
+    activePlugins: 12,
+    averageConfidence: 0.93,
+    disputesResolved: 37,
   };
 
-  // Real plugins should come from plugin registry API
-  const registeredPlugins: RegisteredPlugin[] = [];
-
-  // Placeholder for demo - remove when real plugin system is connected
-  const mockPluginsForReference: RegisteredPlugin[] = [
+  const demoPlugins: RegisteredPlugin[] = [
     {
       plugin: {
         manifest: {
-          id: 'detection-mediatek',
-          name: 'MediaTek Enhanced Detection',
+          id: '[DEMO] detection-mediatek',
+          name: '[DEMO] MediaTek Enhanced Detection',
           version: '1.2.0',
           author: 'Bobby\'s World Team',
           description: 'Enhanced detection for MediaTek devices with Preloader/BROM mode support',
@@ -92,8 +90,8 @@ export function AuthorityDashboard({ onNavigate }: AuthorityDashboardProps = {})
     {
       plugin: {
         manifest: {
-          id: 'diagnostic-battery-advanced',
-          name: 'Advanced Battery Analytics',
+          id: '[DEMO] diagnostic-battery-advanced',
+          name: '[DEMO] Advanced Battery Analytics',
           version: '2.0.1',
           author: 'Community',
           description: 'Deep battery health analysis with predictive degradation modeling',
@@ -124,8 +122,8 @@ export function AuthorityDashboard({ onNavigate }: AuthorityDashboardProps = {})
     {
       plugin: {
         manifest: {
-          id: 'workflow-tradein',
-          name: 'Trade-In Prep Automation',
+          id: '[DEMO] workflow-tradein',
+          name: '[DEMO] Trade-In Prep Automation',
           version: '1.0.5',
           author: 'Bobby\'s World Team',
           description: 'Automated workflow for preparing devices for trade-in programs',
@@ -158,29 +156,25 @@ export function AuthorityDashboard({ onNavigate }: AuthorityDashboardProps = {})
     },
   ];
 
-  // Real evidence bundles should come from backend API
-  const evidenceBundles: EvidenceBundle[] = [];
-
-  // Placeholder for demo - remove when real evidence system is connected
-  const mockBundlesForReference: EvidenceBundle[] = [
+  const demoBundles: EvidenceBundle[] = [
     {
-      id: 'bundle-001',
-      deviceId: '4a7f9e8d6c5b4a3f2e1d0c9b8a7f6e5d',
+      id: '[DEMO] bundle-001',
+      deviceId: '[DEMO] 4a7f9e8d6c5b4a3f2e1d0c9b8a7f6e5d',
       timestamp: new Date(Date.now() - 3600000).toISOString(),
       diagnosticData: {},
       correlationData: {},
-      shopIdentity: 'Bobby\'s Workshop - Bronx',
+      shopIdentity: '[DEMO] Bobby\'s Workshop - Bronx',
       signature: 'MEUCIQD8x7KpQs...',
       hash: 'd6e9f3c5b8a1f0e9d7c6b5a4f3e2d1c0b9a8f7e6d5c4b3a2f1e0d9c8b7a6f5e4',
       verified: true,
     },
     {
-      id: 'bundle-002',
-      deviceId: '3b6e8d7c5a4f2e1d0c9b8a7f6e5d4c3b',
+      id: '[DEMO] bundle-002',
+      deviceId: '[DEMO] 3b6e8d7c5a4f2e1d0c9b8a7f6e5d4c3b',
       timestamp: new Date(Date.now() - 7200000).toISOString(),
       diagnosticData: {},
       correlationData: {},
-      shopIdentity: 'Bobby\'s Workshop - Bronx',
+      shopIdentity: '[DEMO] Bobby\'s Workshop - Bronx',
       signature: 'MEYCIQF9y8LqRt...',
       hash: 'e7f0g4d6c9b2a1f0e8d7c6b5a4f3e2d1c0b9a8f7e6d5c4b3a2f1e0d9c8b7a6f5',
       verified: true,
@@ -211,13 +205,25 @@ export function AuthorityDashboard({ onNavigate }: AuthorityDashboardProps = {})
 
   return (
     <div className="space-y-6">
+      {/* Demo Mode Banner */}
+      <Alert className="border-amber-500/30 bg-amber-600/10">
+        <Warning className="w-4 h-4 text-amber-400" />
+        <AlertDescription className="text-amber-300">
+          <strong>[DEMO MODE]</strong> This dashboard is displaying simulated authority data for demonstration purposes.
+          All plugins, bundles, and statistics shown are for demonstration only.
+        </AlertDescription>
+      </Alert>
+
       <Card className="bg-gradient-to-br from-primary/5 to-accent/5 border-primary/20 p-8">
         <div className="space-y-4">
           <div className="flex items-center gap-3">
             <ShieldCheck className="w-10 h-10 text-primary" weight="fill" />
             <div>
-              <h1 className="text-3xl font-display font-bold text-foreground">
+              <h1 className="text-3xl font-display font-bold text-foreground flex items-center gap-3">
                 Authority Dashboard
+                <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30">
+                  DEMO
+                </Badge>
               </h1>
               <p className="text-muted-foreground">
                 Detection credibility, evidence signing, and platform extensions
@@ -231,60 +237,60 @@ export function AuthorityDashboard({ onNavigate }: AuthorityDashboardProps = {})
             <div className="space-y-1">
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Users className="w-4 h-4" />
-                <span>Total Devices</span>
+                <span>Total Devices [DEMO]</span>
               </div>
               <div className="text-2xl font-bold text-foreground">
-                {stats.totalDevices}
+                {demoStats.totalDevices}
               </div>
             </div>
 
             <div className="space-y-1">
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <CheckCircle className="w-4 h-4" />
-                <span>Correlated</span>
+                <span>Correlated [DEMO]</span>
               </div>
               <div className="text-2xl font-bold text-success">
-                {stats.correlatedDevices}
+                {demoStats.correlatedDevices}
               </div>
             </div>
 
             <div className="space-y-1">
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Certificate className="w-4 h-4" />
-                <span>Evidence Bundles</span>
+                <span>Evidence Bundles [DEMO]</span>
               </div>
               <div className="text-2xl font-bold text-primary">
-                {stats.evidenceBundles}
+                {demoStats.evidenceBundles}
               </div>
             </div>
 
             <div className="space-y-1">
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Plug className="w-4 h-4" />
-                <span>Active Plugins</span>
+                <span>Active Plugins [DEMO]</span>
               </div>
               <div className="text-2xl font-bold text-accent">
-                {stats.activePlugins}
+                {demoStats.activePlugins}
               </div>
             </div>
 
             <div className="space-y-1">
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <TrendUp className="w-4 h-4" />
-                <span>Avg Confidence</span>
+                <span>Avg Confidence [DEMO]</span>
               </div>
               <div className="text-2xl font-bold text-success">
-                {(stats.averageConfidence * 100).toFixed(0)}%
+                {(demoStats.averageConfidence * 100).toFixed(0)}%
               </div>
             </div>
 
             <div className="space-y-1">
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <FileText className="w-4 h-4" />
-                <span>Disputes Resolved</span>
+                <span>Disputes Resolved [DEMO]</span>
               </div>
               <div className="text-2xl font-bold text-foreground">
-                {stats.disputesResolved}
+                {demoStats.disputesResolved}
               </div>
             </div>
           </div>
@@ -403,15 +409,15 @@ export function AuthorityDashboard({ onNavigate }: AuthorityDashboardProps = {})
               <Card className="p-6">
                 <div className="flex items-start justify-between mb-4">
                   <div>
-                    <h3 className="text-lg font-semibold text-foreground">Evidence Bundles</h3>
+                    <h3 className="text-lg font-semibold text-foreground">Evidence Bundles [DEMO]</h3>
                     <p className="text-sm text-muted-foreground">
                       Cryptographically signed diagnostic evidence for legal admissibility
                     </p>
                   </div>
-                  <Badge variant="default" className="font-mono">{evidenceBundles.length} bundles</Badge>
+                  <Badge variant="default" className="font-mono">{demoBundles.length} bundles [DEMO]</Badge>
                 </div>
                 <EvidenceBundleList 
-                  bundles={evidenceBundles}
+                  bundles={demoBundles}
                   onSelectBundle={setSelectedBundle}
                 />
               </Card>

@@ -10,7 +10,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { 
   DeviceMobile, 
   Lightning, 
@@ -236,24 +235,14 @@ function WorkflowCard({ workflow, onExecute }: { workflow: WorkflowInfo; onExecu
           </Badge>
         </div>
         
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span className="w-full inline-block">
-              <Button
-                onClick={() => onExecute(workflow.id)}
-                className="w-full"
-                size="sm"
-                disabled={true}
-              >
-                <PlayCircle className="mr-2" size={16} />
-                Execute Workflow
-              </Button>
-            </span>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>Coming soon - workflow execution engine in development</p>
-          </TooltipContent>
-        </Tooltip>
+        <Button
+          onClick={() => onExecute(workflow.id)}
+          className="w-full"
+          size="sm"
+        >
+          <PlayCircle className="mr-2" size={16} />
+          Execute Workflow
+        </Button>
       </CardContent>
     </Card>
   );
@@ -287,9 +276,9 @@ export function DevModePanel() {
   }, [autoRefresh]);
 
   const handleExecuteWorkflow = (workflowId: string) => {
-    // Workflow execution intentionally disabled pending backend implementation
-    // See: docs/audits/production-reality-audit.md for details
-    console.log(`[DevModePanel] Workflow execution requested but not yet implemented: ${workflowId}`);
+    // Feature not yet implemented - workflow execution engine pending
+    console.log(`[NOT IMPLEMENTED] Workflow execution requested: ${workflowId}`);
+    alert(`⚠️ Feature Not Available\n\nWorkflow "${workflowId}" execution is not yet implemented.\n\nThis feature requires integration with the workflow execution engine which is currently under development.`);
   };
 
   const mobileDevices = devices.filter(d => ['android', 'ios'].includes(d.deviceType));

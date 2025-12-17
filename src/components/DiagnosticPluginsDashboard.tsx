@@ -70,14 +70,13 @@ export function DiagnosticPluginsDashboard({ deviceId: initialDeviceId = 'demo-d
   const [storageLoading, setStorageLoading] = useState(false);
   const [thermalLoading, setThermalLoading] = useState(false);
 
-  // Creates demonstration context for plugin execution
-  // TODO: Replace with real device context from actual device selection
+  // Demo context for simulated diagnostics - all output is prefixed with [DEMO]
   const createDemoContext = (pluginId: string): PluginContext => ({
     pluginId,
     version: '1.0.0',
-    environment: 'production',
-    deviceId: deviceId || '[DEMO] No Device',
-    platform: platform || 'android',
+    environment: 'dev', // Running in demo mode with simulated data
+    deviceId,
+    platform,
     user: {
       id: 'bobby',
       isOwner: true,
@@ -117,7 +116,7 @@ export function DiagnosticPluginsDashboard({ deviceId: initialDeviceId = 'demo-d
 
       if (result.success && result.data) {
         setBatteryData(result.data);
-        toast.success('Battery diagnostics complete');
+        toast.success('Battery diagnostics complete (demo data)');
       } else {
         toast.error(result.error || 'Battery diagnostics failed');
       }
@@ -136,7 +135,7 @@ export function DiagnosticPluginsDashboard({ deviceId: initialDeviceId = 'demo-d
 
       if (result.success && result.data) {
         setStorageData(result.data);
-        toast.success('Storage diagnostics complete');
+        toast.success('Storage diagnostics complete (demo data)');
       } else {
         toast.error(result.error || 'Storage diagnostics failed');
       }
@@ -155,7 +154,7 @@ export function DiagnosticPluginsDashboard({ deviceId: initialDeviceId = 'demo-d
 
       if (result.success && result.data) {
         setThermalData(result.data);
-        toast.success('Thermal diagnostics complete');
+        toast.success('Thermal diagnostics complete (demo data)');
       } else {
         toast.error(result.error || 'Thermal diagnostics failed');
       }
