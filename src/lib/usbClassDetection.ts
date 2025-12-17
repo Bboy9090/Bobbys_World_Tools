@@ -222,9 +222,22 @@ export function getUSBClassDescription(classCode: number, subclassCode?: number,
 export function detectDeviceCapabilities(deviceClass: number, interfaces: any[]): string[] {
   const capabilities: Set<string> = new Set();
 
+  // Mass Storage devices
   if (deviceClass === USBClass.MassStorage || interfaces.some(i => i.interfaceClass === USBClass.MassStorage)) {
     capabilities.add('Storage');
     capabilities.add('Read/Write Files');
+    
+    // Check for MTP (Media Transfer Protocol) - common in Android devices
+    if (interfaces.some(i => i.interfaceClass === USBClass.VendorSpecific && i.interfaceSubclass === 0x01 && i.interfaceProtocol === 0x01)) {
+      capabilities.add('MTP (Media Transfer)');
+      capabilities.add('Android File Transfer');
+    }
+    
+    // Check for PTP (Picture Transfer Protocol) - used in cameras and iOS
+    if (interfaces.some(i => i.interfaceClass === USBClass.Image || (i.interfaceClass === 0x06 && i.interfaceSubclass === 0x01))) {
+      capabilities.add('PTP (Picture Transfer)');
+      capabilities.add('Photo Import');
+    }
   }
 
   if (deviceClass === USBClass.Audio || interfaces.some(i => i.interfaceClass === USBClass.Audio)) {
@@ -279,6 +292,35 @@ export function detectDeviceCapabilities(deviceClass: number, interfaces: any[])
   if (deviceClass === USBClass.SmartCard || interfaces.some(i => i.interfaceClass === USBClass.SmartCard)) {
     capabilities.add('Smart Card Reader');
     capabilities.add('Authentication');
+  }
+
+  // Android-specific detection (ADB interface)
+  // ADB uses vendor-specific class (0xFF) with specific subclass/protocol
+  if (interfaces.some(i => i.interfaceClass === USBClass.VendorSpecific && i.interfaceSubclass === 0x42 && i.interfaceProtocol === 0x01)) {
+    capabilities.add('Android Debug Bridge (ADB)');
+    capabilities.add('Android Device Management');
+    capabilities.add('App Installation');
+    capabilities.add('Shell Access');
+  }
+
+  // Fastboot mode detection (Android bootloader)
+  if (interfaces.some(i => i.interfaceClass === USBClass.VendorSpecific && i.interfaceSubclass === 0x42 && i.interfaceProtocol === 0x03)) {
+    capabilities.add('Android Fastboot');
+    capabilities.add('Firmware Flashing');
+    capabilities.add('Bootloader Operations');
+  }
+
+  // iOS devices (usbmuxd protocol)
+  // iOS uses vendor-specific with Apple-specific subclass
+  if (interfaces.some(i => i.interfaceClass === USBClass.VendorSpecific && i.interfaceSubclass === 0xfe)) {
+    capabilities.add('iOS Device');
+    capabilities.add('iTunes Sync');
+    capabilities.add('iOS Backup/Restore');
+  }
+
+  // Mobile device charging detection
+  if (deviceClass === USBClass.CDC_Data || interfaces.some(i => i.interfaceClass === USBClass.CDC_Data)) {
+    capabilities.add('USB Charging');
   }
 
   if (capabilities.size === 0) {
