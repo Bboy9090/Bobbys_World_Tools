@@ -25,10 +25,24 @@ Clean, authoritative, and honest about capabilities.
 
 ### ✨ Key Features
 
+#### 🔍 **Advanced Device Detection Arsenal**
+Multi-protocol connectivity detection system (`probeDevice.ts`):
+- **Unified Device Probing**: Detect devices across ADB, Fastboot, iOS, USB, and WebUSB protocols
+- **Capability Analysis**: Automatic detection of device capabilities and available operations
+- **Connection Monitoring**: Real-time device connect/disconnect event tracking
+- **Enhanced USB Classification**: Mobile-specific USB class detection (MTP, PTP, ADB, Fastboot)
+- **Device Mode Recognition**: Identify bootloader, recovery, DFU, and normal operating modes
+- **State Correlation**: Track device states across multiple detection methods
+
 #### 🔓 **Modular Workflow System**
 JSON-defined workflows for reproducible device operations:
 - **Android Workflows**: ADB diagnostics, FRP bypass, Fastboot unlock, partition mapping
 - **iOS Workflows**: Device restore, DFU detection, comprehensive diagnostics
+- **Mobile Workflows**: **NEW** - Enhanced mobile-first workflows
+  - **VesselSanctum**: Deep device diagnostics with health scoring (5-10 min)
+  - **Warhammer**: Advanced repair and recovery operations (15-30 min)
+  - **Quick Diagnostics**: Fast 2-minute device health check
+  - **Battery Health**: Comprehensive battery analysis with cycle count
 - **Bypass Workflows**: FRP/MDM bypass with authorization tracking
 - **Custom Workflows**: Create and execute custom operation sequences
 
@@ -49,6 +63,9 @@ Encrypted, append-only audit logs for compliance:
 
 #### 📚 **Core Libraries**
 Device management libraries for ADB, Fastboot, and iOS:
+- `src/lib/probeDevice.ts` - **NEW** - Advanced multi-protocol device detection
+- `src/lib/usbClassDetection.ts` - Enhanced USB device classification with mobile support
+- `src/lib/deviceDetection.ts` - System-level device detection utilities
 - `core/lib/adb.js` - Android Debug Bridge operations
 - `core/lib/fastboot.js` - Fastboot device management
 - `core/lib/ios.js` - iOS device operations (libimobiledevice)
@@ -56,6 +73,7 @@ Device management libraries for ADB, Fastboot, and iOS:
 
 #### 🎨 **React Components**
 Integrated UI components for workflow execution:
+- **DevModePanel** - **NEW** - Advanced device mode detection and workflow launcher
 - **Trapdoor Control Panel** - Execute sensitive operations with authorization
 - **Workflow Execution Console** - Browse and run workflows
 - **Shadow Logs Viewer** - View encrypted audit logs (admin only)
@@ -291,6 +309,38 @@ Bypassing security features on devices you do not own is **illegal** under:
 
 ## 🛠️ Development
 
+### How to Run
+
+```bash
+# 1. Install dependencies
+npm install
+
+# 2. Start the development server
+npm run dev
+
+# 3. (Optional) Start the backend API server
+cd server && npm install && npm start
+
+# 4. Open the browser at http://localhost:5000
+```
+
+### How to Test
+
+```bash
+# Run all tests
+npm test
+
+# Run specific test suites
+npm run test:workflow    # Workflow system tests
+npm run test:trapdoor    # Trapdoor API tests (requires server running)
+
+# Run linting
+npm run lint
+
+# Build for production
+npm run build
+```
+
 ### Start Development Server
 ```bash
 # Install dependencies
@@ -404,6 +454,19 @@ Contributions welcome for:
 - Bypass security without owner consent
 - Violate terms of service or warranties
 - Support illegal activities
+
+### Branch Protection
+
+This repository uses GitHub Rulesets to enforce code quality standards. All pull requests to `main` must:
+- Pass all required status checks (tests, security scans, linting)
+- Receive at least one approving review
+- Be up-to-date with the base branch
+
+See [.github/BRANCH_PROTECTION.md](.github/BRANCH_PROTECTION.md) for complete details on branch protection rules and setup.
+
+### 🧠 Auto-merge Enabled
+
+This repository has auto-merge enabled for pull requests. Once your PR is approved and all checks pass, it will automatically merge without requiring manual intervention. See [docs/AUTO_MERGE.md](./docs/AUTO_MERGE.md) for more details.
 
 ## 📄 License
 

@@ -1,0 +1,61 @@
+{
+  "id": "battery-health",
+  "name": "Battery Health Analysis",
+  "description": "Comprehensive battery health check with cycle count and capacity analysis",
+  "platform": "mobile",
+  "category": "diagnostics",
+  "risk_level": "low",
+  "requires_authorization": false,
+  "estimated_duration": "3 minutes",
+  "steps": [
+    {
+      "id": "detect",
+      "name": "Detect Device",
+      "type": "probe",
+      "action": "probeDevices",
+      "success_criteria": "Device detected",
+      "on_failure": "abort"
+    },
+    {
+      "id": "battery-full",
+      "name": "Full Battery Analysis",
+      "type": "command",
+      "platform_specific": {
+        "android": { "action": "adb shell dumpsys battery" },
+        "ios": { "action": "idevicediagnostics ioreg IOPMPowerSource" }
+      },
+      "success_criteria": "Battery data retrieved",
+      "on_failure": "abort"
+    },
+    {
+      "id": "battery-health-calc",
+      "name": "Calculate Health Score",
+      "type": "analysis",
+      "action": "calculateBatteryHealth",
+      "success_criteria": "Health score calculated",
+      "on_failure": "continue"
+    },
+    {
+      "id": "report",
+      "name": "Generate Battery Report",
+      "type": "report",
+      "action": "generateBatteryReport",
+      "success_criteria": "Report generated",
+      "on_failure": "continue"
+    }
+  ],
+  "output": {
+    "format": "json",
+    "sections": ["battery_level", "battery_health", "cycle_count", "temperature", "recommendations"]
+  },
+  "metadata": {
+    "status": "done",
+    "pr_link": null,
+    "placeholder_found": false,
+    "version": "1.0.0",
+    "author": "Bobby's World Tools",
+    "created_at": 1734220800000,
+    "updated_at": 1734426000000,
+    "tags": ["diagnostics", "mobile", "battery", "health-check"]
+  }
+}
