@@ -11,7 +11,7 @@ export interface EvidenceBundle {
 
 export interface EvidenceBundleItem {
   type: string;
-  data: any;
+  data: unknown;
   timestamp: number;
 }
 
@@ -24,7 +24,7 @@ export function createEvidenceBundle(name: string): EvidenceBundle {
   };
 }
 
-export function addEvidenceItem(bundle: EvidenceBundle, type: string, data: any): void {
+export function addEvidenceItem(bundle: EvidenceBundle, type: string, data: unknown): void {
   bundle.items.push({
     type,
     data,
@@ -61,7 +61,7 @@ class EvidenceBundleManager {
     return this.bundles.delete(id);
   }
 
-  addItem(bundleId: string, type: string, data: any): boolean {
+  addItem(bundleId: string, type: string, data: unknown): boolean {
     const bundle = this.bundles.get(bundleId);
     if (!bundle) return false;
     
