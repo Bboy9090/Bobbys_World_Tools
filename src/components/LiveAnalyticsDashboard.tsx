@@ -20,6 +20,8 @@ import {
 } from '@phosphor-icons/react';
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
+const WS_URL = import.meta.env.VITE_ANALYTICS_WS_URL || 'ws://localhost:3001/ws/analytics';
+
 interface DeviceMetrics {
   deviceId: string;
   deviceName: string;
@@ -61,7 +63,7 @@ export function LiveAnalyticsDashboard() {
   useEffect(() => {
     const connectWebSocket = () => {
       try {
-        const ws = new WebSocket('ws://localhost:3001/ws/analytics');
+        const ws = new WebSocket(WS_URL);
         wsRef.current = ws;
 
         ws.onopen = () => {

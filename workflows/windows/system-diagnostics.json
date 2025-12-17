@@ -45,7 +45,7 @@
       "id": "check-temperatures",
       "name": "Check System Temperatures",
       "type": "command",
-      "action": "wmic /namespace:\\\\root\\wmi PATH MSAcpi_ThermalZoneTemperature get CurrentTemperature",
+      "action": "wmic /namespace:\\root\\wmi PATH MSAcpi_ThermalZoneTemperature get CurrentTemperature",
       "success_criteria": "temperature data retrieved",
       "on_failure": "continue",
       "note": "May not be available on all systems"
