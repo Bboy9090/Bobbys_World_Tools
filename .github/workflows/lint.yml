@@ -14,6 +14,8 @@ jobs:
   lint:
     name: Lint Code
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     
     steps:
       - name: Checkout code
@@ -39,6 +41,8 @@ jobs:
   format-check:
     name: Check Code Formatting
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     
     steps:
       - name: Checkout code
@@ -62,6 +66,8 @@ jobs:
   validate-workflows:
     name: Validate Workflow Definitions
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     
     steps:
       - name: Checkout code

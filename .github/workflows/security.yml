@@ -17,6 +17,8 @@ jobs:
   dependency-scan:
     name: Scan Dependencies
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     
     steps:
       - name: Checkout code
@@ -88,6 +90,8 @@ jobs:
   secrets-scan:
     name: Scan for Secrets
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     
     steps:
       - name: Checkout code
@@ -110,6 +114,8 @@ jobs:
   license-check:
     name: Check License Compliance
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     
     steps:
       - name: Checkout code
