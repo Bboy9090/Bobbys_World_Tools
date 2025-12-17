@@ -38,7 +38,7 @@ You can still manually control auto-merge:
 
 ### Disable auto-merge
 ```bash
-gh pr merge <PR_NUMBER> --disable-auto
+gh pr merge <PR_NUMBER> --disable-auto-merge
 ```
 
 ### Enable auto-merge manually

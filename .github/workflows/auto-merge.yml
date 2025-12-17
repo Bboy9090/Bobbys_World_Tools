@@ -30,6 +30,7 @@ jobs:
     if: >
       github.event_name == 'pull_request' ||
       github.event_name == 'pull_request_review' ||
+      github.event_name == 'status' ||
       github.event.check_suite.pull_requests[0] != null
 
     steps:
@@ -68,7 +69,10 @@ jobs:
           GH_REPO: ${{ github.repository }}
 
       - name: Add comment
-        if: steps.pr.outputs.number != '' && github.event.action == 'opened'
+        if: >
+          steps.pr.outputs.number != '' &&
+          github.event_name == 'pull_request' &&
+          github.event.action == 'opened'
         run: |
           gh pr comment ${{ steps.pr.outputs.number }} \
             --body "🤖 Auto-merge enabled. Will merge when checks pass."
