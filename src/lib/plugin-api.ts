@@ -1,90 +1,80 @@
 /**
- * Plugin API
+ * Plugin API - Stub implementation
  * 
- * This module provides the API interface for plugin operations.
- * Currently returns empty/stub data - should be connected to real backend when available.
+ * This file provides a stub API for plugin operations.
+ * In production, this should connect to the real backend API.
  */
 
-import type { Plugin } from '@/types/plugin';
+import type { Plugin, PluginSearchFilters, InstalledPlugin } from '@/types/plugin';
 
 export interface PluginDownloadProgress {
   pluginId: string;
   progress: number;
-  status: 'downloading' | 'installing' | 'complete' | 'error';
-  error?: string;
+  status: 'downloading' | 'installing' | 'completed' | 'failed';
+  message?: string;
 }
 
-export interface PluginSearchFilters {
-  sortBy?: 'popular' | 'recent' | 'rating';
-  category?: string;
-  riskLevel?: string;
-  platform?: string;
-}
-
-class PluginAPI {
+/**
+ * Stub plugin API that returns empty data
+ * This prevents build errors while the real plugin API is being developed
+ */
+export const pluginAPI = {
   /**
-   * Search plugins from registry
-   * Returns empty array until real backend is connected
+   * Search for plugins in the registry
+   * @param filters Search filters
+   * @returns Empty array (stub implementation)
    */
-  async searchPlugins(filters: PluginSearchFilters = {}): Promise<Plugin[]> {
-    // TODO: Connect to real plugin registry backend
-    console.log('Searching plugins with filters:', filters);
+  searchPlugins: async (filters: PluginSearchFilters): Promise<Plugin[]> => {
+    console.warn('[PluginAPI] Using stub implementation - returns empty results');
     return [];
-  }
+  },
 
   /**
    * Get list of installed plugins
-   * Returns empty array until real backend is connected
+   * @returns Empty array (stub implementation)
    */
-  async getInstalledPlugins(): Promise<Plugin[]> {
-    // TODO: Connect to real plugin management backend
-    console.log('Fetching installed plugins');
+  getInstalledPlugins: async (): Promise<InstalledPlugin[]> => {
+    console.warn('[PluginAPI] Using stub implementation - returns empty list');
     return [];
-  }
+  },
 
   /**
    * Install a plugin
-   * Logs operation until real backend is connected
+   * @param pluginId Plugin ID to install
+   * @returns Success: false (stub implementation - not yet available)
    */
-  async installPlugin(
-    pluginId: string, 
-    onProgress?: (progress: PluginDownloadProgress) => void
-  ): Promise<void> {
-    // TODO: Connect to real plugin installation backend
-    console.log(`Installing plugin: ${pluginId}`);
-    
-    if (onProgress) {
-      onProgress({
-        pluginId,
-        progress: 100,
-        status: 'error',
-        error: 'Plugin installation not yet implemented'
-      });
-    }
-    
-    throw new Error('Plugin installation not yet implemented');
-  }
+  installPlugin: async (
+    pluginId: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    console.warn('[PluginAPI] Using stub implementation - installation not available');
+    return { 
+      success: false, 
+      error: 'Plugin installation not yet implemented - backend API required' 
+    };
+  },
 
   /**
    * Uninstall a plugin
-   * Logs operation until real backend is connected
+   * @param pluginId Plugin ID to uninstall
+   * @returns Success: false (stub implementation)
    */
-  async uninstallPlugin(pluginId: string): Promise<void> {
-    // TODO: Connect to real plugin management backend
-    console.log(`Uninstalling plugin: ${pluginId}`);
-    throw new Error('Plugin uninstallation not yet implemented');
-  }
+  uninstallPlugin: async (pluginId: string): Promise<{ success: boolean; error?: string }> => {
+    console.warn('[PluginAPI] Using stub implementation - uninstallation not available');
+    return { 
+      success: false, 
+      error: 'Plugin uninstallation not yet implemented - backend API required' 
+    };
+  },
 
   /**
    * Get plugin details
-   * Returns null until real backend is connected
+   * @param pluginId Plugin ID
+   * @returns null (stub implementation)
    */
-  async getPluginDetails(pluginId: string): Promise<Plugin | null> {
-    // TODO: Connect to real plugin registry backend
-    console.log(`Fetching details for plugin: ${pluginId}`);
+  getPluginDetails: async (pluginId: string): Promise<Plugin | null> => {
+    console.warn('[PluginAPI] Using stub implementation - returns null');
     return null;
   }
-}
+};
 
-// Export singleton instance
-export const pluginAPI = new PluginAPI();
+export default pluginAPI;
