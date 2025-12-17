@@ -59,12 +59,18 @@ The following rules are enforced on the `main` branch:
    - Maintains complete git history
 
 5. **Required Linear History**
-   - Merge commits are required or squash merging
-   - Prevents complex merge histories
+   - Prevents merge commits that would create a non-linear history
+   - Allows only squash merging or rebase merging
+   - Ensures a clean, linear commit history on the main branch
 
 ## Bypass Permissions
 
-Repository administrators can bypass these rules when necessary for emergency fixes or repository maintenance.
+Repository administrators (actor_id: 5, RepositoryRole: Admin) can bypass these rules when necessary for emergency fixes or repository maintenance. This is a standard GitHub configuration that allows admins to:
+- Merge critical hotfixes without waiting for all checks
+- Perform repository maintenance operations
+- Resolve stuck merge situations
+
+All bypass actions are logged in the repository's audit log for accountability.
 
 ## Setup Instructions
 
