@@ -159,11 +159,12 @@ These are acceptable because they clearly communicate unavailability to users.
 
 | Finding | Component | Action Taken |
 |---------|-----------|--------------|
-| #4 | MediaTekFlashPanel | Added demo mode gating with [DEMO] prefix |
+| #4 | MediaTekFlashPanel | Added demo mode gating with [DEMO] prefix, uses API_CONFIG |
 | #7 | CorrelationDashboard | Added [DEMO] prefix and demo banner |
 | #8 | AuthorityDashboard | Renamed to demo*, added [DEMO] prefix, added banner |
 | #10 | DiagnosticPluginsDashboard | Renamed to createDemoContext, [DEMO] prefix |
 | #15 | DevModePanel | Improved alert messaging |
+| N/A | app-context.tsx | Fixed missing isDemoMode/backendAvailable properties |
 
 ---
 
