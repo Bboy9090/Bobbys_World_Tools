@@ -22,6 +22,7 @@ import {
 import { toast } from 'sonner';
 import { useFlashProgressWebSocket } from '@/hooks/use-flash-progress-websocket';
 import { useApp } from '@/lib/app-context';
+import { API_CONFIG } from '@/lib/apiConfig';
 
 interface MTKDevice {
   id: string;
@@ -68,7 +69,7 @@ export function MediaTekFlashPanel() {
     setIsScanning(true);
     try {
       // Try to call backend API first
-      const response = await fetch('http://localhost:3001/api/mtk/scan');
+      const response = await fetch(`${API_CONFIG.BASE_URL}/api/mtk/scan`);
       if (response.ok) {
         const data = await response.json();
         if (data.devices && data.devices.length > 0) {
@@ -83,8 +84,9 @@ export function MediaTekFlashPanel() {
       } else {
         throw new Error('Backend unavailable');
       }
-    } catch {
+    } catch (error) {
       // Fall back to demo mode if available
+      console.warn('[MediaTekFlashPanel] Backend scan failed:', error);
       if (isDemoMode) {
         const demoDevices: MTKDevice[] = [
           {
