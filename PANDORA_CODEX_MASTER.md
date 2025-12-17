@@ -7,18 +7,21 @@ Pandora Codex is a professional device management and forensics platform for And
 ## 🏗️ Architecture
 
 ### Frontend (React + TypeScript + Vite)
+
 - **Tech Stack**: React 19, TypeScript, Vite, Tailwind CSS v4, shadcn/ui components
 - **State Management**: React hooks, WebSocket connections for real-time updates
 - **Styling**: Oklch color system, Source Code Pro, Playfair Display, Montserrat fonts
 - **Key Features**: Real-time device monitoring, correlation tracking, performance benchmarking
 
 ### Backend (Node.js + Express)
+
 - **Server**: Express.js on port 3001
 - **WebSockets**: Two separate channels for device-events and correlation tracking
 - **Real System Integration**: Executes actual ADB, Fastboot, and system commands
 - **APIs**: RESTful endpoints for all operations
 
 ### System Tools Integration
+
 - **Android**: ADB (Android Debug Bridge), Fastboot
 - **iOS**: libimobiledevice (idevice_id, ideviceinfo, idevicediagnostics)
 - **USB Detection**: BootForgeUSB (Rust-based USB scanning library)
@@ -90,10 +93,12 @@ Pandora Codex is a professional device management and forensics platform for And
 ### Prerequisites
 
 #### Required
+
 - **Node.js**: v22+ (for frontend and backend)
 - **npm**: v10+
 
 #### Optional (for full functionality)
+
 - **Rust**: Latest stable (for BootForgeUSB)
   - `rustc --version` should work
   - `cargo --version` should work
@@ -141,7 +146,7 @@ npm run server:dev
 npm run dev
 ```
 
-Visit: http://localhost:5000
+Visit: <http://localhost:5000>
 
 #### Production Build
 
@@ -156,6 +161,7 @@ npm run preview
 ## 📡 API Endpoints
 
 ### System Detection
+
 - `GET /api/health` - Health check
 - `GET /api/system-tools` - All system tools status
 - `GET /api/system-tools/rust` - Rust toolchain status
@@ -164,6 +170,7 @@ npm run preview
 - `GET /api/system-info` - System information
 
 ### Android Device Management
+
 - `GET /api/adb/devices` - List ADB devices with properties
 - `GET /api/fastboot/devices` - List Fastboot devices
 - `GET /api/android-devices/all` - Combined ADB + Fastboot devices
@@ -175,6 +182,7 @@ npm run preview
 - `POST /api/fastboot/erase` - Erase non-critical partition
 
 ### BootForgeUSB (USB Detection)
+
 - `GET /api/bootforgeusb/status` - Check CLI availability
 - `GET /api/bootforgeusb/scan` - Scan real USB devices
 - `GET /api/bootforgeusb/scan?demo=true` - Get demo data
@@ -183,6 +191,7 @@ npm run preview
 - `POST /api/bootforgeusb/build` - Build and install CLI
 
 ### Performance & Testing
+
 - `GET /api/flash/history` - Flash operation history
 - `POST /api/flash/start` - Start demo flash operation
 - `POST /api/monitor/start` - Start performance monitoring
@@ -193,15 +202,18 @@ npm run preview
 - `GET /api/standards` - Get industry benchmark standards
 
 ### Network
+
 - `POST /api/network/scan` - Scan local network for devices
 
 ### WebSocket Endpoints
+
 - `ws://localhost:3001/ws/device-events` - Live device hotplug events
 - `ws://localhost:3001/ws/correlation` - Real-time correlation updates
 
 ## 🎨 UI Components
 
 ### Main Dashboard Tabs
+
 1. **Pandora Codex** - Main control room with 5 sub-tabs
 2. **Live Tracking** - Real-time correlation tracking
 3. **Correlation** - Correlation analysis dashboard
@@ -214,6 +226,7 @@ npm run preview
 10. **Settings** - Audio notifications & preferences
 
 ### Pandora Codex Sub-Tabs
+
 - **Flash** - Flash operations panel
 - **Monitor** - Performance monitoring (CPU, Memory, USB, Disk I/O)
 - **Tests** - Automated testing with pass/fail results
@@ -223,6 +236,7 @@ npm run preview
 ## 🔧 npm Scripts
 
 ### Development
+
 ```bash
 npm run dev              # Start Vite dev server (port 5000)
 npm run server:dev       # Start backend dev server (port 3001)
@@ -230,12 +244,14 @@ npm run server:start     # Start backend production server
 ```
 
 ### Build & Preview
+
 ```bash
 npm run build            # Build frontend for production
 npm run preview          # Preview production build
 ```
 
 ### Server Management
+
 ```bash
 npm run server:install   # Install server dependencies
 npm run kill             # Kill process on port 5000
@@ -243,6 +259,7 @@ npm run server:kill      # Kill process on port 3001
 ```
 
 ### Tool Detection
+
 ```bash
 npm run check:rust              # Check Rust toolchain
 npm run check:android-tools     # Check ADB/Fastboot
@@ -250,6 +267,7 @@ npm run arsenal:status          # Complete tool status
 ```
 
 ### Optional Tools
+
 ```bash
 npm run phoenix:dev             # Run Phoenix Key agent (Python)
 npm run bootforge:build         # Build BootForgeUSB CLI (Rust)
@@ -261,13 +279,15 @@ npm run bootforge:test          # Test BootForgeUSB library
 ### Device Events Channel (`/ws/device-events`)
 
 #### Connection
+
 ```javascript
 const ws = new WebSocket('ws://localhost:3001/ws/device-events');
 ```
 
 #### Message Types
 
-**Connected Event**
+### Connected Event
+
 ```json
 {
   "type": "connected",
@@ -283,7 +303,8 @@ const ws = new WebSocket('ws://localhost:3001/ws/device-events');
 }
 ```
 
-**Disconnected Event**
+#### Disconnected Event
+
 ```json
 {
   "type": "disconnected",
@@ -296,7 +317,8 @@ const ws = new WebSocket('ws://localhost:3001/ws/device-events');
 
 #### Message Types
 
-**Batch Update**
+#### Batch Update
+
 ```json
 {
   "type": "batch_update",
@@ -318,7 +340,8 @@ const ws = new WebSocket('ws://localhost:3001/ws/device-events');
 }
 ```
 
-**Device Connected**
+#### Device Connected
+
 ```json
 {
   "type": "device_connected",
@@ -328,7 +351,8 @@ const ws = new WebSocket('ws://localhost:3001/ws/device-events');
 }
 ```
 
-**Correlation Update**
+#### Correlation Update
+
 ```json
 {
   "type": "correlation_update",
@@ -343,7 +367,8 @@ const ws = new WebSocket('ws://localhost:3001/ws/device-events');
 }
 ```
 
-**Device Disconnected**
+#### Device Disconnected
+
 ```json
 {
   "type": "device_disconnected",
@@ -353,6 +378,7 @@ const ws = new WebSocket('ws://localhost:3001/ws/device-events');
 ```
 
 **Ping/Pong**
+
 ```json
 // Client → Server
 { "type": "ping" }
@@ -374,17 +400,20 @@ Devices are classified with correlation badges indicating confidence:
 ## 🎨 Theme & Design
 
 ### Color Palette (Oklch)
+
 - **Background**: `oklch(0.15 0.02 250)` - Deep blue-black
 - **Primary**: `oklch(0.65 0.25 250)` - Electric blue
 - **Accent**: `oklch(0.75 0.20 150)` - Bright cyan-green
 - **Destructive**: `oklch(0.65 0.25 20)` - Bright red
 
 ### Typography
+
 - **Sans**: Montserrat (UI elements)
 - **Serif**: Playfair Display (headings)
 - **Mono**: Source Code Pro (code, technical data)
 
 ### Design Philosophy
+
 - **3uTools-inspired**: Clear labels, simple buttons, instant feedback
 - **No enterprise jargon**: Straightforward terminology
 - **One-click operations**: Minimal steps to action
@@ -394,20 +423,25 @@ Devices are classified with correlation badges indicating confidence:
 ## 🧪 Testing & Quality Assurance
 
 ### Automated Tests
+
 The system includes automated testing for:
+
 - Device detection accuracy
 - USB performance metrics
 - Correlation algorithm validation
 - Performance optimization effectiveness
 
 Run tests via:
+
 ```bash
 # Via UI: Navigate to Tests tab → "Run All Tests"
 # Via API: POST http://localhost:3001/api/tests/run
 ```
 
 ### Performance Benchmarks
+
 Industry-standard benchmarks are tracked:
+
 - **Flash Speed**: USB 2.0 / 3.0 / 3.1 / 3.2 Gen 2
 - **USB Bandwidth Utilization**: Percentage of theoretical max
 - **Random Write IOPS**: Storage performance classification
@@ -416,28 +450,34 @@ Industry-standard benchmarks are tracked:
 ## 🔒 Security Considerations
 
 ### Safe Operations
+
 - Read-only device information retrieval
 - Non-destructive diagnostics
 - Evidence collection
 
 ### Restricted Operations (Require Confirmation)
+
 - Bootloader unlock attempts
 - Partition flashing
 - Partition erasure (non-critical only)
 - Factory reset operations
 
 ### Blocked Operations
+
 - Critical partition erasure (boot, system, vendor, bootloader, radio, aboot, vbmeta)
 - Unsigned firmware installation
 - Operations without device selection
 
 ### Command Filtering
+
 ADB commands are restricted to safe operations:
+
 - `devices`, `shell getprop`, `get-state`, `get-serialno`
 
 ## 📊 Performance Monitoring
 
 Real-time metrics tracked:
+
 - **Transfer Speed**: MB/s (baseline: 21.25 MB/s)
 - **CPU Usage**: Percentage
 - **Memory Usage**: Percentage
@@ -449,18 +489,21 @@ Metrics update every second when monitoring is active.
 ## 🔌 Hardware Requirements
 
 ### Minimum
+
 - **CPU**: 2 cores
 - **RAM**: 4GB
 - **Disk**: 10GB free space
 - **USB**: USB 2.0 port
 
 ### Recommended
+
 - **CPU**: 4+ cores
 - **RAM**: 8GB+
 - **Disk**: 20GB+ free space
 - **USB**: USB 3.0+ port
 
 ### Codespaces Configuration
+
 ```json
 {
   "hostRequirements": {
@@ -474,6 +517,7 @@ Metrics update every second when monitoring is active.
 ## 🐛 Troubleshooting
 
 ### BootForgeUSB CLI Not Found
+
 ```bash
 # Check status
 npm run arsenal:status
@@ -485,6 +529,7 @@ cargo install --path .
 ```
 
 ### ADB Devices Not Detected
+
 ```bash
 # Check ADB status
 adb devices
@@ -498,6 +543,7 @@ adb start-server
 ```
 
 ### WebSocket Connection Fails
+
 ```bash
 # Ensure server is running
 npm run server:dev
@@ -507,6 +553,7 @@ npm run server:dev
 ```
 
 ### USB Permission Denied (Linux)
+
 ```bash
 # Add udev rules for USB access
 sudo usermod -a -G plugdev $USER
@@ -517,18 +564,23 @@ sudo usermod -a -G plugdev $USER
 ## 📝 Development Notes
 
 ### Hot Module Replacement (HMR)
+
 Vite provides instant HMR for React components. Changes reflect immediately.
 
 ### API Proxy
+
 Vite proxies `/api/*` requests to `http://localhost:3001` in development.
 
 ### Type Safety
+
 Full TypeScript coverage with strict mode enabled. No `any` types in production code.
 
 ### Component Library
+
 shadcn/ui v4 components are pre-installed in `src/components/ui/`. Do not modify these files directly.
 
 ### State Management
+
 - React hooks for local state
 - WebSocket hooks for real-time data
 - No global state library (Redux, MobX) needed
@@ -536,6 +588,7 @@ shadcn/ui v4 components are pre-installed in `src/components/ui/`. Do not modify
 ## 🎯 Feature Roadmap
 
 ### Phase 0: Foundations ✅
+
 - [x] Tool detection and system status
 - [x] WebSocket infrastructure
 - [x] BootForgeUSB integration
@@ -543,18 +596,21 @@ shadcn/ui v4 components are pre-installed in `src/components/ui/`. Do not modify
 - [x] UI component library
 
 ### Phase 1: MVP
+
 - [ ] Device dossier system
 - [ ] Evidence bundle export
 - [ ] Tool health monitoring
 - [ ] Job queue management
 
 ### Phase 2: Pro Features
+
 - [ ] Batch flashing profiles
 - [ ] Automated workflow engine
 - [ ] Custom test suites
 - [ ] Performance optimization recommendations
 
 ### Phase 3: Enterprise
+
 - [ ] Policy engine for RBAC
 - [ ] Signed plugin system
 - [ ] Audit log retention
@@ -572,6 +628,7 @@ This is a private project. Contact the maintainer for contribution guidelines.
 ## 📧 Support
 
 For issues, questions, or feature requests, consult the documentation files:
+
 - `README.md` - General overview
 - `PRD.md` - Product requirements
 - `BACKEND_SETUP.md` - Backend configuration
@@ -588,7 +645,7 @@ For issues, questions, or feature requests, consult the documentation files:
 - [ ] Run `cd server && npm install && cd ..`
 - [ ] Start backend: `npm run server:dev`
 - [ ] Start frontend: `npm run dev`
-- [ ] Visit http://localhost:5000
+- [ ] Visit <http://localhost:5000>
 - [ ] (Optional) Install Rust, ADB, Fastboot for full functionality
 - [ ] (Optional) Build BootForgeUSB CLI
 - [ ] Check tool status: `npm run arsenal:status`
