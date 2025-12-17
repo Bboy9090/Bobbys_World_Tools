@@ -98,8 +98,6 @@ jobs:
       
       - name: Run workflow engine tests
         run: npm run test:workflows
-        continue-on-error: true
-
   test-integration:
     name: Integration Tests
     runs-on: ubuntu-latest
