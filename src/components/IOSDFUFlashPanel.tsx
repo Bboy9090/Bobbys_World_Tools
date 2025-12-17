@@ -8,6 +8,7 @@ import { EmptyState } from './EmptyState';
 import { ErrorState } from './ErrorState';
 import { DeviceMobile, Lightning, ArrowsClockwise, Warning, AppleLogo } from '@phosphor-icons/react';
 import { toast } from 'sonner';
+import { useAudioNotifications } from '@/hooks/use-audio-notifications';
 
 interface IOSDevice {
   udid: string;
@@ -24,6 +25,7 @@ export function IOSDFUFlashPanel() {
   const [flashProgress, setFlashProgress] = useState(0);
   const [flashStatus, setFlashStatus] = useState<'idle' | 'flashing' | 'complete' | 'error'>('idle');
   const [logs, setLogs] = useState<string[]>([]);
+  const { handleJobStart, handleJobError, handleJobComplete } = useAudioNotifications();
 
   const scanDevices = async () => {
     setScanning(true);
@@ -87,13 +89,18 @@ export function IOSDFUFlashPanel() {
     setFlashProgress(0);
     setLogs(prev => [...prev, `[JAILBREAK] Starting ${tool} for ${udid.substring(0, 16)}...`]);
     
+    const jobId = `jb-${Date.now()}`;
+    
+    // Start audio atmosphere for jailbreak operation
+    handleJobStart(jobId);
+    
     try {
       const ws = new WebSocket('ws://localhost:3001/ws/flash');
       
       ws.onopen = () => {
         ws.send(JSON.stringify({
           type: 'flash.start',
-          jobId: `jb-${Date.now()}`,
+          jobId,
           payload: {
             provider: 'ios',
             tool,
@@ -115,11 +122,19 @@ export function IOSDFUFlashPanel() {
           setFlashProgress(100);
           setLogs(prev => [...prev, '[COMPLETE] Jailbreak finished successfully']);
           toast.success('Jailbreak complete!');
+          
+          // Audio notification for successful completion
+          handleJobComplete();
+          
           ws.close();
         } else if (msg.type === 'flash.error') {
           setFlashStatus('error');
           setLogs(prev => [...prev, `[ERROR] ${msg.payload.message}`]);
           toast.error(`Jailbreak failed: ${msg.payload.message}`);
+          
+          // Audio notification for error
+          handleJobError();
+          
           ws.close();
         }
       };
@@ -128,12 +143,18 @@ export function IOSDFUFlashPanel() {
         setFlashStatus('error');
         setLogs(prev => [...prev, '[ERROR] WebSocket connection failed']);
         toast.error('Connection error');
+        
+        // Audio notification for error
+        handleJobError();
       };
       
     } catch (error) {
       setFlashStatus('error');
       setLogs(prev => [...prev, `[ERROR] ${error}`]);
       toast.error('Failed to start jailbreak');
+      
+      // Audio notification for error
+      handleJobError();
     }
   };
 
