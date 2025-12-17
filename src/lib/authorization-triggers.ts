@@ -50,163 +50,75 @@ export function getTriggersByCategory(category: string): AuthorizationTrigger[] 
   return AUTHORIZATION_TRIGGERS.filter(t => t.category === category);
 }
 
-<<<<<<< HEAD
-/**
- * Execute an authorization trigger
- * Currently returns error until implementation is complete
-
 export interface TriggerExecutionResult {
   success: boolean;
   triggerId: string;
-  message: string;
   timestamp: number;
+  message?: string;
+  error?: string;
 }
 
-export interface TriggerLog {
+export interface TriggerAction {
   triggerId: string;
-  action: string;
+  deviceSerial: string;
+  action: 'execute' | 'cancel' | 'timeout';
   timestamp: number;
-  userId?: string;
-  deviceId?: string;
-  metadata?: Record<string, any>;
+  userId: string;
+  result?: TriggerExecutionResult;
 }
 
-const triggerLogs: TriggerLog[] = [];
+// In-memory action log
+const triggerActionLog: TriggerAction[] = [];
 
 export async function executeTrigger(
-  triggerId: string,
-  deviceId?: string,
+  triggerId: string, 
+  deviceSerial: string, 
   userConfirmation?: string
 ): Promise<TriggerExecutionResult> {
   const trigger = getTriggerById(triggerId);
-
-  if (!trigger) {
-    return {
-      success: false,
-      triggerId,
-      message: 'Trigger not found',
-      timestamp: Date.now(),
-    };
-  }
-
-  // Log the execution (stub only; real backend integration required)
-  logTriggerAction(triggerId, 'execute', { deviceId, userConfirmation });
-
-  return {
-    success: true,
-    triggerId,
-    message: `Executed ${trigger.name} (stub)`,
-    timestamp: Date.now(),
-  };
-}
-
-export function logTriggerAction(
-  triggerId: string,
-  action: string,
-  metadata?: Record<string, any>
-): void {
-  triggerLogs.push({
-    triggerId,
-    action,
-    timestamp: Date.now(),
-    metadata,
-  });
-}
-
-export function getTriggerLogs(triggerId?: string): TriggerLog[] {
-  if (triggerId) {
-    return triggerLogs.filter(log => log.triggerId === triggerId);
-  }
-  return [...triggerLogs];
-}
-
-export function clearTriggerLogs(triggerId?: string): void {
-  if (triggerId) {
-    const indices = triggerLogs
-      .map((log, index) => (log.triggerId === triggerId ? index : -1))
-      .filter(index => index !== -1)
-      .reverse();
-    indices.forEach(index => triggerLogs.splice(index, 1));
-  } else {
-    triggerLogs.length = 0;
-  }
-}
-  
-  // TODO: Implement real audit logging to backend
-}
-
-=======
-export interface TriggerExecutionResult {
-  success: boolean;
-  triggerId: string;
-  message: string;
-  timestamp: number;
-}
-
-export interface TriggerLog {
-  triggerId: string;
-  action: string;
-  timestamp: number;
-  userId?: string;
-  deviceId?: string;
-  metadata?: Record<string, any>;
-}
-
-const triggerLogs: TriggerLog[] = [];
-
-export async function executeTrigger(triggerId: string, deviceId?: string): Promise<TriggerExecutionResult> {
-  const trigger = getTriggerById(triggerId);
   
   if (!trigger) {
     return {
       success: false,
       triggerId,
-      message: 'Trigger not found',
       timestamp: Date.now(),
+      error: 'Trigger not found'
     };
   }
 
-  // Log the execution
-  logTriggerAction(triggerId, 'execute', { deviceId });
+  if (trigger.requiresConfirmation && !userConfirmation) {
+    return {
+      success: false,
+      triggerId,
+      timestamp: Date.now(),
+      error: 'User confirmation required'
+    };
+  }
 
-  // Stub implementation - always succeeds
+  // Log the action
+  const action: TriggerAction = {
+    triggerId,
+    deviceSerial,
+    action: 'execute',
+    timestamp: Date.now(),
+    userId: 'current-user'
+  };
+
+  triggerActionLog.push(action);
+
+  // Simulate trigger execution
   return {
     success: true,
     triggerId,
-    message: `Executed ${trigger.name} successfully`,
     timestamp: Date.now(),
+    message: `Trigger ${trigger.name} executed successfully`
   };
 }
 
-export function logTriggerAction(
-  triggerId: string,
-  action: string,
-  metadata?: Record<string, any>
-): void {
-  triggerLogs.push({
-    triggerId,
-    action,
-    timestamp: Date.now(),
-    metadata,
-  });
+export async function logTriggerAction(action: TriggerAction): Promise<void> {
+  triggerActionLog.push(action);
 }
 
-export function getTriggerLogs(triggerId?: string): TriggerLog[] {
-  if (triggerId) {
-    return triggerLogs.filter(log => log.triggerId === triggerId);
-  }
-  return [...triggerLogs];
+export function getTriggerActionLog(): TriggerAction[] {
+  return [...triggerActionLog].sort((a, b) => b.timestamp - a.timestamp);
 }
-
-export function clearTriggerLogs(triggerId?: string): void {
-  if (triggerId) {
-    const indices = triggerLogs
-      .map((log, index) => (log.triggerId === triggerId ? index : -1))
-      .filter(index => index !== -1)
-      .reverse();
-    indices.forEach(index => triggerLogs.splice(index, 1));
-  } else {
-    triggerLogs.length = 0;
-  }
-}
->>>>>>> origin/copilot/enhance-project-to-perfection

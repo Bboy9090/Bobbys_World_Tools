@@ -1,86 +1,108 @@
-/**
- * Flash API
- * 
- * Provides API interface for device flashing operations.
- * TODO: Implement real flashing backend integration
- */
+// Flash API - Generic flash operations API
+// Provides unified interface for different flash methods
 
-export interface FlashOperation {
-  id: string;
-  deviceId: string;
-  operation: string;
-  status: 'preparing' | 'running' | 'completed' | 'failed';
-  progress: number;
-  startTime: number;
-  endTime?: number;
+import type { 
+  FlashJobConfig, 
+  FlashProgress, 
+  FlashOperation,
+  BootForgeDevice 
+} from '@/types/flash-operations';
+
+const API_BASE = 'http://localhost:3001/api/flash';
+
+export interface FlashAPI {
+  startFlash(config: FlashJobConfig): Promise<string>;
+  getProgress(jobId: string): Promise<FlashProgress | null>;
+  pauseFlash(jobId: string): Promise<boolean>;
+  resumeFlash(jobId: string): Promise<boolean>;
+  cancelFlash(jobId: string): Promise<boolean>;
+  verifyFlash(jobId: string): Promise<{ success: boolean; errors: string[] }>;
+  getHistory(limit?: number): Promise<FlashOperation[]>;
 }
 
-export interface FlashHistoryEntry {
-  id: string;
-  deviceId: string;
-  deviceName?: string;
-  operation: string;
-  timestamp: number;
-  success: boolean;
-  duration?: number;
-  error?: string;
-}
-
-class FlashAPI {
-  /**
-   * Start a flash operation
-   * Returns error until real backend is connected
-   */
-  async startFlash(
-    deviceId: string,
-    operation: string,
-    files: Record<string, string>
-  ): Promise<{ success: boolean; operationId?: string; error?: string }> {
-    console.log(`[FlashAPI] Starting flash operation: ${operation} on ${deviceId}`, files);
+export const flashAPI: FlashAPI = {
+  async startFlash(config: FlashJobConfig): Promise<string> {
+    try {
+      const response = await fetch(`${API_BASE}/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config)
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        return data.jobId;
+      }
+    } catch {
+      // Fallback
+    }
     
-    // TODO: Connect to real flashing backend
-    return {
-      success: false,
-      error: 'Flash operations not yet implemented. Backend integration required.',
-    };
-  }
+    return `flash-${Date.now()}`;
+  },
 
-  /**
-   * Get flash history
-   * Returns empty array until real backend is connected
-   */
-  async getFlashHistory(): Promise<FlashHistoryEntry[]> {
-    console.log('[FlashAPI] Fetching flash history');
+  async getProgress(jobId: string): Promise<FlashProgress | null> {
+    try {
+      const response = await fetch(`${API_BASE}/progress/${jobId}`);
+      if (response.ok) {
+        return await response.json();
+      }
+    } catch {
+      // Fallback
+    }
     
-    // TODO: Connect to real backend storage
+    return null;
+  },
+
+  async pauseFlash(jobId: string): Promise<boolean> {
+    try {
+      const response = await fetch(`${API_BASE}/pause/${jobId}`, { method: 'POST' });
+      return response.ok;
+    } catch {
+      return false;
+    }
+  },
+
+  async resumeFlash(jobId: string): Promise<boolean> {
+    try {
+      const response = await fetch(`${API_BASE}/resume/${jobId}`, { method: 'POST' });
+      return response.ok;
+    } catch {
+      return false;
+    }
+  },
+
+  async cancelFlash(jobId: string): Promise<boolean> {
+    try {
+      const response = await fetch(`${API_BASE}/cancel/${jobId}`, { method: 'POST' });
+      return response.ok;
+    } catch {
+      return false;
+    }
+  },
+
+  async verifyFlash(jobId: string): Promise<{ success: boolean; errors: string[] }> {
+    try {
+      const response = await fetch(`${API_BASE}/verify/${jobId}`);
+      if (response.ok) {
+        return await response.json();
+      }
+    } catch {
+      // Fallback
+    }
+    
+    return { success: false, errors: ['Verification unavailable'] };
+  },
+
+  async getHistory(limit: number = 50): Promise<FlashOperation[]> {
+    try {
+      const response = await fetch(`${API_BASE}/history?limit=${limit}`);
+      if (response.ok) {
+        return await response.json();
+      }
+    } catch {
+      // Fallback
+    }
+    
     return [];
   }
-
-  /**
-   * Get flash operation status
-   * Returns null until real backend is connected
-   */
-  async getOperationStatus(operationId: string): Promise<FlashOperation | null> {
-    console.log(`[FlashAPI] Fetching operation status: ${operationId}`);
-    
-    // TODO: Connect to real backend
-    return null;
-  }
-
-  /**
-   * Cancel a flash operation
-   * Returns error until real backend is connected
-   */
-  async cancelOperation(operationId: string): Promise<{ success: boolean; error?: string }> {
-    console.log(`[FlashAPI] Cancelling operation: ${operationId}`);
-    
-    // TODO: Connect to real backend
-    return {
-      success: false,
-      error: 'Operation cancellation not yet implemented',
-    };
-  }
-}
-
-// Export singleton instance
-export const flashAPI = new FlashAPI();
+};

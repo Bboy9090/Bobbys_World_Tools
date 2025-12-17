@@ -1,96 +1,159 @@
-/**
- * Dossier Normalizer
- * 
- * Normalizes device detection data into standardized dossier format.
- * TODO: Implement real normalization logic
- */
-
-export interface DeviceRecord {
-  id: string;
-  serial?: string;
-  vendorId?: number;
-  productId?: number;
-  platform?: string;
-  mode?: string;
-  confidence?: number;
-  matched_tool_ids?: string[];
-}
+// Dossier Normalizer - Normalizes device data from various sources
+// Creates unified device profiles for Bobby's World
 
 export interface NormalizedDevice {
-  id: string;
-  platform: string;
-  device_mode: string;
+  deviceUid: string;
+  serial: string;
+  platformHint: 'android' | 'ios' | 'unknown';
+  brand?: string;
+  model?: string;
+  manufacturer?: string;
+  currentMode: string;
   confidence: number;
-  correlation_badge: string;
-  matched_ids: string[];
-  correlation_notes: string[];
-  detection_evidence: {
-    usb_evidence: string[];
-    tool_evidence: string[];
-  };
+  sources: string[];
+  matchedToolIds: string[];
+  correlationBadge?: string;
+  lastSeen: number;
+  metadata: Record<string, any>;
 }
 
-export interface ScanSummary {
-  total: number;
-  correlated: number;
-  system_confirmed: number;
-  uncorrelated: number;
+export interface RawDeviceData {
+  source: string;
+  data: Record<string, any>;
 }
 
-/**
- * Normalize scan results into standardized format
- * Currently returns minimal normalized data
- */
-export function normalizeScan(devices: DeviceRecord[]): { 
-  devices: NormalizedDevice[]; 
-  summary: ScanSummary 
-} {
-  const normalized: NormalizedDevice[] = devices.map(dev => ({
-    id: dev.id,
-    platform: dev.platform || 'unknown',
-    device_mode: dev.mode || 'unconfirmed',
-    confidence: dev.confidence || 0,
-    correlation_badge: dev.confidence && dev.confidence > 0.9 ? 'HIGH_CONFIDENCE' : 'LOW_CONFIDENCE',
-    matched_ids: dev.matched_tool_ids || [],
-    correlation_notes: [],
-    detection_evidence: {
-      usb_evidence: dev.serial ? [`Serial: ${dev.serial}`] : [],
-      tool_evidence: [],
-    },
-  }));
+export interface DossierNormalizerAPI {
+  normalize(rawData: RawDeviceData): NormalizedDevice;
+  merge(devices: NormalizedDevice[]): NormalizedDevice;
+  generateCorrelationBadge(device: NormalizedDevice): string;
+  extractSerialFromEvidence(evidence: Record<string, any>[]): string | null;
+}
 
-  const correlated = normalized.filter(d => d.matched_ids.length > 0).length;
-  const system_confirmed = normalized.filter(d => d.device_mode.includes('confirmed')).length;
-
+export function normalizeBootForgeUSBRecord(record: Record<string, any>): NormalizedDevice {
   return {
-    devices: normalized,
-    summary: {
-      total: devices.length,
-      correlated,
-      system_confirmed,
-      uncorrelated: devices.length - correlated,
-    },
+    deviceUid: record.serial || record.device_uid || generateDeviceUid(),
+    serial: record.serial || 'unknown',
+    platformHint: detectPlatform(record),
+    brand: record.brand || record.manufacturer,
+    model: record.model,
+    manufacturer: record.manufacturer,
+    currentMode: record.mode || record.current_mode || 'normal',
+    confidence: record.confidence || 0.5,
+    sources: ['bootforge'],
+    matchedToolIds: record.matched_tool_ids || [],
+    correlationBadge: record.correlation_badge,
+    lastSeen: Date.now(),
+    metadata: record
   };
 }
 
-/**
- * Normalize BootForge USB record
- * Stub implementation - returns empty normalized device
- */
-export function normalizeBootForgeUSBRecord(record: unknown): NormalizedDevice {
-  console.log('[Normalizer] Processing BootForge USB record', record);
+function generateDeviceUid(): string {
+  return `device-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+}
+
+function detectPlatform(record: Record<string, any>): 'android' | 'ios' | 'unknown' {
+  const platform = record.platform || record.platform_hint || '';
+  if (platform.toLowerCase().includes('android')) return 'android';
+  if (platform.toLowerCase().includes('ios') || platform.toLowerCase().includes('apple')) return 'ios';
   
-  return {
-    id: 'unknown',
-    platform: 'unknown',
-    device_mode: 'unconfirmed',
-    confidence: 0,
-    correlation_badge: 'UNKNOWN',
-    matched_ids: [],
-    correlation_notes: ['BootForge normalization not yet implemented'],
-    detection_evidence: {
-      usb_evidence: [],
-      tool_evidence: [],
-    },
-  };
+  // Check vendor ID for Apple devices
+  if (record.vendor_id === '0x05ac' || record.vendorId === '0x05ac') return 'ios';
+  
+  return 'unknown';
 }
+
+export const dossierNormalizer: DossierNormalizerAPI = {
+  normalize(rawData: RawDeviceData): NormalizedDevice {
+    const { source, data } = rawData;
+
+    switch (source) {
+      case 'bootforge':
+        return normalizeBootForgeUSBRecord(data);
+      case 'adb':
+        return {
+          deviceUid: data.serial || generateDeviceUid(),
+          serial: data.serial,
+          platformHint: 'android',
+          brand: data.product,
+          model: data.model,
+          manufacturer: data.manufacturer,
+          currentMode: data.state || 'normal',
+          confidence: 0.9,
+          sources: ['adb'],
+          matchedToolIds: ['adb'],
+          lastSeen: Date.now(),
+          metadata: data
+        };
+      case 'fastboot':
+        return {
+          deviceUid: data.serial || generateDeviceUid(),
+          serial: data.serial,
+          platformHint: 'android',
+          currentMode: 'fastboot',
+          confidence: 0.9,
+          sources: ['fastboot'],
+          matchedToolIds: ['fastboot'],
+          lastSeen: Date.now(),
+          metadata: data
+        };
+      default:
+        return {
+          deviceUid: data.serial || data.id || generateDeviceUid(),
+          serial: data.serial || 'unknown',
+          platformHint: detectPlatform(data),
+          currentMode: 'unknown',
+          confidence: 0.3,
+          sources: [source],
+          matchedToolIds: [],
+          lastSeen: Date.now(),
+          metadata: data
+        };
+    }
+  },
+
+  merge(devices: NormalizedDevice[]): NormalizedDevice {
+    if (devices.length === 0) {
+      throw new Error('Cannot merge empty device list');
+    }
+
+    if (devices.length === 1) {
+      return devices[0];
+    }
+
+    // Use highest confidence device as base
+    const sorted = [...devices].sort((a, b) => b.confidence - a.confidence);
+    const base = { ...sorted[0] };
+
+    // Merge data from other devices
+    for (const device of sorted.slice(1)) {
+      if (!base.brand && device.brand) base.brand = device.brand;
+      if (!base.model && device.model) base.model = device.model;
+      if (!base.manufacturer && device.manufacturer) base.manufacturer = device.manufacturer;
+      
+      base.sources = [...new Set([...base.sources, ...device.sources])];
+      base.matchedToolIds = [...new Set([...base.matchedToolIds, ...device.matchedToolIds])];
+      base.confidence = Math.max(base.confidence, device.confidence);
+    }
+
+    base.correlationBadge = this.generateCorrelationBadge(base);
+    return base;
+  },
+
+  generateCorrelationBadge(device: NormalizedDevice): string {
+    const parts = [
+      device.brand?.slice(0, 3).toUpperCase() || 'UNK',
+      device.model?.slice(0, 3).toUpperCase() || 'XXX',
+      device.serial.slice(-4).toUpperCase()
+    ];
+    return parts.join('-');
+  },
+
+  extractSerialFromEvidence(evidence: Record<string, any>[]): string | null {
+    for (const item of evidence) {
+      if (item.serial) return item.serial;
+      if (item.deviceSerial) return item.deviceSerial;
+      if (item.serialno) return item.serialno;
+    }
+    return null;
+  }
+};

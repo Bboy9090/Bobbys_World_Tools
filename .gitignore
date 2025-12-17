@@ -7,9 +7,6 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# Shadow logs (encrypted audit logs)
-.shadow-logs
-
 node_modules
 dist
 dist-ssr
@@ -50,7 +47,7 @@ runtime/reports/*.bundle
 /libs/bootforgeusb/target/
 /libs/bootforgeusb/Cargo.lock
 
-# Python artifacts  
+# Python artifacts
 __pycache__/
 *.py[cod]
 *$py.class
@@ -62,6 +59,8 @@ dist/
 downloads/
 eggs/
 .eggs/
+# Python lib directories (not project source)
+/lib/
 lib64/
 parts/
 sdist/
@@ -71,10 +70,6 @@ wheels/
 .installed.cfg
 *.egg
 server/node_modules
-
-# Exception: Allow core/lib directory
-!core/lib/
-!core/lib/*.js
 
 # Bobby's Secret Workshop - NEVER COMMIT SENSITIVE DATA
 secrets/

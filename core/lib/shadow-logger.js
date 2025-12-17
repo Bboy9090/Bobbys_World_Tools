@@ -1,136 +1,117 @@
-// Shadow Logger - Encrypted, append-only audit logs
-// Provides AES-256 encryption for sensitive operations
+// Shadow Logger - Encrypted logging for sensitive operations
+// Uses AES-256-GCM for encryption with immutable append-only logs
 
 import crypto from 'crypto';
 import fs from 'fs/promises';
-import { existsSync } from 'fs';
 import path from 'path';
+import { existsSync, mkdirSync } from 'fs';
 
-/**
- * Shadow Logger for encrypted audit logging
- */
+const ENCRYPTION_ALGORITHM = 'aes-256-gcm';
+const KEY_LENGTH = 32; // 256 bits
+const IV_LENGTH = 16; // 128 bits for GCM
+const AUTH_TAG_LENGTH = 16; // 128 bits
+
 class ShadowLogger {
   constructor(options = {}) {
-    this.logsDir = options.logsDir || path.join(process.cwd(), 'logs');
-    this.shadowLogsDir = path.join(this.logsDir, 'shadow');
-    this.publicLogsDir = path.join(this.logsDir, 'public');
-    this.encryptionKey = options.encryptionKey || this.getEncryptionKey();
+    this.logsDir = options.logsDir || path.join(process.cwd(), 'logs', 'shadow');
+    this.publicLogsDir = options.publicLogsDir || path.join(process.cwd(), 'logs', 'public');
     this.retentionDays = options.retentionDays || 90;
     
-    this.initializeDirectories();
+    // Generate or load encryption key
+    // In production, this should be loaded from secure storage
+    this.encryptionKey = options.encryptionKey || this._generateKey();
+    
+    // Ensure log directories exist
+    this._ensureDirectories();
   }
 
-  /**
-   * Get or generate encryption key
-   */
-  getEncryptionKey() {
-    const keyEnv = process.env.SHADOW_LOG_KEY;
-    
-    if (keyEnv) {
-      return Buffer.from(keyEnv, 'hex');
+  _ensureDirectories() {
+    if (!existsSync(this.logsDir)) {
+      mkdirSync(this.logsDir, { recursive: true });
     }
-
-    // SECURITY WARNING: In production, you MUST set SHADOW_LOG_KEY environment variable
-    // Generating a new key will make existing shadow logs unreadable
-    console.error('⚠️  SECURITY WARNING: SHADOW_LOG_KEY not set!');
-    console.error('⚠️  Existing shadow logs will be UNREADABLE with a new key!');
-    console.error('⚠️  Set SHADOW_LOG_KEY environment variable for production use.');
-    
-    // Generate a temporary key for development only
-    const key = crypto.randomBytes(32);
-    console.warn('Generated temporary shadow log encryption key (development only).');
-    console.warn('To persist this key: export SHADOW_LOG_KEY=' + key.toString('hex'));
-    
-    return key;
+    if (!existsSync(this.publicLogsDir)) {
+      mkdirSync(this.publicLogsDir, { recursive: true });
+    }
   }
 
-  /**
-   * Initialize log directories
-   */
-  async initializeDirectories() {
-    try {
-      await fs.mkdir(this.logsDir, { recursive: true });
-      await fs.mkdir(this.shadowLogsDir, { recursive: true });
-      await fs.mkdir(this.publicLogsDir, { recursive: true });
-    } catch (error) {
-      console.error('Error initializing log directories:', error);
+  _generateKey() {
+    // In production, load from secure storage
+    const envKey = process.env.SHADOW_LOG_KEY;
+    if (envKey) {
+      return Buffer.from(envKey, 'hex');
     }
+    // Generate a random key for development - logs will not persist across restarts
+    // This ensures development mode doesn't use predictable keys
+    console.warn('[ShadowLogger] No SHADOW_LOG_KEY set - using random key (logs will not persist)');
+    return crypto.randomBytes(KEY_LENGTH);
   }
 
   /**
    * Encrypt data using AES-256-GCM
+   * @param {string} data - Plain text data to encrypt
+   * @returns {string} - JSON string with iv, authTag, and encrypted data
    */
   encrypt(data) {
-    const iv = crypto.randomBytes(16);
-    const cipher = crypto.createCipheriv('aes-256-gcm', this.encryptionKey, iv);
+    const iv = crypto.randomBytes(IV_LENGTH);
+    const cipher = crypto.createCipheriv(ENCRYPTION_ALGORITHM, this.encryptionKey, iv, {
+      authTagLength: AUTH_TAG_LENGTH
+    });
     
-    let encrypted = cipher.update(JSON.stringify(data), 'utf8', 'hex');
+    let encrypted = cipher.update(data, 'utf8', 'hex');
     encrypted += cipher.final('hex');
     
     const authTag = cipher.getAuthTag();
     
-    return {
-      encrypted,
+    return JSON.stringify({
       iv: iv.toString('hex'),
-      authTag: authTag.toString('hex')
-    };
+      authTag: authTag.toString('hex'),
+      data: encrypted
+    });
   }
 
   /**
-   * Decrypt data using AES-256-GCM
+   * Decrypt data encrypted with AES-256-GCM
+   * @param {string} encryptedJson - JSON string with iv, authTag, and encrypted data
+   * @returns {string} - Decrypted plain text
    */
-  decrypt(encrypted, iv, authTag) {
-    try {
-      const decipher = crypto.createDecipheriv(
-        'aes-256-gcm',
-        this.encryptionKey,
-        Buffer.from(iv, 'hex')
-      );
-      
-      decipher.setAuthTag(Buffer.from(authTag, 'hex'));
-      
-      let decrypted = decipher.update(encrypted, 'hex', 'utf8');
-      decrypted += decipher.final('utf8');
-      
-      return JSON.parse(decrypted);
-    } catch (error) {
-      console.error('Decryption error:', error);
-      return null;
-    }
+  decrypt(encryptedJson) {
+    const { iv, authTag, data } = JSON.parse(encryptedJson);
+    
+    const decipher = crypto.createDecipheriv(
+      ENCRYPTION_ALGORITHM, 
+      this.encryptionKey, 
+      Buffer.from(iv, 'hex'),
+      { authTagLength: AUTH_TAG_LENGTH }
+    );
+    
+    decipher.setAuthTag(Buffer.from(authTag, 'hex'));
+    
+    let decrypted = decipher.update(data, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+    
+    return decrypted;
   }
 
   /**
-   * Log to shadow logs (encrypted)
+   * Log sensitive operation to encrypted shadow log
+   * @param {Object} entry - Log entry with operation details
    */
   async logShadow(entry) {
     try {
-      const timestamp = new Date().toISOString();
-      const date = timestamp.split('T')[0];
-      
       const logEntry = {
-        timestamp,
+        timestamp: new Date().toISOString(),
         ...entry
       };
-
-      // Encrypt the entry
-      const { encrypted, iv, authTag } = this.encrypt(logEntry);
       
-      const encryptedEntry = {
-        encrypted,
-        iv,
-        authTag,
-        timestamp // Keep timestamp unencrypted for indexing
-      };
-
-      // Append to daily log file
-      const logFile = path.join(this.shadowLogsDir, `shadow-${date}.log`);
-      await fs.appendFile(
-        logFile,
-        JSON.stringify(encryptedEntry) + '\n',
-        'utf8'
-      );
-
-      return { success: true };
+      const encrypted = this.encrypt(JSON.stringify(logEntry));
+      
+      const date = new Date().toISOString().split('T')[0];
+      const logFile = path.join(this.logsDir, `shadow-${date}.log`);
+      
+      // Append to log file (immutable, append-only)
+      await fs.appendFile(logFile, encrypted + '\n');
+      
+      return { success: true, encrypted: true };
     } catch (error) {
       console.error('Shadow log error:', error);
       return { success: false, error: error.message };
@@ -138,27 +119,22 @@ class ShadowLogger {
   }
 
   /**
-   * Log to public logs (unencrypted)
+   * Log public operation (not encrypted)
+   * @param {Object} entry - Log entry
    */
   async logPublic(entry) {
     try {
-      const timestamp = new Date().toISOString();
-      const date = timestamp.split('T')[0];
-      
       const logEntry = {
-        timestamp,
+        timestamp: new Date().toISOString(),
         ...entry
       };
-
-      // Append to daily log file
+      
+      const date = new Date().toISOString().split('T')[0];
       const logFile = path.join(this.publicLogsDir, `public-${date}.log`);
-      await fs.appendFile(
-        logFile,
-        JSON.stringify(logEntry) + '\n',
-        'utf8'
-      );
-
-      return { success: true };
+      
+      await fs.appendFile(logFile, JSON.stringify(logEntry) + '\n');
+      
+      return { success: true, encrypted: false };
     } catch (error) {
       console.error('Public log error:', error);
       return { success: false, error: error.message };
@@ -166,138 +142,111 @@ class ShadowLogger {
   }
 
   /**
-   * Read shadow logs (requires decryption)
+   * Read shadow logs for a specific date
+   * @param {string} date - Date in YYYY-MM-DD format (optional, defaults to today)
    */
-  async readShadowLogs(date = null) {
+  async readShadowLogs(date) {
     try {
       const targetDate = date || new Date().toISOString().split('T')[0];
-      const logFile = path.join(this.shadowLogsDir, `shadow-${targetDate}.log`);
-
+      const logFile = path.join(this.logsDir, `shadow-${targetDate}.log`);
+      
       if (!existsSync(logFile)) {
-        return {
-          success: false,
-          error: 'Log file not found',
-          entries: []
-        };
+        return { success: false, error: 'Log file not found', entries: [] };
       }
-
+      
       const content = await fs.readFile(logFile, 'utf8');
       const lines = content.trim().split('\n').filter(line => line);
-
-      const entries = lines
-        .map(line => {
-          try {
-            const encryptedEntry = JSON.parse(line);
-            const decrypted = this.decrypt(
-              encryptedEntry.encrypted,
-              encryptedEntry.iv,
-              encryptedEntry.authTag
-            );
-            return decrypted;
-          } catch (error) {
-            console.error('Error decrypting entry:', error);
-            return null;
-          }
-        })
-        .filter(entry => entry !== null);
-
-      return {
-        success: true,
-        date: targetDate,
-        entries,
-        count: entries.length
-      };
+      
+      const entries = lines.map(line => {
+        try {
+          const decrypted = this.decrypt(line);
+          return JSON.parse(decrypted);
+        } catch (e) {
+          return { error: 'Failed to decrypt entry' };
+        }
+      });
+      
+      return { success: true, entries };
     } catch (error) {
-      console.error('Error reading shadow logs:', error);
-      return {
-        success: false,
-        error: error.message,
-        entries: []
-      };
+      console.error('Read shadow logs error:', error);
+      return { success: false, error: error.message, entries: [] };
     }
   }
 
   /**
-   * Read public logs
+   * Get log statistics
    */
-  async readPublicLogs(date = null) {
+  async getLogStats() {
     try {
-      const targetDate = date || new Date().toISOString().split('T')[0];
-      const logFile = path.join(this.publicLogsDir, `public-${targetDate}.log`);
-
-      if (!existsSync(logFile)) {
-        return {
-          success: false,
-          error: 'Log file not found',
-          entries: []
-        };
-      }
-
-      const content = await fs.readFile(logFile, 'utf8');
-      const lines = content.trim().split('\n').filter(line => line);
-
-      const entries = lines
-        .map(line => {
-          try {
-            return JSON.parse(line);
-          } catch (error) {
-            console.error('Error parsing entry:', error);
-            return null;
-          }
-        })
-        .filter(entry => entry !== null);
-
+      const shadowFiles = existsSync(this.logsDir) 
+        ? (await fs.readdir(this.logsDir)).filter(f => f.startsWith('shadow-'))
+        : [];
+      
+      const publicFiles = existsSync(this.publicLogsDir)
+        ? (await fs.readdir(this.publicLogsDir)).filter(f => f.startsWith('public-'))
+        : [];
+      
       return {
         success: true,
-        date: targetDate,
-        entries,
-        count: entries.length
+        stats: {
+          shadowLogFiles: shadowFiles.length,
+          publicLogFiles: publicFiles.length,
+          retentionDays: this.retentionDays,
+          encryptionAlgorithm: ENCRYPTION_ALGORITHM,
+          logsDirectory: this.logsDir
+        }
       };
     } catch (error) {
-      console.error('Error reading public logs:', error);
-      return {
-        success: false,
-        error: error.message,
-        entries: []
-      };
+      return { success: false, error: error.message };
     }
   }
 
   /**
-   * Clean up old logs (retention policy)
+   * Clean up old log files based on retention policy
    */
   async cleanupOldLogs() {
     try {
-      const now = Date.now();
-      const retentionMs = this.retentionDays * 24 * 60 * 60 * 1000;
-
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - this.retentionDays);
+      
+      let deleted = 0;
+      
       // Clean shadow logs
-      const shadowFiles = await fs.readdir(this.shadowLogsDir);
-      for (const file of shadowFiles) {
-        const filePath = path.join(this.shadowLogsDir, file);
-        const stats = await fs.stat(filePath);
-        
-        if (now - stats.mtimeMs > retentionMs) {
-          await fs.unlink(filePath);
-          console.log(`Deleted old shadow log: ${file}`);
+      if (existsSync(this.logsDir)) {
+        const files = await fs.readdir(this.logsDir);
+        for (const file of files) {
+          const match = file.match(/shadow-(\d{4}-\d{2}-\d{2})\.log/);
+          if (match) {
+            const fileDate = new Date(match[1]);
+            if (fileDate < cutoffDate) {
+              await fs.unlink(path.join(this.logsDir, file));
+              deleted++;
+            }
+          }
         }
       }
-
+      
       // Clean public logs
-      const publicFiles = await fs.readdir(this.publicLogsDir);
-      for (const file of publicFiles) {
-        const filePath = path.join(this.publicLogsDir, file);
-        const stats = await fs.stat(filePath);
-        
-        if (now - stats.mtimeMs > retentionMs) {
-          await fs.unlink(filePath);
-          console.log(`Deleted old public log: ${file}`);
+      if (existsSync(this.publicLogsDir)) {
+        const files = await fs.readdir(this.publicLogsDir);
+        for (const file of files) {
+          const match = file.match(/public-(\d{4}-\d{2}-\d{2})\.log/);
+          if (match) {
+            const fileDate = new Date(match[1]);
+            if (fileDate < cutoffDate) {
+              await fs.unlink(path.join(this.publicLogsDir, file));
+              deleted++;
+            }
+          }
         }
       }
-
-      return { success: true };
+      
+      return { 
+        success: true, 
+        message: `Cleaned up ${deleted} old log files`,
+        deletedCount: deleted 
+      };
     } catch (error) {
-      console.error('Error cleaning up logs:', error);
       return { success: false, error: error.message };
     }
   }

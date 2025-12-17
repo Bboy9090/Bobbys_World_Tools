@@ -1,172 +1,179 @@
-// Fastboot Library - Fastboot device management
-// Provides core Fastboot functionality for bootloader operations
+// Fastboot Library - Fastboot operations for Android bootloader mode
+// Provides safe wrappers around fastboot commands
 
-import { exec } from 'child_process';
-import { promisify } from 'util';
+import { execSync } from 'child_process';
 
-const execAsync = promisify(exec);
-
-/**
- * Fastboot Library for bootloader operations
- */
-class FastbootLibrary {
-  /**
-   * Check if Fastboot is available on the system
-   */
-  async isAvailable() {
-    try {
-      const { stdout } = await execAsync('fastboot --version');
-      return { success: true, version: stdout.trim() };
-    } catch (error) {
-      return { success: false, error: 'Fastboot not found. Please install Android platform tools.' };
-    }
-  }
-
-  /**
-   * List connected Fastboot devices
-   */
-  async listDevices() {
-    try {
-      const { stdout } = await execAsync('fastboot devices');
-      const lines = stdout.trim().split('\n');
-      
-      const devices = lines
-        .filter(line => line.trim())
-        .map(line => {
-          const parts = line.trim().split(/\s+/);
-          return {
-            serial: parts[0],
-            state: parts[1] || 'fastboot'
-          };
-        });
-
-      return { success: true, devices };
-    } catch (error) {
-      return { success: false, error: error.message, devices: [] };
-    }
-  }
-
-  /**
-   * Execute Fastboot command on a specific device
-   */
-  async executeCommand(serial, command) {
-    try {
-      const fastbootCommand = serial 
-        ? `fastboot -s ${serial} ${command}` 
-        : `fastboot ${command}`;
-      
-      const { stdout, stderr } = await execAsync(fastbootCommand, { timeout: 60000 });
-      
-      return {
-        success: true,
-        stdout: stdout.trim(),
-        stderr: stderr.trim()
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error.message,
-        stdout: error.stdout || '',
-        stderr: error.stderr || ''
-      };
-    }
-  }
-
-  /**
-   * Get device variables
-   */
-  async getVariable(serial, variable) {
-    try {
-      const result = await this.executeCommand(serial, `getvar ${variable}`);
-      
-      // Fastboot outputs to stderr
-      const output = result.stderr || result.stdout;
-      const match = output.match(new RegExp(`${variable}:\\s*(.+)`));
-      
-      if (match) {
-        return {
-          success: true,
-          variable,
-          value: match[1].trim()
-        };
-      }
-
-      return { success: false, error: `Variable ${variable} not found` };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  }
-
-  /**
-   * Check bootloader lock status
-   */
-  async getBootloaderStatus(serial) {
-    try {
-      const result = await this.getVariable(serial, 'unlocked');
-      
-      return {
-        success: true,
-        unlocked: result.value === 'yes',
-        status: result.value
-      };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  }
-
-  /**
-   * Flash partition
-   */
-  async flash(serial, partition, image) {
-    try {
-      const result = await this.executeCommand(serial, `flash ${partition} ${image}`);
-      
-      return {
-        success: result.success,
-        partition,
-        output: result.stdout || result.stderr
-      };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  }
-
-  /**
-   * Unlock bootloader (destructive - erases all data)
-   */
-  async unlock(serial) {
-    try {
-      // Try modern unlock command first (Pixel devices)
-      let result = await this.executeCommand(serial, 'flashing unlock');
-      
-      // If that fails, try legacy command
-      if (!result.success) {
-        result = await this.executeCommand(serial, 'oem unlock');
-      }
-
-      return {
-        success: result.success,
-        output: result.stdout || result.stderr,
-        warning: 'This operation erased all data on the device'
-      };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  }
-
-  /**
-   * Reboot device
-   */
-  async reboot(serial, mode = 'system') {
-    const modes = {
-      system: 'reboot',
-      bootloader: 'reboot-bootloader',
-      recovery: 'reboot-recovery'
+function safeExec(cmd, options = {}) {
+  try {
+    return {
+      success: true,
+      stdout: execSync(cmd, { 
+        encoding: 'utf-8', 
+        timeout: options.timeout || 30000,
+        ...options
+      }).trim()
     };
-
-    const command = modes[mode] || modes.system;
-    return await this.executeCommand(serial, command);
+  } catch (error) {
+    return {
+      success: false,
+      error: error.message,
+      stderr: error.stderr?.toString() || ''
+    };
   }
 }
 
-export default new FastbootLibrary();
+function commandExists(cmd) {
+  try {
+    execSync(`command -v ${cmd}`, { stdio: 'ignore', timeout: 2000 });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const FastbootLibrary = {
+  /**
+   * Check if Fastboot is installed
+   */
+  isInstalled() {
+    return commandExists('fastboot');
+  },
+
+  /**
+   * List connected devices in fastboot mode
+   */
+  listDevices() {
+    if (!this.isInstalled()) {
+      return { success: false, error: 'Fastboot not installed', devices: [] };
+    }
+    
+    const result = safeExec('fastboot devices');
+    if (!result.success) {
+      return { ...result, devices: [] };
+    }
+    
+    const lines = result.stdout.split('\n').filter(l => l.trim());
+    const devices = lines.map(line => {
+      const parts = line.trim().split(/\s+/);
+      return {
+        serial: parts[0],
+        mode: parts[1] || 'fastboot'
+      };
+    }).filter(d => d.serial);
+    
+    return { success: true, devices };
+  },
+
+  /**
+   * Execute fastboot command for a specific device
+   * @param {string} serial - Device serial number
+   * @param {string} command - Fastboot command to execute (without 'fastboot' prefix)
+   */
+  executeCommand(serial, command) {
+    if (!this.isInstalled()) {
+      return { success: false, error: 'Fastboot not installed' };
+    }
+    
+    // Sanitize command to prevent injection
+    if (command.includes(';') || command.includes('|') || command.includes('&')) {
+      return { success: false, error: 'Command contains invalid characters' };
+    }
+    
+    return safeExec(`fastboot -s ${serial} ${command}`, { timeout: 60000 });
+  },
+
+  /**
+   * Get device variable
+   * @param {string} serial - Device serial number
+   * @param {string} variable - Variable name (e.g., 'product', 'unlocked')
+   */
+  getVar(serial, variable) {
+    const result = safeExec(`fastboot -s ${serial} getvar ${variable} 2>&1`);
+    if (!result.success) {
+      return result;
+    }
+    
+    // fastboot getvar outputs to stderr, value is after the colon
+    const match = result.stdout.match(new RegExp(`${variable}:\\s*(.+)`));
+    return {
+      success: true,
+      variable,
+      value: match ? match[1].trim() : null
+    };
+  },
+
+  /**
+   * Get device information
+   * @param {string} serial - Device serial number
+   */
+  getDeviceInfo(serial) {
+    const variables = ['product', 'variant', 'version-bootloader', 'serialno', 'secure', 'unlocked'];
+    const info = {};
+    
+    for (const variable of variables) {
+      const result = this.getVar(serial, variable);
+      if (result.success) {
+        info[variable] = result.value;
+      }
+    }
+    
+    return {
+      success: true,
+      info,
+      bootloaderUnlocked: info.unlocked === 'yes' || info.unlocked === 'true',
+      isSecure: info.secure === 'yes' || info.secure === 'true'
+    };
+  },
+
+  /**
+   * Flash partition
+   * @param {string} serial - Device serial number
+   * @param {string} partition - Partition name (e.g., 'boot', 'system')
+   * @param {string} imagePath - Path to the image file
+   */
+  flash(serial, partition, imagePath) {
+    // Critical partitions require extra caution
+    const criticalPartitions = ['bootloader', 'radio', 'aboot', 'sbl1'];
+    if (criticalPartitions.includes(partition)) {
+      console.warn(`Warning: Flashing critical partition: ${partition}`);
+    }
+    
+    return this.executeCommand(serial, `flash ${partition} "${imagePath}"`);
+  },
+
+  /**
+   * Reboot device
+   * @param {string} serial - Device serial number
+   * @param {string} mode - 'system', 'bootloader', or 'recovery'
+   */
+  reboot(serial, mode = 'system') {
+    switch (mode) {
+      case 'system':
+        return this.executeCommand(serial, 'reboot');
+      case 'bootloader':
+        return this.executeCommand(serial, 'reboot-bootloader');
+      case 'recovery':
+        return this.executeCommand(serial, 'reboot recovery');
+      default:
+        return { success: false, error: 'Invalid reboot mode' };
+    }
+  },
+
+  /**
+   * Initiate OEM unlock
+   * @param {string} serial - Device serial number
+   */
+  oemUnlock(serial) {
+    return this.executeCommand(serial, 'oem unlock');
+  },
+
+  /**
+   * Initiate flashing unlock
+   * @param {string} serial - Device serial number
+   */
+  flashingUnlock(serial) {
+    return this.executeCommand(serial, 'flashing unlock');
+  }
+};
+
+export default FastbootLibrary;

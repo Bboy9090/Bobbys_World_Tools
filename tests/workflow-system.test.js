@@ -280,7 +280,7 @@ describe('Shadow Logger Tests', () => {
 
       assert.ok(result.success);
       assert.ok(result.stats);
-      assert.strictEqual(result.stats.encryptionAlgorithm, 'AES-256-GCM');
+      assert.strictEqual(result.stats.encryptionAlgorithm, 'aes-256-gcm');
     });
   });
 });

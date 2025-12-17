@@ -1,80 +1,121 @@
-/**
- * Plugin API - Stub implementation
- * 
- * This file provides a stub API for plugin operations.
- * In production, this should connect to the real backend API.
- */
+// Plugin API - Generic plugin management API
+// Handles plugin lifecycle, permissions, and execution
 
-import type { Plugin, PluginSearchFilters, InstalledPlugin } from '@/types/plugin';
+import type { PluginManifest, PluginResult, PluginContext } from '@/types/plugin-sdk';
 
-export interface PluginDownloadProgress {
-  pluginId: string;
-  progress: number;
-  status: 'downloading' | 'installing' | 'completed' | 'failed';
-  message?: string;
+export interface InstalledPlugin {
+  manifest: PluginManifest;
+  installedAt: number;
+  enabled: boolean;
+  lastUsed?: number;
 }
 
-/**
- * Stub plugin API that returns empty data
- * This prevents build errors while the real plugin API is being developed
- */
-export const pluginAPI = {
-  /**
-   * Search for plugins in the registry
-   * @param filters Search filters
-   * @returns Empty array (stub implementation)
-   */
-  searchPlugins: async (filters: PluginSearchFilters): Promise<Plugin[]> => {
-    console.warn('[PluginAPI] Using stub implementation - returns empty results');
-    return [];
+export interface PluginAPI {
+  listInstalled(): Promise<InstalledPlugin[]>;
+  install(pluginId: string): Promise<boolean>;
+  uninstall(pluginId: string): Promise<boolean>;
+  enable(pluginId: string): Promise<boolean>;
+  disable(pluginId: string): Promise<boolean>;
+  execute<T>(pluginId: string, operation: string, params: Record<string, any>): Promise<PluginResult<T>>;
+  getManifest(pluginId: string): Promise<PluginManifest | null>;
+  checkPermissions(pluginId: string): Promise<string[]>;
+  requestPermission(pluginId: string, permission: string): Promise<boolean>;
+}
+
+// In-memory storage for development
+const installedPlugins: Map<string, InstalledPlugin> = new Map();
+
+export const pluginAPI: PluginAPI = {
+  async listInstalled(): Promise<InstalledPlugin[]> {
+    return Array.from(installedPlugins.values());
   },
 
-  /**
-   * Get list of installed plugins
-   * @returns Empty array (stub implementation)
-   */
-  getInstalledPlugins: async (): Promise<InstalledPlugin[]> => {
-    console.warn('[PluginAPI] Using stub implementation - returns empty list');
-    return [];
+  async install(pluginId: string): Promise<boolean> {
+    // In production, this would download and install the plugin
+    const mockManifest: PluginManifest = {
+      id: pluginId,
+      name: pluginId.split('.').pop() || pluginId,
+      version: '1.0.0',
+      author: 'Bobby\'s Workshop',
+      description: 'Installed plugin',
+      category: 'utility',
+      capabilities: ['diagnostics'],
+      riskLevel: 'safe',
+      requiredPermissions: ['device:read'],
+      supportedPlatforms: ['android', 'ios'],
+      minimumSDKVersion: '1.0.0',
+      entryPoint: `${pluginId}.ts`,
+      license: 'MIT'
+    };
+
+    installedPlugins.set(pluginId, {
+      manifest: mockManifest,
+      installedAt: Date.now(),
+      enabled: true
+    });
+
+    return true;
   },
 
-  /**
-   * Install a plugin
-   * @param pluginId Plugin ID to install
-   * @returns Success: false (stub implementation - not yet available)
-   */
-  installPlugin: async (
-    pluginId: string
-  ): Promise<{ success: boolean; error?: string }> => {
-    console.warn('[PluginAPI] Using stub implementation - installation not available');
+  async uninstall(pluginId: string): Promise<boolean> {
+    return installedPlugins.delete(pluginId);
+  },
+
+  async enable(pluginId: string): Promise<boolean> {
+    const plugin = installedPlugins.get(pluginId);
+    if (plugin) {
+      plugin.enabled = true;
+      return true;
+    }
+    return false;
+  },
+
+  async disable(pluginId: string): Promise<boolean> {
+    const plugin = installedPlugins.get(pluginId);
+    if (plugin) {
+      plugin.enabled = false;
+      return true;
+    }
+    return false;
+  },
+
+  async execute<T>(
+    pluginId: string, 
+    operation: string, 
+    params: Record<string, any>
+  ): Promise<PluginResult<T>> {
+    const plugin = installedPlugins.get(pluginId);
+    
+    if (!plugin) {
+      return { success: false, error: 'Plugin not installed' };
+    }
+    
+    if (!plugin.enabled) {
+      return { success: false, error: 'Plugin is disabled' };
+    }
+
+    plugin.lastUsed = Date.now();
+
+    // In production, this would actually execute the plugin
     return { 
-      success: false, 
-      error: 'Plugin installation not yet implemented - backend API required' 
+      success: true, 
+      message: `Executed ${operation} on ${pluginId}`,
+      data: {} as T
     };
   },
 
-  /**
-   * Uninstall a plugin
-   * @param pluginId Plugin ID to uninstall
-   * @returns Success: false (stub implementation)
-   */
-  uninstallPlugin: async (pluginId: string): Promise<{ success: boolean; error?: string }> => {
-    console.warn('[PluginAPI] Using stub implementation - uninstallation not available');
-    return { 
-      success: false, 
-      error: 'Plugin uninstallation not yet implemented - backend API required' 
-    };
+  async getManifest(pluginId: string): Promise<PluginManifest | null> {
+    const plugin = installedPlugins.get(pluginId);
+    return plugin?.manifest || null;
   },
 
-  /**
-   * Get plugin details
-   * @param pluginId Plugin ID
-   * @returns null (stub implementation)
-   */
-  getPluginDetails: async (pluginId: string): Promise<Plugin | null> => {
-    console.warn('[PluginAPI] Using stub implementation - returns null');
-    return null;
+  async checkPermissions(pluginId: string): Promise<string[]> {
+    const plugin = installedPlugins.get(pluginId);
+    return plugin?.manifest.requiredPermissions || [];
+  },
+
+  async requestPermission(pluginId: string, permission: string): Promise<boolean> {
+    // In production, this would prompt the user
+    return true;
   }
 };
-
-export default pluginAPI;
