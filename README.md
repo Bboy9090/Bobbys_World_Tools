@@ -423,6 +423,10 @@ Contributions welcome for:
 - Violate terms of service or warranties
 - Support illegal activities
 
+### 🤖 Auto-merge Enabled
+
+This repository has auto-merge enabled for pull requests. Once your PR is approved and all checks pass, it will automatically merge without requiring manual intervention. See [docs/AUTO_MERGE.md](./docs/AUTO_MERGE.md) for more details.
+
 ## 📄 License
 
 MIT License - See LICENSE file for details
