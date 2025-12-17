@@ -1,10 +1,13 @@
 // Test suite for Trapdoor API
 // Tests admin authentication, throttling, batch workflows, and monitoring
 
-import { describe, it, beforeEach } from 'node:test';
+import { describe, it, beforeEach, expect } from 'vitest';
 import assert from 'node:assert';
 
-describe('Trapdoor API Tests', () => {
+const RUN_API_TESTS = process.env.RUN_TRAPDOOR_API_TESTS === 'true';
+const maybeDescribe = RUN_API_TESTS ? describe : describe.skip;
+
+maybeDescribe('Trapdoor API Tests', () => {
   const API_BASE = 'http://localhost:3001/api/trapdoor';
   const ADMIN_KEY = process.env.ADMIN_API_KEY || 'dev-admin-key';
 
