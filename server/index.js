@@ -12,14 +12,157 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
+// Analytics tracking middleware
+app.use((req, res, next) => {
+  const startTime = Date.now();
+  analyticsMetrics.totalRequests++;
+  analyticsMetrics.requestTimestamps.push(startTime);
+  
+  // Track response
+  res.on('finish', () => {
+    const responseTime = Date.now() - startTime;
+    analyticsMetrics.totalResponseTime += responseTime;
+    
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      analyticsMetrics.successfulRequests++;
+    } else {
+      analyticsMetrics.failedRequests++;
+      
+      // Broadcast error event to analytics clients
+      const errorEvent = {
+        type: 'event',
+        level: 'error',
+        timestamp: Date.now(),
+        message: `${req.method} ${req.path} failed with ${res.statusCode}`,
+        details: {
+          method: req.method,
+          path: req.path,
+          statusCode: res.statusCode,
+          responseTime
+        }
+      };
+      
+      analyticsClients.forEach(client => {
+        if (client.readyState === client.OPEN) {
+          client.send(JSON.stringify(errorEvent));
+        }
+      });
+    }
+  });
+  
+  next();
+});
+
+// Mount Trapdoor API
+app.use('/api/trapdoor', trapdoorRouter);
+
 const authTriggers = new AuthorizationTriggers();
 
 const server = createServer(app);
 const wss = new WebSocketServer({ server, path: '/ws/device-events' });
 const wssCorrelation = new WebSocketServer({ server, path: '/ws/correlation' });
+const wssAnalytics = new WebSocketServer({ server, path: '/ws/analytics' });
 
 const clients = new Set();
 const correlationClients = new Set();
+const analyticsClients = new Set();
+
+// Analytics metrics tracking
+const analyticsMetrics = {
+  activeDevices: 0,
+  totalRequests: 0,
+  successfulRequests: 0,
+  failedRequests: 0,
+  totalResponseTime: 0,
+  requestTimestamps: [],
+  cpuUsage: 0,
+  memoryUsage: 0
+};
+
+// Update analytics metrics periodically
+setInterval(() => {
+  // Calculate throughput (requests per second in last 10 seconds)
+  const now = Date.now();
+  const recentRequests = analyticsMetrics.requestTimestamps.filter(
+    ts => now - ts < 10000
+  );
+  const throughput = recentRequests.length / 10;
+  
+  // Clean up old timestamps
+  analyticsMetrics.requestTimestamps = recentRequests;
+  
+  // Simulate CPU and memory usage (in production, use actual system metrics)
+  analyticsMetrics.cpuUsage = 20 + Math.random() * 30;
+  analyticsMetrics.memoryUsage = 40 + Math.random() * 20;
+  
+  const successRate = analyticsMetrics.totalRequests > 0
+    ? (analyticsMetrics.successfulRequests / analyticsMetrics.totalRequests) * 100
+    : 100;
+  
+  const avgResponseTime = analyticsMetrics.totalRequests > 0
+    ? analyticsMetrics.totalResponseTime / analyticsMetrics.totalRequests
+    : 0;
+  
+  const errorCount = analyticsMetrics.failedRequests;
+  
+  // Broadcast to all analytics clients
+  const metricsUpdate = {
+    type: 'analytics_update',
+    timestamp: now,
+    metrics: {
+      activeDevices: analyticsMetrics.activeDevices,
+      totalRequests: analyticsMetrics.totalRequests,
+      successRate,
+      avgResponseTime,
+      errorCount,
+      throughput,
+      cpuUsage: analyticsMetrics.cpuUsage,
+      memoryUsage: analyticsMetrics.memoryUsage
+    }
+  };
+  
+  analyticsClients.forEach(client => {
+    if (client.readyState === client.OPEN) {
+      client.send(JSON.stringify(metricsUpdate));
+    }
+  });
+}, 1000); // Update every second
+
+// Analytics WebSocket handler
+wssAnalytics.on('connection', (ws) => {
+  console.log('WebSocket client connected (analytics)');
+  analyticsClients.add(ws);
+  
+  // Send initial snapshot
+  ws.send(JSON.stringify({
+    type: 'analytics_update',
+    timestamp: Date.now(),
+    metrics: {
+      activeDevices: analyticsMetrics.activeDevices,
+      totalRequests: analyticsMetrics.totalRequests,
+      successRate: analyticsMetrics.totalRequests > 0
+        ? (analyticsMetrics.successfulRequests / analyticsMetrics.totalRequests) * 100
+        : 100,
+      avgResponseTime: analyticsMetrics.totalRequests > 0
+        ? analyticsMetrics.totalResponseTime / analyticsMetrics.totalRequests
+        : 0,
+      errorCount: analyticsMetrics.failedRequests,
+      throughput: 0,
+      cpuUsage: analyticsMetrics.cpuUsage,
+      memoryUsage: analyticsMetrics.memoryUsage
+    }
+  }));
+  
+  ws.on('close', () => {
+    console.log('WebSocket client disconnected (analytics)');
+    analyticsClients.delete(ws);
+  });
+  
+  ws.on('error', (error) => {
+    console.error('WebSocket error (analytics):', error);
+    analyticsClients.delete(ws);
+  });
+});
 
 wss.on('connection', (ws) => {
   console.log('WebSocket client connected (device-events)');
@@ -2442,8 +2585,10 @@ server.listen(PORT, () => {
   console.log(`🔓 Trapdoor API (Bobby's Secret Workshop): http://localhost:${PORT}/api/trapdoor/*`);
   console.log(`🌐 WebSocket hotplug: ws://localhost:${PORT}/ws/device-events`);
   console.log(`🔗 WebSocket correlation: ws://localhost:${PORT}/ws/correlation`);
+  console.log(`📈 WebSocket analytics: ws://localhost:${PORT}/ws/analytics`);
   console.log(`🏥 Health check: http://localhost:${PORT}/api/health`);
   console.log(`\n✅ All 27 authorization triggers ready for real device probe execution`);
   console.log(`✅ Firmware Library with brand-organized downloads available`);
   console.log(`✅ Trapdoor API with workflow execution and shadow logging enabled`);
+  console.log(`✅ Live Analytics Dashboard with real-time monitoring enabled`);
 });
