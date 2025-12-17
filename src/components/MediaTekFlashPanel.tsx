@@ -65,21 +65,13 @@ export function MediaTekFlashPanel() {
   const scanDevices = async () => {
     setIsScanning(true);
     try {
-      const mockDevices: MTKDevice[] = [
-        {
-          id: 'mtk-001',
-          name: 'MediaTek MT6765 (Helio P35)',
-          chipset: 'MT6765',
-          port: 'COM3',
-          mode: 'preloader',
-          detected: true,
-        },
-      ];
-
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      setDevices(mockDevices);
-      toast.success('MTK device scan complete', {
-        description: `Found ${mockDevices.length} MediaTek device(s)`,
+      // TODO: Implement real MediaTek device detection via SP Flash Tool API or CLI
+      // For now, return empty array - no fake devices
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      setDevices([]);
+      toast.info('MTK device scan complete', {
+        description: 'No MediaTek devices detected. Connect a device in Preloader/BROM mode.',
       });
     } catch (error) {
       toast.error('Device scan failed', {

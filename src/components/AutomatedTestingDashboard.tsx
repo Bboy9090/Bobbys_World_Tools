@@ -204,12 +204,14 @@ export function AutomatedTestingDashboard() {
     TEST_SUITES.filter(s => s.enabled).map(s => s.id)
   );
 
+  // Demo plugin for testing dashboard demonstration
+  // In production, this should accept a real plugin as a prop
   const mockPlugin: Plugin = {
-    id: 'test-plugin-' + Date.now(),
-    name: 'Test Plugin',
+    id: '[DEMO] test-plugin-' + Date.now(),
+    name: '[DEMO] Test Plugin',
     slug: 'test-plugin',
-    description: 'Sample plugin for testing',
-    longDescription: 'A sample plugin used for automated testing',
+    description: '[DEMO] Sample plugin for testing',
+    longDescription: 'A sample plugin used for automated testing demonstration',
     category: 'diagnostic',
     riskLevel: 'safe',
     status: 'pending',

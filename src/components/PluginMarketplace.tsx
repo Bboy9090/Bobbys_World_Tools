@@ -295,7 +295,7 @@ export function PluginMarketplace() {
   const [installedPlugins, setInstalledPlugins] = useKV<InstalledPlugin[]>('installed-plugins', []);
   const [selectedPlugin, setSelectedPlugin] = useState<Plugin | null>(null);
   const [activeTab, setActiveTab] = useState<'browse' | 'installed' | 'submit'>('browse');
-  const [plugins, setPlugins] = useState<Plugin[]>(MOCK_PLUGINS_FALLBACK);
+  const [plugins, setPlugins] = useState<Plugin[]>([]);
   const [loading, setLoading] = useState(false);
   const [downloading, setDownloading] = useState<Map<string, PluginDownloadProgress>>(new Map());
   const [dependencyInstallDialog, setDependencyInstallDialog] = useState<{
@@ -318,8 +318,8 @@ export function PluginMarketplace() {
       setPlugins(results);
     } catch (error) {
       console.error('Failed to load plugins:', error);
-      toast.error('Failed to load plugins, showing local cache');
-      setPlugins(MOCK_PLUGINS_FALLBACK);
+      toast.error('Failed to load plugins from registry. Check backend connection.');
+      setPlugins([]); // Show empty state instead of fake fallback
     } finally {
       setLoading(false);
     }
