@@ -59,7 +59,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+# Python virtualenv lib directories (not matching core/lib or src/lib)
+/lib/
 lib64/
 parts/
 sdist/
@@ -69,6 +70,10 @@ wheels/
 .installed.cfg
 *.egg
 server/node_modules
+
+# Explicitly allow project source lib directories
+!core/lib/
+!src/lib/
 
 # Bobby's Secret Workshop - NEVER COMMIT SENSITIVE DATA
 secrets/
