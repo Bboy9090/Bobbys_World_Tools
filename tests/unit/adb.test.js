@@ -1,12 +1,8 @@
 // Unit tests for ADB Library
-<<<<<<< HEAD
-import { describe, it, expect, vi } from 'vitest';
-=======
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock child_process module with promisified exec
 const mockExecAsync = vi.fn();
->>>>>>> origin/copilot/sub-pr-30-again
 
 vi.mock('child_process', () => ({
   exec: vi.fn()
@@ -52,8 +48,14 @@ describe('ADB Library', () => {
     it('should list connected devices successfully', async () => {
       const mockOutput = `List of devices attached
 123456789ABCDEF	device product:coral model:Pixel_4_XL device:coral
-// Unit tests for ADB Library
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+987654321FEDCBA	device product:bonito model:Pixel_3a device:bonito
+`;
+      mockExecAsync.mockResolvedValue({ stdout: mockOutput, stderr: '' });
+
+      const result = await ADBLibrary.listDevices();
+      
+      expect(result.success).toBe(true);
+      expect(result.devices).toHaveLength(2);
       expect(result.devices[0].serial).toBe('123456789ABCDEF');
       expect(result.devices[0].state).toBe('device');
 
