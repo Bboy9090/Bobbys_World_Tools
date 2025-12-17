@@ -5,10 +5,12 @@ This directory contains WebSocket server implementations for live flash progress
 ## Available Servers
 
 ### 1. Node.js Server (`flash-progress-server.js`)
+
 - **Port**: 3000 (HTTP API), 3001 (WebSocket)
 - **Dependencies**: `ws`, `express`, `cors`
 
 ### 2. Python Server (`flash_progress_server.py`)
+
 - **Port**: 8000 (HTTP API + WebSocket)
 - **Dependencies**: `fastapi`, `uvicorn`, `websockets`
 
@@ -26,6 +28,7 @@ node flash-progress-server.js
 ```
 
 The server will be available at:
+
 - HTTP API: `http://localhost:3000`
 - WebSocket: `ws://localhost:3001/flash-progress`
 
@@ -40,12 +43,14 @@ python3 server/flash_progress_server.py
 ```
 
 The server will be available at:
+
 - HTTP API: `http://localhost:8000`
 - WebSocket: `ws://localhost:8000/flash-progress`
 
 ## API Endpoints
 
 ### Start Flash Operation
+
 ```bash
 POST /api/flash/start
 Content-Type: application/json
@@ -59,6 +64,7 @@ Content-Type: application/json
 ```
 
 ### Start Demo (3 Devices)
+
 ```bash
 POST /api/flash/demo
 ```
@@ -66,16 +72,19 @@ POST /api/flash/demo
 This starts flash operations on three simulated devices simultaneously.
 
 ### Get All Active Jobs
+
 ```bash
 GET /api/flash/jobs
 ```
 
 ### Get Specific Job
+
 ```bash
 GET /api/flash/job/{jobId}
 ```
 
 ### Health Check
+
 ```bash
 GET /health
 ```
@@ -118,6 +127,7 @@ const [wsUrl, setWsUrl] = useState('ws://localhost:3001/flash-progress');
 ```
 
 For the Python server:
+
 ```typescript
 const [wsUrl, setWsUrl] = useState('ws://localhost:8000/flash-progress');
 ```
@@ -171,7 +181,8 @@ const [wsUrl, setWsUrl] = useState('ws://localhost:8000/flash-progress');
 
 The frontend automatically connects to the WebSocket server when you open the "Live Progress" tab in the Device Flashing Dashboard.
 
-### Steps:
+### Steps
+
 1. Start the WebSocket server (Node.js or Python)
 2. Open Bobby's World in your browser
 3. Navigate to: Hub → Device Flashing Dashboard
@@ -242,9 +253,10 @@ docker run -p 3000:3000 -p 3001:3001 bobbys-world-flash-ws
 
 ## Security Considerations
 
-### For Production:
+### For Production
 
 1. **Use WSS (Secure WebSocket)**
+
    ```javascript
    const https = require('https');
    const fs = require('fs');
@@ -258,6 +270,7 @@ docker run -p 3000:3000 -p 3001:3001 bobbys-world-flash-ws
    ```
 
 2. **Add Authentication**
+
    ```javascript
    wss.on('connection', (ws, req) => {
      const token = new URL(req.url, 'ws://base').searchParams.get('token');
@@ -270,6 +283,7 @@ docker run -p 3000:3000 -p 3001:3001 bobbys-world-flash-ws
    ```
 
 3. **Rate Limiting**
+
    ```javascript
    const rateLimit = require('express-rate-limit');
    
@@ -280,6 +294,7 @@ docker run -p 3000:3000 -p 3001:3001 bobbys-world-flash-ws
    ```
 
 4. **CORS Configuration**
+
    ```javascript
    app.use(cors({
      origin: 'https://yourdomain.com',
@@ -290,17 +305,20 @@ docker run -p 3000:3000 -p 3001:3001 bobbys-world-flash-ws
 ## Troubleshooting
 
 ### Connection Refused
+
 - Check if server is running: `curl http://localhost:3000/health`
 - Check firewall: `sudo ufw allow 3000` and `sudo ufw allow 3001`
 - Check port conflicts: `lsof -i :3000` and `lsof -i :3001`
 
 ### WebSocket Not Connecting
+
 - Verify URL in frontend matches server port
 - Check browser console for errors
 - Verify CORS is configured correctly
 - Check if running behind proxy (may need proxy configuration)
 
 ### No Progress Updates
+
 - Verify WebSocket connection is established
 - Check server logs for broadcast messages
 - Ensure flash job was started successfully
@@ -311,11 +329,13 @@ docker run -p 3000:3000 -p 3001:3001 bobbys-world-flash-ws
 ### Enable Debug Logging
 
 Node.js:
+
 ```bash
 DEBUG=* node flash-progress-server.js
 ```
 
 Python:
+
 ```bash
 LOG_LEVEL=debug python3 flash_progress_server.py
 ```
@@ -349,6 +369,7 @@ if (Math.random() < 0.1) {
 ## Support
 
 For issues or questions, check:
+
 - Main documentation: `WEBSOCKET_PROGRESS_INTEGRATION.md`
 - Backend API guide: `BACKEND_API_IMPLEMENTATION.md`
 - Device flashing guide: `DEVICE_FLASHING_INTEGRATION.md`
