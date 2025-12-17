@@ -123,7 +123,7 @@
   },
   "requirements": {
     "tools": ["libimobiledevice", "iTunes or Finder"],
-    "permissions": ["USB debugging enabled"],
+    "permissions": ["Device trusted on computer", "iTunes/Finder access"],
     "notes": "This workflow guides the restore process but actual restoration happens through iTunes/Finder"
   }
 }

@@ -30,9 +30,17 @@ class ShadowLogger {
       return Buffer.from(keyEnv, 'hex');
     }
 
-    // Generate a new key (in production, this should be stored securely)
+    // SECURITY WARNING: In production, you MUST set SHADOW_LOG_KEY environment variable
+    // Generating a new key will make existing shadow logs unreadable
+    console.error('⚠️  SECURITY WARNING: SHADOW_LOG_KEY not set!');
+    console.error('⚠️  Existing shadow logs will be UNREADABLE with a new key!');
+    console.error('⚠️  Set SHADOW_LOG_KEY environment variable for production use.');
+    
+    // Generate a temporary key for development only
     const key = crypto.randomBytes(32);
-    console.warn('Generated new shadow log encryption key. Set SHADOW_LOG_KEY environment variable for persistence.');
+    console.warn('Generated temporary shadow log encryption key (development only).');
+    console.warn('To persist this key: export SHADOW_LOG_KEY=' + key.toString('hex'));
+    
     return key;
   }
 

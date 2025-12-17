@@ -15,8 +15,9 @@ class IOSLibrary {
    */
   async isAvailable() {
     try {
-      const { stdout } = await execAsync('idevice_id --version');
-      return { success: true, version: stdout.trim() };
+      // Use -h flag as --version may not be available on all versions
+      const { stdout } = await execAsync('idevice_id -h');
+      return { success: true, version: 'libimobiledevice available' };
     } catch (error) {
       return { 
         success: false, 
