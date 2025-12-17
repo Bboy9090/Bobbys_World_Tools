@@ -36,12 +36,12 @@ export async function createBackup(
   await new Promise(resolve => setTimeout(resolve, 300));
   
   const backup: PluginBackup = {
-    id: `backup-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    id: `backup-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
     pluginId,
     version,
     createdAt: Date.now(),
     size: data ? JSON.stringify(data).length : 1024,
-    checksum: `sha256:${Math.random().toString(36).substr(2, 16)}`,
+    checksum: `sha256:${Math.random().toString(36).substring(2, 18)}`,
     metadata: { automatic: true },
   };
   

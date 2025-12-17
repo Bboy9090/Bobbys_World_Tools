@@ -158,10 +158,12 @@ export function satisfiesVersion(version: string, range: string): boolean {
       return comparison >= 0;
     case '<=':
       return comparison <= 0;
+    // Exact version match (when no operator or '=' is specified)
     case '=':
     case '':
       return comparison === 0;
     default:
+      // Unknown operators default to accepting any version for compatibility
       return true;
   }
 }

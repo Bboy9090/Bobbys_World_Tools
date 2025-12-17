@@ -43,7 +43,7 @@ const activeJobs = new Map<string, FlashJob>();
 export async function startFlash(options: FlashOptions): Promise<FlashResult> {
   await new Promise(resolve => setTimeout(resolve, 500));
   
-  const jobId = `flash-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  const jobId = `flash-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
   
   const job: FlashJob = {
     id: jobId,

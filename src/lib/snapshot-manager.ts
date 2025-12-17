@@ -144,7 +144,7 @@ class SnapshotManager {
     }
   ): Promise<Snapshot> {
     const snapshot: Snapshot = {
-      id: `snapshot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: `snapshot-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
       type,
       timestamp: Date.now(),
       deviceId: options?.deviceId,

@@ -42,7 +42,7 @@ export async function createTrigger(
   await new Promise(resolve => setTimeout(resolve, 200));
   
   return {
-    id: `trigger-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    id: `trigger-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
     type,
     deviceSerial,
     userId: 'current-user',
