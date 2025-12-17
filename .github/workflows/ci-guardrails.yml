@@ -5,9 +5,15 @@ on:
   push:
     branches: [ main ]
 
+# Set minimal permissions for security
+permissions:
+  contents: read
+
 jobs:
   no-placeholders:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
 
@@ -33,6 +39,8 @@ jobs:
 
   node-python-ci:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
 
