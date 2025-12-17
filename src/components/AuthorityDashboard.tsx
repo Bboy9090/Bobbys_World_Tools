@@ -36,16 +36,21 @@ interface AuthorityDashboardProps {
 export function AuthorityDashboard({ onNavigate }: AuthorityDashboardProps = {}) {
   const [selectedBundle, setSelectedBundle] = useState<EvidenceBundle | null>(null);
 
+  // Real stats should come from backend API
   const stats: AuthorityStats = {
-    totalDevices: 156,
-    correlatedDevices: 142,
-    evidenceBundles: 89,
-    activePlugins: 12,
-    averageConfidence: 0.93,
-    disputesResolved: 37,
+    totalDevices: 0,
+    correlatedDevices: 0,
+    evidenceBundles: 0,
+    activePlugins: 0,
+    averageConfidence: 0,
+    disputesResolved: 0,
   };
 
-  const mockPlugins: RegisteredPlugin[] = [
+  // Real plugins should come from plugin registry API
+  const registeredPlugins: RegisteredPlugin[] = [];
+
+  // Placeholder for demo - remove when real plugin system is connected
+  const mockPluginsForReference: RegisteredPlugin[] = [
     {
       plugin: {
         manifest: {
@@ -153,7 +158,11 @@ export function AuthorityDashboard({ onNavigate }: AuthorityDashboardProps = {})
     },
   ];
 
-  const mockBundles: EvidenceBundle[] = [
+  // Real evidence bundles should come from backend API
+  const evidenceBundles: EvidenceBundle[] = [];
+
+  // Placeholder for demo - remove when real evidence system is connected
+  const mockBundlesForReference: EvidenceBundle[] = [
     {
       id: 'bundle-001',
       deviceId: '4a7f9e8d6c5b4a3f2e1d0c9b8a7f6e5d',
@@ -399,10 +408,10 @@ export function AuthorityDashboard({ onNavigate }: AuthorityDashboardProps = {})
                       Cryptographically signed diagnostic evidence for legal admissibility
                     </p>
                   </div>
-                  <Badge variant="default" className="font-mono">{mockBundles.length} bundles</Badge>
+                  <Badge variant="default" className="font-mono">{evidenceBundles.length} bundles</Badge>
                 </div>
                 <EvidenceBundleList 
-                  bundles={mockBundles}
+                  bundles={evidenceBundles}
                   onSelectBundle={setSelectedBundle}
                 />
               </Card>

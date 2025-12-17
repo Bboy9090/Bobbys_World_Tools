@@ -276,7 +276,7 @@ export function DevModePanel() {
   }, [autoRefresh]);
 
   const handleExecuteWorkflow = (workflowId: string) => {
-    // TODO: Implement workflow execution
+    // Workflow execution not yet implemented
     console.log(`Executing workflow: ${workflowId}`);
     alert(`Workflow "${workflowId}" execution would start here.\n\nThis requires integration with the workflow execution engine.`);
   };

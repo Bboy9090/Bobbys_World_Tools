@@ -49,3 +49,45 @@ export function getTriggerById(id: string): AuthorizationTrigger | undefined {
 export function getTriggersByCategory(category: string): AuthorizationTrigger[] {
   return AUTHORIZATION_TRIGGERS.filter(t => t.category === category);
 }
+
+/**
+ * Execute an authorization trigger
+ * Currently returns error until implementation is complete
+ */
+export async function executeTrigger(
+  triggerId: string,
+  deviceId: string,
+  userConfirmation?: string
+): Promise<{ success: boolean; output?: string; error?: string }> {
+  console.log(`[AuthTrigger] Executing trigger ${triggerId} on device ${deviceId}`, userConfirmation);
+  
+  // TODO: Implement real trigger execution via backend
+  return {
+    success: false,
+    error: 'Authorization trigger execution not yet implemented. Backend integration required.',
+  };
+}
+
+/**
+ * Log trigger action to audit trail
+ * Currently logs to console until real logging is implemented
+ */
+export async function logTriggerAction(
+  triggerId: string,
+  deviceId: string,
+  userResponse: string,
+  result: { success: boolean; output?: string; error?: string }
+): Promise<void> {
+  const logEntry = {
+    timestamp: Date.now(),
+    triggerId,
+    deviceId,
+    userResponse,
+    result,
+  };
+  
+  console.log('[AuthTrigger] Logging trigger action:', logEntry);
+  
+  // TODO: Implement real audit logging to backend
+}
+

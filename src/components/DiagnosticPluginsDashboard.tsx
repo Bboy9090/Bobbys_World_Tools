@@ -70,12 +70,14 @@ export function DiagnosticPluginsDashboard({ deviceId: initialDeviceId = 'demo-d
   const [storageLoading, setStorageLoading] = useState(false);
   const [thermalLoading, setThermalLoading] = useState(false);
 
-  const createMockContext = (pluginId: string): PluginContext => ({
+  // Creates demonstration context for plugin execution
+  // TODO: Replace with real device context from actual device selection
+  const createDemoContext = (pluginId: string): PluginContext => ({
     pluginId,
     version: '1.0.0',
     environment: 'production',
-    deviceId,
-    platform,
+    deviceId: deviceId || '[DEMO] No Device',
+    platform: platform || 'android',
     user: {
       id: 'bobby',
       isOwner: true,
@@ -84,11 +86,11 @@ export function DiagnosticPluginsDashboard({ deviceId: initialDeviceId = 'demo-d
     adb: {
       shell: async (deviceId: string, command: string) => {
         await new Promise(resolve => setTimeout(resolve, 100));
-        return `Simulated output for: ${command}`;
+        return `[DEMO] Simulated output for: ${command}`;
       },
       execute: async (deviceId: string, command: string) => {
         await new Promise(resolve => setTimeout(resolve, 100));
-        return `Simulated output for: ${command}`;
+        return `[DEMO] Simulated output for: ${command}`;
       },
     },
     kv: {
@@ -110,7 +112,7 @@ export function DiagnosticPluginsDashboard({ deviceId: initialDeviceId = 'demo-d
   const runBatteryDiagnostics = async () => {
     setBatteryLoading(true);
     try {
-      const context = createMockContext(batteryHealthManifest.id);
+      const context = createDemoContext(batteryHealthManifest.id);
       const result = await executeBatteryHealth(context);
 
       if (result.success && result.data) {
@@ -129,7 +131,7 @@ export function DiagnosticPluginsDashboard({ deviceId: initialDeviceId = 'demo-d
   const runStorageDiagnostics = async () => {
     setStorageLoading(true);
     try {
-      const context = createMockContext(storageAnalyzerManifest.id);
+      const context = createDemoContext(storageAnalyzerManifest.id);
       const result = await executeStorageAnalyzer(context);
 
       if (result.success && result.data) {
@@ -148,7 +150,7 @@ export function DiagnosticPluginsDashboard({ deviceId: initialDeviceId = 'demo-d
   const runThermalDiagnostics = async () => {
     setThermalLoading(true);
     try {
-      const context = createMockContext(thermalMonitorManifest.id);
+      const context = createDemoContext(thermalMonitorManifest.id);
       const result = await executeThermalMonitor(context);
 
       if (result.success && result.data) {
