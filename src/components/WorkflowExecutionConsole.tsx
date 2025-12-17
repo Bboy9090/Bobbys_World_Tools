@@ -112,6 +112,10 @@ export function WorkflowExecutionConsole() {
     );
   };
 
+  const formatStatusText = (status: string) => {
+    return status.replace('_', ' ').toUpperCase();
+  };
+
   const getPlatformIcon = (platform: string) => {
     return <Smartphone className="h-4 w-4" />;
   };
@@ -253,7 +257,7 @@ export function WorkflowExecutionConsole() {
                     <div><strong>Author:</strong> {selectedWorkflow.metadata.author}</div>
                   )}
                   {selectedWorkflow.metadata.status && (
-                    <div><strong>Status:</strong> {selectedWorkflow.metadata.status.replace('_', ' ').toUpperCase()}</div>
+                    <div><strong>Status:</strong> {formatStatusText(selectedWorkflow.metadata.status)}</div>
                   )}
                   {selectedWorkflow.metadata.pr_link && (
                     <div>
