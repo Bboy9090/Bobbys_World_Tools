@@ -423,6 +423,15 @@ Contributions welcome for:
 - Violate terms of service or warranties
 - Support illegal activities
 
+### Branch Protection
+
+This repository uses GitHub Rulesets to enforce code quality standards. All pull requests to `main` must:
+- Pass all required status checks (tests, security scans, linting)
+- Receive at least one approving review
+- Be up-to-date with the base branch
+
+See [.github/BRANCH_PROTECTION.md](.github/BRANCH_PROTECTION.md) for complete details on branch protection rules and setup.
+
 ## 📄 License
 
 MIT License - See LICENSE file for details
