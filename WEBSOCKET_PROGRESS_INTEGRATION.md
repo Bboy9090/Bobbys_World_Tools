@@ -610,6 +610,7 @@ asyncio.run(simulate_flash())
    ```
 
 3. **Add authentication**:
+
    ```python
    @app.websocket("/flash-progress")
    async def flash_progress_endpoint(websocket: WebSocket, token: str = Query(...)):
