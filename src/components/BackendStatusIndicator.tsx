@@ -1,14 +1,10 @@
-/**
- * BackendStatusIndicator - Shows detailed backend service connectivity
- * Displays real-time status for all backend services (API, WebSocket, BootForge)
- */
-
 import { useState, useEffect } from 'react';
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, Warning, XCircle, CircleNotch } from '@phosphor-icons/react';
 import { useBackendHealth } from '@/lib/backend-health';
+import { API_CONFIG } from '@/lib/apiConfig';
 
 interface ServiceStatus {
   name: string;
@@ -17,6 +13,8 @@ interface ServiceStatus {
   error?: string;
   endpoint?: string;
 }
+
+const WS_BASE_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:3001';
 
 export function BackendStatusIndicator() {
   const health = useBackendHealth(10000); // Check every 10 seconds
@@ -30,7 +28,7 @@ export function BackendStatusIndicator() {
 
     const connectWS = () => {
       try {
-        ws = new WebSocket('ws://localhost:3001/ws/device-events');
+        ws = new WebSocket(`${WS_BASE_URL}/ws/device-events`);
         
         ws.onopen = () => {
           console.log('[BackendStatus] WebSocket connected');
@@ -71,7 +69,7 @@ export function BackendStatusIndicator() {
   useEffect(() => {
     const checkBootforge = async () => {
       try {
-        const response = await fetch('http://localhost:3001/api/bootforgeusb/status', {
+        const response = await fetch(`${API_CONFIG.BASE_URL}/api/bootforgeusb/status`, {
           signal: AbortSignal.timeout(5000),
         });
         setBootforgeStatus(response.ok ? 'connected' : 'disconnected');
@@ -92,19 +90,19 @@ export function BackendStatusIndicator() {
       status: health.isHealthy ? 'connected' : 'disconnected',
       lastCheck: health.lastCheck,
       error: health.error,
-      endpoint: 'http://localhost:3001/api/health'
+      endpoint: `${API_CONFIG.BASE_URL}/api/health`
     },
     {
       name: 'WebSocket',
       status: wsStatus,
       lastCheck: Date.now(),
-      endpoint: 'ws://localhost:3001/ws/device-events'
+      endpoint: `${WS_BASE_URL}/ws/device-events`
     },
     {
       name: 'BootForge USB',
       status: bootforgeStatus,
       lastCheck: Date.now(),
-      endpoint: 'http://localhost:3001/api/bootforgeusb/*'
+      endpoint: `${API_CONFIG.BASE_URL}/api/bootforgeusb/*`
     }
   ];
 
