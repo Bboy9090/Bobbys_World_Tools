@@ -5,6 +5,7 @@ Hidden modules and advanced device operation tools.
 ## ⚠️ WARNING: AUTHORIZED USE ONLY ⚠️
 
 This directory contains powerful device exploitation and bypass tools intended **ONLY** for:
+
 - Devices you personally own
 - Devices with explicit written owner authorization
 - Professional repair contexts with proper documentation

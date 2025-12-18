@@ -68,8 +68,8 @@ The server provides 4 simulated devices:
 { type: 'subscribe', batchId: 'batch-123' }
 
 // Start batch operation
-{ 
-  type: 'start_batch', 
+{
+  type: 'start_batch',
   batchId: 'batch-123',
   config: {
     deviceIds: ['device-1', 'device-2'],
@@ -102,10 +102,10 @@ The server provides 4 simulated devices:
 { type: 'operation_complete', batchId: string, deviceId: string, operation: string, data: {...} }
 
 // Progress updates
-{ 
-  type: 'progress', 
-  batchId: string, 
-  deviceId: string, 
+{
+  type: 'progress',
+  batchId: string,
+  deviceId: string,
   operation: string,
   progress: number,  // 0-100
   status: 'running' | 'paused' | 'completed' | 'failed'
@@ -151,10 +151,10 @@ const {
 ```tsx
 const handleStartBatch = () => {
   const batchId = `batch-${Date.now()}`;
-  
+
   startBatch(batchId, {
-    deviceIds: ['adb-ABC123XYZ', 'adb-DEF456UVW'],
-    operations: ['battery-health', 'storage-analyzer', 'thermal-monitor'],
+    deviceIds: ["adb-ABC123XYZ", "adb-DEF456UVW"],
+    operations: ["battery-health", "storage-analyzer", "thermal-monitor"],
   });
 };
 ```
@@ -163,10 +163,10 @@ const handleStartBatch = () => {
 
 ```tsx
 useEffect(() => {
-  const unsubscribe = on('progress', (event) => {
+  const unsubscribe = on("progress", (event) => {
     console.log(`Progress: ${event.progress}%`, event);
   });
-  
+
   return unsubscribe;
 }, [on]);
 ```
@@ -191,6 +191,7 @@ useEffect(() => {
 Each operation generates realistic mock data:
 
 **Battery Health:**
+
 ```json
 {
   "status": "healthy",
@@ -203,6 +204,7 @@ Each operation generates realistic mock data:
 ```
 
 **Storage Analyzer:**
+
 ```json
 {
   "status": "healthy",
@@ -215,6 +217,7 @@ Each operation generates realistic mock data:
 ```
 
 **Thermal Monitor:**
+
 ```json
 {
   "status": "normal",
@@ -264,7 +267,7 @@ Each operation generates realistic mock data:
 
 ```typescript
 useBatchDiagnosticsWebSocket({
-  wsUrl: 'ws://localhost:3002/ws/batch-diagnostics',
+  wsUrl: "ws://localhost:3002/ws/batch-diagnostics",
   reconnectInterval: 5000,
   maxReconnectAttempts: 5,
 });
@@ -309,8 +312,8 @@ All events are stored in the hook:
 ```tsx
 const { events } = useBatchDiagnosticsWebSocket();
 
-console.log('All events:', events);
-console.log('Last 10 events:', events.slice(-10));
+console.log("All events:", events);
+console.log("Last 10 events:", events.slice(-10));
 ```
 
 ### Manual Testing
@@ -363,12 +366,14 @@ src/
 To implement the real backend:
 
 1. **Backend Server** (Node.js/Python):
+
    - Implement same WebSocket protocol
    - Connect to real device APIs (ADB, BootForge USB, etc.)
    - Add authentication and authorization
    - Implement result persistence
 
 2. **Frontend Updates**:
+
    - Update WebSocket URL to production endpoint
    - Add authentication tokens
    - Remove mock server initialization

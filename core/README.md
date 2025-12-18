@@ -11,6 +11,7 @@ This directory contains the core backend APIs, libraries, and task management fo
 ## Purpose
 
 The core module provides the foundational infrastructure for:
+
 - Device detection and management
 - Workflow execution and orchestration
 - Secure command execution with authorization

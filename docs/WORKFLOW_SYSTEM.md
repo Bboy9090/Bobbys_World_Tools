@@ -63,6 +63,7 @@ Bobby's World Tools uses a JSON-based workflow system for defining reproducible 
 ### Step Types
 
 #### 1. Command
+
 Execute a system command (adb, fastboot, shell, etc.).
 
 ```json
@@ -79,6 +80,7 @@ Execute a system command (adb, fastboot, shell, etc.).
 ```
 
 #### 2. Check
+
 Verify a condition or state.
 
 ```json
@@ -93,6 +95,7 @@ Verify a condition or state.
 ```
 
 #### 3. Wait
+
 Pause execution for a specified duration.
 
 ```json
@@ -106,6 +109,7 @@ Pause execution for a specified duration.
 ```
 
 #### 4. Prompt
+
 Request user input or confirmation.
 
 ```json
@@ -121,6 +125,7 @@ Request user input or confirmation.
 ```
 
 #### 5. Log
+
 Create a log entry (public or shadow).
 
 ```json
@@ -140,12 +145,14 @@ Create a log entry (public or shadow).
 ### Step Properties
 
 **Required:**
+
 - `id`: Unique step identifier
 - `name`: Human-readable step name
 - `type`: Step type (command, check, wait, prompt, log)
 - `on_failure`: Failure handling (`abort`, `continue`, `retry`)
 
 **Optional:**
+
 - `action`: Action to perform
 - `success_criteria`: Success determination criteria
 - `timeout`: Timeout in seconds
@@ -165,6 +172,7 @@ Create a log entry (public or shadow).
 3. **retry**: Retry the step based on `retry_count`
 
 ### Example with Retry
+
 ```json
 {
   "id": "connect-device",
@@ -243,6 +251,7 @@ Workflows can support automatic rollback on failure.
 ## Platform-Specific Commands
 
 ### Android (ADB)
+
 ```json
 {
   "platform": "android",
@@ -260,6 +269,7 @@ Workflows can support automatic rollback on failure.
 ```
 
 ### Android (Fastboot)
+
 ```json
 {
   "platform": "android",
@@ -277,6 +287,7 @@ Workflows can support automatic rollback on failure.
 ```
 
 ### iOS
+
 ```json
 {
   "platform": "ios",
@@ -294,6 +305,7 @@ Workflows can support automatic rollback on failure.
 ```
 
 ### Windows
+
 ```json
 {
   "platform": "windows",
@@ -311,6 +323,7 @@ Workflows can support automatic rollback on failure.
 ```
 
 ### IoT
+
 ```json
 {
   "platform": "iot",
@@ -334,13 +347,13 @@ Workflows are automatically validated against the JSON Schema defined in `workfl
 ### Validation Example
 
 ```javascript
-import { WorkflowEngine } from './core/tasks/workflow-engine.js';
+import { WorkflowEngine } from "./core/tasks/workflow-engine.js";
 
 const engine = new WorkflowEngine();
-const result = await engine.loadWorkflow('android', 'adb-diagnostics');
+const result = await engine.loadWorkflow("android", "adb-diagnostics");
 
 if (!result.success) {
-  console.error('Validation errors:', result.validationErrors);
+  console.error("Validation errors:", result.validationErrors);
 }
 ```
 
@@ -363,18 +376,14 @@ curl -X POST http://localhost:3001/api/trapdoor/workflow/execute \
 
 ```javascript
 const engine = new WorkflowEngine();
-const result = await engine.executeWorkflow(
-  'android',
-  'adb-diagnostics',
-  {
-    deviceSerial: 'ABC123XYZ',
-    userId: 'admin',
-    authorization: null
-  }
-);
+const result = await engine.executeWorkflow("android", "adb-diagnostics", {
+  deviceSerial: "ABC123XYZ",
+  userId: "admin",
+  authorization: null,
+});
 
-console.log('Success:', result.success);
-console.log('Results:', result.results);
+console.log("Success:", result.success);
+console.log("Results:", result.results);
 ```
 
 ## Step-by-Step Logging
@@ -392,6 +401,7 @@ Every workflow step is logged with detailed information:
 ### Log Details
 
 Each step result includes:
+
 - `stepId`: Unique step identifier
 - `stepName`: Human-readable name
 - `stepIndex`: Position in workflow
@@ -463,16 +473,19 @@ workflows/
 ## Troubleshooting
 
 ### Workflow Not Found
+
 - Check category and workflowId spelling
 - Ensure JSON file exists in correct directory
 - Verify file has `.json` extension
 
 ### Validation Errors
+
 - Run workflow through schema validator
 - Check all required fields are present
 - Verify enum values (platform, category, risk_level)
 
 ### Execution Failures
+
 - Review step-by-step logs
 - Check device connectivity
 - Verify required tools (adb, fastboot, etc.) are installed
@@ -512,6 +525,7 @@ Use success criteria to branch workflow logic:
 ## Support
 
 For workflow system issues:
+
 - GitHub Issues: https://github.com/Bboy9090/Bobbys_World_Tools/issues
 - Schema Reference: `workflows/workflow-schema.json`
 - Examples: All workflow files in `workflows/` directory

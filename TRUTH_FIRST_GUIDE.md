@@ -1,15 +1,17 @@
 # Truth-First Design Implementation Guide
 
 ## Overview
+
 This document outlines the implementation of truth-first design principles across Bobby's World. Every UI element must reflect real backend detection results - no ghost values, no placeholders, no fake "connected" statuses.
 
 ## Core Components
 
 ### 1. App Context (`src/lib/app-context.tsx`)
+
 Provides global state for demo mode and backend availability:
 
 ```typescript
-import { useApp } from '@/lib/app-context';
+import { useApp } from "@/lib/app-context";
 
 const { isDemoMode, backendAvailable } = useApp();
 ```
@@ -19,16 +21,18 @@ const { isDemoMode, backendAvailable } = useApp();
 - State persists via `useKV` for session continuity
 
 ### 2. Backend Health Check (`src/lib/backend-health.ts`)
+
 Utilities for checking backend and tool availability:
 
 ```typescript
-import { checkBackendHealth, getBackendStatus } from '@/lib/backend-health';
+import { checkBackendHealth, getBackendStatus } from "@/lib/backend-health";
 
 const healthy = await checkBackendHealth();
 const status = await getBackendStatus();
 ```
 
 Functions:
+
 - `checkBackendHealth()`: Returns boolean, 2s timeout
 - `checkToolAvailability(tool)`: Checks if ADB/Fastboot/iDevice tools available
 - `getBackendStatus()`: Returns complete availability status object
@@ -36,6 +40,7 @@ Functions:
 ### 3. Reusable State Components
 
 #### EmptyState (`src/components/EmptyState.tsx`)
+
 Used when no data available (not an error):
 
 ```typescript
@@ -51,6 +56,7 @@ Used when no data available (not an error):
 ```
 
 #### ErrorState (`src/components/ErrorState.tsx`)
+
 Used when something went wrong:
 
 ```typescript
@@ -66,6 +72,7 @@ Used when something went wrong:
 ```
 
 #### LoadingState (`src/components/LoadingState.tsx`)
+
 Used during data fetching:
 
 ```typescript
@@ -76,6 +83,7 @@ Used during data fetching:
 ```
 
 ### 4. Demo Mode Banner (`src/components/DemoModeBanner.tsx`)
+
 Persistent banner shown when in demo mode:
 
 ```typescript
@@ -85,6 +93,7 @@ Persistent banner shown when in demo mode:
 ## Implementation Patterns
 
 ### Pattern 1: Device Detection
+
 ```typescript
 import { useAndroidDevices } from '@/hooks/use-android-devices';
 
@@ -92,7 +101,7 @@ function DevicePanel() {
   const { devices, loading, error } = useAndroidDevices();
 
   if (loading) return <LoadingState message="Detecting devices..." />;
-  
+
   if (error) {
     return (
       <ErrorState
@@ -118,6 +127,7 @@ function DevicePanel() {
 ```
 
 ### Pattern 2: Flash Operations
+
 ```typescript
 function FlashPanel() {
   const { isDemoMode } = useApp();
@@ -135,7 +145,7 @@ function FlashPanel() {
     return (
       <EmptyState
         title="No operations queued"
-        description={isDemoMode 
+        description={isDemoMode
           ? "Demo mode: Click to simulate flash operation"
           : "Connect backend to start real flash operations"}
         action={isDemoMode ? {
@@ -151,6 +161,7 @@ function FlashPanel() {
 ```
 
 ### Pattern 3: Plugin Registry
+
 ```typescript
 function PluginMarketplace() {
   const { isDemoMode } = useApp();
@@ -186,6 +197,7 @@ function PluginMarketplace() {
 ```
 
 ### Pattern 4: Test Results
+
 ```typescript
 function TestResultsPanel() {
   const [results, setResults] = useState(null);
@@ -214,12 +226,13 @@ function TestResultsPanel() {
 ```
 
 ### Pattern 5: Evidence Bundles
+
 ```typescript
 function EvidenceBundleList() {
   const { bundles, loading, error } = useEvidenceBundles();
 
   if (loading) return <LoadingState message="Loading bundles..." />;
-  
+
   if (error) {
     return (
       <ErrorState
@@ -247,34 +260,40 @@ function EvidenceBundleList() {
 ## Device State Classification
 
 ### State Definitions
+
 Never auto-promote devices to higher confidence states. Only backend tool evidence can upgrade state.
 
 ```typescript
-type DeviceState = 
-  | 'connected'      // ✅ Tool confirmed (ADB/Fastboot/DFU)
-  | 'weak'           // ⚠️ Partial evidence, low confidence
-  | 'confirmed'      // 🖥️ OS confirmed, not mapped to USB
-  | 'likely'         // 🤔 Heuristic detection, unverified
-  | 'unconfirmed';   // ❌ Insufficient evidence
+type DeviceState =
+  | "connected" // ✅ Tool confirmed (ADB/Fastboot/DFU)
+  | "weak" // ⚠️ Partial evidence, low confidence
+  | "confirmed" // 🖥️ OS confirmed, not mapped to USB
+  | "likely" // 🤔 Heuristic detection, unverified
+  | "unconfirmed"; // ❌ Insufficient evidence
 
 // Mapping to UI
 function getStatusIndicator(state: DeviceState) {
   switch (state) {
-    case 'connected':
-      return { icon: CheckCircle, color: 'text-success', label: 'Connected' };
-    case 'weak':
-      return { icon: Warning, color: 'text-warning', label: 'Weak Signal' };
-    case 'confirmed':
-      return { icon: CheckCircle, color: 'text-primary', label: 'Confirmed' };
-    case 'likely':
-      return { icon: Circle, color: 'text-accent', label: 'Likely' };
-    case 'unconfirmed':
-      return { icon: Question, color: 'text-muted-foreground', label: 'Unconfirmed' };
+    case "connected":
+      return { icon: CheckCircle, color: "text-success", label: "Connected" };
+    case "weak":
+      return { icon: Warning, color: "text-warning", label: "Weak Signal" };
+    case "confirmed":
+      return { icon: CheckCircle, color: "text-primary", label: "Confirmed" };
+    case "likely":
+      return { icon: Circle, color: "text-accent", label: "Likely" };
+    case "unconfirmed":
+      return {
+        icon: Question,
+        color: "text-muted-foreground",
+        label: "Unconfirmed",
+      };
   }
 }
 ```
 
 ### Backend Response Contract
+
 ```typescript
 // Example backend response
 interface DeviceDetectionResponse {
@@ -288,7 +307,7 @@ interface DeviceDetectionResponse {
       confidence: number; // 0-100
     };
     model?: string;
-    source: 'adb' | 'fastboot' | 'usb' | 'dfu';
+    source: "adb" | "fastboot" | "usb" | "dfu";
   }>;
   tools: {
     adb: { available: boolean; version?: string };
@@ -301,21 +320,23 @@ interface DeviceDetectionResponse {
 ## Demo Mode Handling
 
 ### Labeling Demo Data
+
 All simulated data must be clearly marked:
 
 ```typescript
 const demoDevice = {
-  serial: '[DEMO] ABC123XYZ',
-  model: '[DEMO] Simulated Device',
-  state: 'connected'
+  serial: "[DEMO] ABC123XYZ",
+  model: "[DEMO] Simulated Device",
+  state: "connected",
 };
 
-toast.success('Operation started (DEMO MODE)');
+toast.success("Operation started (DEMO MODE)");
 ```
 
 ### Disabling Features Without Backend
+
 ```typescript
-<Button 
+<Button
   disabled={!backendAvailable}
   onClick={performRealOperation}
 >
@@ -324,11 +345,12 @@ toast.success('Operation started (DEMO MODE)');
 ```
 
 ### Demo Mode Detection
+
 ```typescript
 useEffect(() => {
   async function checkBackend() {
     const healthy = await checkBackendHealth();
-    
+
     if (!healthy) {
       setDemoMode(true);
       // Initialize mock services
@@ -339,7 +361,7 @@ useEffect(() => {
       // Use real backend
     }
   }
-  
+
   checkBackend();
 }, []);
 ```
@@ -347,33 +369,35 @@ useEffect(() => {
 ## Audit Logging
 
 ### Detection Events
+
 Every device detection attempt should be logged:
 
 ```typescript
 async function detectDevices() {
   const startTime = Date.now();
-  console.log('[Detection] Starting device detection...');
-  
+  console.log("[Detection] Starting device detection...");
+
   try {
-    const response = await fetch('/api/android-devices/all');
+    const response = await fetch("/api/android-devices/all");
     const data = await response.json();
-    
-    console.log('[Detection] Found', data.devices.length, 'devices');
-    console.log('[Detection] Evidence:', {
+
+    console.log("[Detection] Found", data.devices.length, "devices");
+    console.log("[Detection] Evidence:", {
       adb: data.sources.adb.count,
       fastboot: data.sources.fastboot.count,
-      duration: Date.now() - startTime
+      duration: Date.now() - startTime,
     });
-    
+
     return data;
   } catch (error) {
-    console.error('[Detection] Failed:', error);
+    console.error("[Detection] Failed:", error);
     throw error;
   }
 }
 ```
 
 ### Operation Audit Trail
+
 ```typescript
 interface AuditEntry {
   timestamp: number;
@@ -384,19 +408,20 @@ interface AuditEntry {
     output: string;
     exitCode: number;
   };
-  result: 'success' | 'failure';
+  result: "success" | "failure";
 }
 
 function logOperation(entry: AuditEntry) {
-  const auditLog = getFromKV('audit:operations', []);
+  const auditLog = getFromKV("audit:operations", []);
   auditLog.push(entry);
-  saveToKV('audit:operations', auditLog);
+  saveToKV("audit:operations", auditLog);
 }
 ```
 
 ## Migration Checklist
 
 ### For Each Component:
+
 - [ ] Import and use `useApp()` hook for demo mode detection
 - [ ] Replace hardcoded data with API calls
 - [ ] Add loading states with `<LoadingState />`
@@ -409,24 +434,26 @@ function logOperation(entry: AuditEntry) {
 - [ ] Show "No data" instead of fake data
 
 ### Common Mistakes to Avoid:
+
 ❌ Showing "Connected" without tool evidence  
 ❌ Hardcoded device lists in components  
 ❌ Simulated data without `[DEMO]` label  
 ❌ Missing empty states (showing nothing)  
 ❌ Auto-promoting "unconfirmed" to "connected"  
 ❌ Masking backend errors with fallback data  
-❌ localStorage without real backend sync  
+❌ localStorage without real backend sync
 
 ✅ Real API responses or clear empty states  
 ✅ Explicit device state confidence levels  
 ✅ Demo mode banner when using mocks  
 ✅ Error states with retry actions  
 ✅ Audit logging for all operations  
-✅ No data means empty list, not fake entries  
+✅ No data means empty list, not fake entries
 
 ## Testing Truth-First Design
 
 ### Manual Testing
+
 1. Start app with backend DOWN → Should show demo banner
 2. All panels should show empty states initially
 3. Click operations → Should warn "Backend required" or show "[DEMO]"
@@ -435,6 +462,7 @@ function logOperation(entry: AuditEntry) {
 6. Disconnect device → Should remove from list immediately
 
 ### Automated Tests
+
 ```typescript
 describe('Truth-First Device Detection', () => {
   it('shows empty state when no devices', () => {

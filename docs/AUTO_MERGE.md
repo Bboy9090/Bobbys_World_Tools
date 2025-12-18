@@ -21,6 +21,7 @@ When a pull request is opened, the auto-merge workflow automatically enables Git
 ## Workflow Triggers
 
 The auto-merge workflow is triggered on:
+
 - Pull request opened, synchronized (new commits pushed), reopened, or marked ready for review
 - Pull request reviews submitted
 - Check suites completed
@@ -29,6 +30,7 @@ The auto-merge workflow is triggered on:
 ## Merge Strategy
 
 The workflow attempts to merge using:
+
 1. **Squash merge** (preferred) - Creates a single commit with all changes
 2. **Standard merge** (fallback) - If squash is not available
 3. If both fail, assumes auto-merge is already enabled or cannot be enabled
@@ -38,11 +40,13 @@ The workflow attempts to merge using:
 You can still manually control auto-merge:
 
 ### Disable auto-merge
+
 ```bash
 gh pr merge <PR_NUMBER> --disable-auto-merge
 ```
 
 ### Enable auto-merge manually
+
 ```bash
 gh pr merge <PR_NUMBER> --auto --squash
 ```
@@ -56,6 +60,7 @@ Auto-merge respects all branch protection rules configured for the repository. P
 ## Troubleshooting
 
 If auto-merge doesn't work:
+
 - Check that branch protection rules allow auto-merge
 - Verify all required checks are passing
 - Ensure required approvals are in place
@@ -67,6 +72,7 @@ If auto-merge doesn't work:
 The auto-merge workflow is located at `.github/workflows/auto-merge.yml`.
 
 To modify the merge strategy or behavior, edit this file. Common customizations:
+
 - Change merge method (squash, merge, rebase)
 - Add conditions or filters
 - Customize the bot comment message

@@ -11,6 +11,7 @@
 This guide covers day-to-day operations, monitoring, maintenance, and troubleshooting for Bobby's World Tools (Pandora Codex) deployments.
 
 **Topics Covered:**
+
 - Service management
 - Monitoring and health checks
 - Log management
@@ -260,14 +261,14 @@ ss -an | grep :3001 | grep -i established
 
 ### Log Locations
 
-| Component | Log Location |
-|-----------|-------------|
-| Backend API | `/var/log/pandora-codex/api.log` |
-| Flash Operations | `/var/log/pandora-codex/flash.log` |
-| Authorization | `/var/log/pandora-codex/authorization.log` |
-| Errors | `/var/log/pandora-codex/error.log` |
-| SystemD (Backend) | `journalctl -u pandora-backend` |
-| SystemD (Frontend) | `journalctl -u pandora-frontend` |
+| Component          | Log Location                               |
+| ------------------ | ------------------------------------------ |
+| Backend API        | `/var/log/pandora-codex/api.log`           |
+| Flash Operations   | `/var/log/pandora-codex/flash.log`         |
+| Authorization      | `/var/log/pandora-codex/authorization.log` |
+| Errors             | `/var/log/pandora-codex/error.log`         |
+| SystemD (Backend)  | `journalctl -u pandora-backend`            |
+| SystemD (Frontend) | `journalctl -u pandora-frontend`           |
 
 ### Viewing Logs
 
@@ -319,11 +320,13 @@ sudo logrotate -f /etc/logrotate.d/pandora-codex
 ### What to Backup
 
 1. **Configuration Files**
+
    - `.env` files
    - SystemD service files
    - Nginx configuration (if used)
 
 2. **Data Directories**
+
    - `/var/lib/pandora-codex/snapshots/`
    - `/var/lib/pandora-codex/evidence/`
    - `/var/log/pandora-codex/` (optional)
@@ -425,10 +428,12 @@ curl http://localhost:3001/health
 #### Issue: Backend Won't Start
 
 **Symptoms:**
+
 - Service fails to start
 - Health check returns connection error
 
 **Diagnosis:**
+
 ```bash
 # Check service status
 sudo systemctl status pandora-backend
@@ -441,6 +446,7 @@ sudo lsof -i :3001
 ```
 
 **Resolution:**
+
 ```bash
 # Kill any process using port 3001
 sudo kill $(sudo lsof -t -i:3001)
@@ -452,10 +458,12 @@ sudo systemctl restart pandora-backend
 #### Issue: High Memory Usage
 
 **Symptoms:**
+
 - System becomes slow
 - OOM killer terminates processes
 
 **Diagnosis:**
+
 ```bash
 # Check memory usage
 free -h
@@ -463,6 +471,7 @@ ps aux | grep node | awk '{sum+=$6} END {print sum/1024 " MB"}'
 ```
 
 **Resolution:**
+
 ```bash
 # Restart services to free memory
 sudo systemctl restart pandora-backend
@@ -479,10 +488,12 @@ MemoryHigh=1.5G
 #### Issue: Device Not Detected
 
 **Symptoms:**
+
 - Connected device not showing
 - Empty device list
 
 **Diagnosis:**
+
 ```bash
 # Test ADB directly
 adb devices
@@ -498,6 +509,7 @@ cat /etc/udev/rules.d/51-android.rules
 ```
 
 **Resolution:**
+
 ```bash
 # Restart ADB server
 adb kill-server
@@ -512,10 +524,12 @@ sudo systemctl restart udev
 #### Issue: WebSocket Connection Fails
 
 **Symptoms:**
+
 - Real-time updates not working
 - "Demo Mode" banner appears
 
 **Diagnosis:**
+
 ```bash
 # Check WebSocket endpoint
 wscat -c ws://localhost:3001/ws/device-events
@@ -525,6 +539,7 @@ sudo nginx -t
 ```
 
 **Resolution:**
+
 ```bash
 # Ensure WebSocket upgrade headers in nginx
 sudo nano /etc/nginx/sites-available/pandora-codex
@@ -597,7 +612,7 @@ npm install prom-client
 Add to `server/index.js`:
 
 ```javascript
-const promClient = require('prom-client');
+const promClient = require("prom-client");
 const register = new promClient.Registry();
 
 // Collect default metrics
@@ -605,15 +620,15 @@ promClient.collectDefaultMetrics({ register });
 
 // Custom metrics
 const httpRequestDuration = new promClient.Histogram({
-  name: 'http_request_duration_seconds',
-  help: 'Duration of HTTP requests in seconds',
-  labelNames: ['method', 'route', 'status_code']
+  name: "http_request_duration_seconds",
+  help: "Duration of HTTP requests in seconds",
+  labelNames: ["method", "route", "status_code"],
 });
 register.registerMetric(httpRequestDuration);
 
 // Metrics endpoint
-app.get('/metrics', async (req, res) => {
-  res.set('Content-Type', register.contentType);
+app.get("/metrics", async (req, res) => {
+  res.set("Content-Type", register.contentType);
   res.end(await register.metrics());
 });
 ```
@@ -651,11 +666,13 @@ groups:
 ### Support Tiers
 
 1. **Tier 1: User Support**
+
    - Device detection issues
    - Basic troubleshooting
    - Documentation questions
 
 2. **Tier 2: System Administration**
+
    - Service failures
    - Performance issues
    - Configuration changes
@@ -681,22 +698,26 @@ groups:
 ## 📝 Maintenance Schedule
 
 ### Daily
+
 - ✅ Monitor health checks
 - ✅ Review error logs
 - ✅ Check disk usage
 
 ### Weekly
+
 - ✅ Review performance metrics
 - ✅ Verify backups completed
 - ✅ Check for updates
 
 ### Monthly
+
 - ✅ Review and archive old logs
 - ✅ Clean up old snapshots (retention policy)
 - ✅ Verify disaster recovery procedures
 - ✅ Review security audit logs
 
 ### Quarterly
+
 - ✅ Update dependencies
 - ✅ Review and update documentation
 - ✅ Conduct security audit
@@ -710,5 +731,5 @@ groups:
 
 ---
 
-*"Monitor actively. Respond quickly. Document thoroughly."*  
+_"Monitor actively. Respond quickly. Document thoroughly."_  
 — **Pandora Codex Operations Standards**
