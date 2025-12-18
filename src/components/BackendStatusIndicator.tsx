@@ -4,6 +4,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Button } from "@/components/ui/button";
 import { CheckCircle, Warning, XCircle, CircleNotch } from '@phosphor-icons/react';
 import { useBackendHealth } from '@/lib/backend-health';
+import { useAudioNotifications } from '@/hooks/use-audio-notifications';
 import { API_CONFIG } from '@/lib/apiConfig';
 
 interface ServiceStatus {
@@ -18,8 +19,10 @@ const WS_BASE_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:3001';
 
 export function BackendStatusIndicator() {
   const health = useBackendHealth(10000); // Check every 10 seconds
+  const audio = useAudioNotifications();
   const [wsStatus, setWsStatus] = useState<'connected' | 'disconnected' | 'checking'>('checking');
   const [bootforgeStatus, setBootforgeStatus] = useState<'connected' | 'disconnected' | 'checking'>('checking');
+  const [previousWsStatus, setPreviousWsStatus] = useState<'connected' | 'disconnected' | 'checking'>('checking');
   
   // Check WebSocket connectivity
   useEffect(() => {
@@ -33,16 +36,29 @@ export function BackendStatusIndicator() {
         ws.onopen = () => {
           console.log('[BackendStatus] WebSocket connected');
           setWsStatus('connected');
+          // Play connect sound only if previously disconnected
+          if (previousWsStatus === 'disconnected') {
+            audio.handleConnect();
+          }
+          setPreviousWsStatus('connected');
         };
         
         ws.onerror = (error) => {
           console.error('[BackendStatus] WebSocket error:', error);
           setWsStatus('disconnected');
+          if (previousWsStatus === 'connected') {
+            audio.handleDisconnect();
+          }
+          setPreviousWsStatus('disconnected');
         };
         
         ws.onclose = () => {
           console.log('[BackendStatus] WebSocket disconnected');
           setWsStatus('disconnected');
+          if (previousWsStatus === 'connected') {
+            audio.handleDisconnect();
+          }
+          setPreviousWsStatus('disconnected');
           // Attempt reconnect after 5 seconds
           reconnectTimer = setTimeout(connectWS, 5000);
         };
@@ -63,7 +79,7 @@ export function BackendStatusIndicator() {
         clearTimeout(reconnectTimer);
       }
     };
-  }, []);
+  }, [previousWsStatus, audio]);
 
   // Check BootForge USB backend
   useEffect(() => {

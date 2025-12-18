@@ -9,11 +9,14 @@ import { PluginsTab } from "./tabs/PluginsTab";
 import { CommunityTab } from "./tabs/CommunityTab";
 import { SettingsTab } from "./tabs/SettingsTab";
 import { PandorasRoom } from "./SecretRoom";
+import { BobbysTraproom } from "./SecretRoom/BobbysTraproom";
+import { BobbysDevCorner } from "./SecretRoom/BobbysDevCorner";
 import { LiveAnalyticsDashboard } from "./LiveAnalyticsDashboard";
 import { DeviceSidebar } from "./DeviceSidebar";
 import { LogsPanel } from "./LogsPanel";
 import { BackendStatusIndicator } from "./BackendStatusIndicator";
 import { useApp } from "@/lib/app-context";
+import { useAudioNotifications } from "@/hooks/use-audio-notifications";
 import { 
     Cpu, 
     FileText, 
@@ -23,13 +26,16 @@ import {
     Gear,
     Wrench,
     LockKey,
-    ChartLine
+    ChartLine,
+    Skull,
+    Code
 } from '@phosphor-icons/react';
 
 export function DashboardLayout() {
     const [activeTab, setActiveTab] = useState('diagnostics');
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const { backendAvailable } = useApp();
+    const audio = useAudioNotifications();
 
     return (
         <div className="h-screen flex flex-col workshop-bg">
@@ -84,6 +90,22 @@ export function DashboardLayout() {
                                     <span className="font-medium">Pandora's Room</span>
                                 </TabsTrigger>
                                 <TabsTrigger 
+                                    value="traproom" 
+                                    className="gap-1.5 px-4 data-[state=active]:btn-sneaker data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+                                >
+                                    <Skull weight="duotone" size={18} />
+                                    <span className="font-medium">💀 Traproom</span>
+                                    <Badge variant="destructive" className="ml-1.5 text-[10px] px-1.5 py-0">HOT</Badge>
+                                </TabsTrigger>
+                                <TabsTrigger 
+                                    value="dev-corner" 
+                                    className="gap-1.5 px-4 data-[state=active]:btn-sneaker data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+                                >
+                                    <Code weight="duotone" size={18} />
+                                    <span className="font-medium">💻 Dev Corner</span>
+                                    <Badge variant="outline" className="ml-1.5 text-[10px] px-1.5 py-0">EXP</Badge>
+                                </TabsTrigger>
+                                <TabsTrigger 
                                     value="reports" 
                                     className="gap-1.5 px-4 data-[state=active]:btn-sneaker data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
                                 >
@@ -131,6 +153,12 @@ export function DashboardLayout() {
                                 </TabsContent>
                                 <TabsContent value="pandoras-room" className="mt-0 p-0">
                                     <PandorasRoom />
+                                </TabsContent>
+                                <TabsContent value="traproom" className="mt-0 p-0">
+                                    <BobbysTraproom />
+                                </TabsContent>
+                                <TabsContent value="dev-corner" className="mt-0 p-0">
+                                    <BobbysDevCorner />
                                 </TabsContent>
                                 <TabsContent value="reports" className="mt-0">
                                     <ReportsTab />
