@@ -17,24 +17,24 @@ This document provides a comprehensive comparison of Pandora Codex capabilities 
 
 | Capability                               | Apple Configurator | MDM/UEM | Android Service Tools | Pandora Codex | Status           | Notes                                                      |
 | ---------------------------------------- | ------------------ | ------- | --------------------- | ------------- | ---------------- | ---------------------------------------------------------- |
-| **Device Detection & Identification**    |
+| **Device Detection & Identification**    |                    |         |                       |               |                  |                                                            |
 | USB device detection                     | ✔                 | ✖      | ✔                    | ✔            | **Implemented**  | Real-time USB scanning via BootForgeUSB                    |
 | Real-time device hotplug                 | ✔                 | ✖      | ✔                    | ✔            | **Implemented**  | WebSocket-based live hotplug monitoring                    |
 | Multi-platform detection (Android + iOS) | ✖                 | ✔      | ✖                    | ✔            | **Implemented**  | Unified detection across platforms                         |
 | Device correlation tracking              | ✖                 | ✖      | ✖                    | ✔            | **Implemented**  | USB-to-tool ID correlation with confidence scoring         |
 | Device mode detection (ADB/Fastboot/DFU) | Partial            | ✖      | ✔                    | ✔            | **Implemented**  | Multi-mode detection with evidence-based classification    |
-| **USB-First Provisioning**               |
+| **USB-First Provisioning**               |                    |         |                       |               |                  |                                                            |
 | USB provisioning workflow                | ✔                 | ✖      | ✔                    | ✔            | **Implemented**  | Device detection and preparation via USB                   |
 | Offline provisioning support             | ✔                 | ✖      | ✔                    | ✔            | **Implemented**  | No cloud dependency required                               |
 | Batch device provisioning                | ✔                 | ✔      | ✔                    | ✔            | **Planned**      | Backend supports, UI requires batch workflow               |
-| **Apple Ecosystem**                      |
+| **Apple Ecosystem**                      |                    |         |                       |               |                  |                                                            |
 | iOS device info retrieval                | ✔                 | ✔      | ✖                    | ✔            | **Implemented**  | Via libimobiledevice integration                           |
 | Supervision preparation                  | ✔                 | ✖      | ✖                    | ✖            | **Out of Scope** | Requires Apple Configurator 2 or ABM enrollment            |
 | ADE (DEP) seeding                        | ✔                 | ✔      | ✖                    | ✖            | **Out of Scope** | Requires Apple Business Manager account                    |
 | iOS backup (user-authorized)             | ✔                 | ✖      | ✖                    | ✔            | **Planned**      | Via libimobiledevice idevicebackup2                        |
 | iOS restore workflows                    | ✔                 | ✖      | ✖                    | ✔            | **Planned**      | DFU mode detection implemented, restore pending            |
 | iOS app installation                     | ✔                 | ✔      | ✖                    | ✖            | **Out of Scope** | Requires supervision or developer certificates             |
-| **Android Ecosystem**                    |
+| **Android Ecosystem**                    |                    |         |                       |               |                  |                                                            |
 | ADB device detection                     | Partial            | ✖      | ✔                    | ✔            | **Implemented**  | Full ADB integration with device properties                |
 | Fastboot device detection                | ✖                 | ✖      | ✔                    | ✔            | **Implemented**  | Fastboot mode detection and operations                     |
 | Bootloader unlock (OEM-authorized)       | ✖                 | ✖      | ✔                    | ✔            | **Implemented**  | Requires typed confirmation + OEM unlock enabled           |
@@ -44,13 +44,13 @@ This document provides a comprehensive comparison of Pandora Codex capabilities 
 | Samsung Odin protocol                    | ✖                 | ✖      | ✔                    | ✔            | **Planned**      | Heimdall library integration documented                    |
 | Factory reset (policy-safe)              | ✖                 | ✔      | ✔                    | ✔            | **Implemented**  | Via fastboot erase userdata with confirmation              |
 | OEM-supported restore paths              | ✖                 | ✖      | ✔                    | ✔            | **Implemented**  | Fastboot restore workflow                                  |
-| **Policy & Fleet Management**            |
+| **Policy & Fleet Management**            |                    |         |                       |               |                  |                                                            |
 | OTA policy management                    | ✖                 | ✔      | ✔                    | ✔            | **Planned**      | Backend API exists, policy engine pending                  |
 | Device enrollment workflows              | ✔                 | ✔      | ✖                    | ✔            | **Planned**      | Manual enrollment implemented, automation pending          |
 | RBAC (Role-Based Access Control)         | ✖                 | ✔      | ✖                    | ✔            | **Planned**      | Policy framework exists, UI implementation pending         |
 | Compliance reporting                     | ✖                 | ✔      | ✖                    | ✔            | **Planned**      | Evidence bundle system exists, reporting templates pending |
 | Remote device management                 | ✖                 | ✔      | ✖                    | ✖            | **Out of Scope** | Pandora Codex is USB-first, not remote-first               |
-| **Device Information & Diagnostics**     |
+| **Device Information & Diagnostics**     |                    |         |                       |               |                  |                                                            |
 | Device health reporting                  | ✔                 | ✔      | ✔                    | ✔            | **Implemented**  | Real-time diagnostics via ADB/Fastboot                     |
 | Firmware version detection               | ✔                 | ✔      | ✔                    | ✔            | **Implemented**  | Automatic firmware version extraction via ADB              |
 | Security patch verification              | ✔                 | ✔      | ✔                    | ✔            | **Implemented**  | Security patch date extraction and comparison              |
@@ -58,36 +58,36 @@ This document provides a comprehensive comparison of Pandora Codex capabilities 
 | FRP (Factory Reset Protection) state     | ✖                 | ✖      | ✔                    | ✔            | **Planned**      | Detection logic pending                                    |
 | Battery health diagnostics               | ✔                 | ✔      | ✔                    | ✔            | **Planned**      | ADB battery stats integration pending                      |
 | Storage health diagnostics               | ✔                 | ✔      | ✔                    | ✔            | **Planned**      | ADB storage stats integration pending                      |
-| **Operations & Workflow**                |
+| **Operations & Workflow**                |                    |         |                       |               |                  |                                                            |
 | Real-time operation progress             | ✖                 | Partial | Partial               | ✔            | **Implemented**  | WebSocket-based live progress tracking                     |
 | Operation history tracking               | Partial            | ✔      | ✖                    | ✔            | **Implemented**  | Complete audit trail with timestamps                       |
 | Evidence bundle generation               | ✖                 | ✖      | ✖                    | ✔            | **Implemented**  | Signed evidence bundles with chain-of-custody              |
 | Snapshot/backup retention                | Partial            | ✔      | ✖                    | ✔            | **Implemented**  | Automatic snapshots with retention policies                |
 | Authorization triggers system            | ✖                 | ✖      | ✖                    | ✔            | **Implemented**  | 36+ device authorization triggers with audit logging       |
 | Retry mechanisms for failures            | ✖                 | ✖      | ✖                    | ✔            | **Implemented**  | Exponential backoff with configurable settings             |
-| **Multi-Frontend Support**               |
+| **Multi-Frontend Support**               |                    |         |                       |               |                  |                                                            |
 | Desktop GUI                              | ✔                 | ✔      | ✔                    | ✔            | **Implemented**  | Web-based React UI                                         |
 | CLI (Command Line Interface)             | Partial            | ✖      | ✔                    | ✔            | **Planned**      | Backend API supports, CLI wrapper pending                  |
 | Web dashboard                            | ✖                 | ✔      | ✖                    | ✔            | **Implemented**  | Full web-based interface                                   |
 | Mobile app                               | ✖                 | ✔      | ✖                    | ✖            | **Out of Scope** | USB operations require desktop/laptop                      |
 | API-first architecture                   | ✖                 | ✔      | ✖                    | ✔            | **Implemented**  | All operations via REST API                                |
-| **Testing & Quality Assurance**          |
+| **Testing & Quality Assurance**          |                    |         |                       |               |                  |                                                            |
 | Automated test suite                     | ✖                 | ✖      | ✖                    | ✔            | **Implemented**  | Security scans, performance benchmarks                     |
 | Performance benchmarking                 | ✖                 | ✖      | ✖                    | ✔            | **Implemented**  | Real-time CPU, memory, I/O monitoring                      |
 | Industry standard compliance             | Partial            | ✔      | Partial               | ✔            | **Implemented**  | USB-IF, JEDEC benchmark references                         |
 | Plugin certification system              | ✖                 | ✖      | ✖                    | ✔            | **Planned**      | Automated testing for plugins                              |
-| **Security & Compliance**                |
+| **Security & Compliance**                |                    |         |                       |               |                  |                                                            |
 | Audit logging (all operations)           | Partial            | ✔      | ✖                    | ✔            | **Implemented**  | Structured JSON audit logs                                 |
 | Chain-of-custody tracking                | ✖                 | ✖      | ✖                    | ✔            | **Implemented**  | Evidence bundle signing and verification                   |
 | Destructive action confirmations         | Partial            | ✔      | Partial               | ✔            | **Implemented**  | Typed confirmations (CONFIRM/UNLOCK/RESET)                 |
 | Critical partition protection            | ✖                 | ✖      | Partial               | ✔            | **Implemented**  | Blocked: boot, system, vendor, bootloader, radio           |
 | Command filtering (ADB)                  | ✖                 | ✖      | Partial               | ✔            | **Implemented**  | Whitelist of safe ADB commands                             |
-| **Extensibility**                        |
+| **Extensibility**                        |                    |         |                       |               |                  |                                                            |
 | Plugin system                            | ✖                 | Partial | ✖                    | ✔            | **Implemented**  | Plugin marketplace with certification                      |
 | Custom workflow support                  | ✖                 | ✔      | ✖                    | ✔            | **Planned**      | Workflow engine architecture documented                    |
 | Community contributions                  | ✖                 | ✖      | ✖                    | ✔            | **Implemented**  | Plugin submission portal                                   |
 | Open audit trail                         | ✖                 | ✖      | ✖                    | ✔            | **Implemented**  | Exportable JSON audit logs                                 |
-| **Vendor Lock-In**                       |
+| **Vendor Lock-In**                       |                    |         |                       |               |                  |                                                            |
 | Vendor-agnostic backend                  | ✖                 | Partial | ✖                    | ✔            | **Implemented**  | No proprietary protocols or services                       |
 | Multi-brand support                      | ✖                 | ✔      | Partial               | ✔            | **Implemented**  | Unified Android + iOS handling                             |
 | Open-source components                   | ✖                 | ✖      | Partial               | ✔            | **Implemented**  | ADB, Fastboot, libimobiledevice, BootForgeUSB              |
@@ -305,39 +305,39 @@ Pandora Codex **does not** and **will not** implement:
 
 ### Medium Priority (Q2 2025)
 
-4. **EDL/Qualcomm Flash Integration**
+1. **EDL/Qualcomm Flash Integration**
 
    - Qualcomm Sahara protocol support
    - Emergency download mode operations
    - Status: Architecture supports, tool integration pending
 
-5. **Policy Engine UI**
+2. **Policy Engine UI**
 
    - RBAC role management interface
    - Policy rule editor
    - Status: Backend exists, UI pending
 
-6. **Firmware Library Expansion**
+3. **Firmware Library Expansion**
    - Expand firmware database to all major OEMs
    - Automated firmware availability checks
    - Status: Google, Samsung, Xiaomi implemented; OnePlus, Motorola pending
 
 ### Low Priority (Q3-Q4 2025)
 
-7. **Advanced Diagnostics**
+1. **Advanced Diagnostics**
 
    - Battery health detailed reporting
    - Storage wear-level analysis
    - Network diagnostics
    - Status: ADB integration exists, UI pending
 
-8. **Workflow Automation Engine**
+2. **Workflow Automation Engine**
 
    - Custom workflow builder
    - Conditional logic and branching
    - Status: Design phase
 
-9. **Multi-User Collaboration**
+3. **Multi-User Collaboration**
    - User accounts and permissions
    - Shared evidence bundles
    - Status: Design phase
