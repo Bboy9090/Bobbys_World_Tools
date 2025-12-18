@@ -12,6 +12,7 @@ import { PandorasRoom } from "./SecretRoom";
 import { LiveAnalyticsDashboard } from "./LiveAnalyticsDashboard";
 import { DeviceSidebar } from "./DeviceSidebar";
 import { LogsPanel } from "./LogsPanel";
+import { BackendStatusIndicator } from "./BackendStatusIndicator";
 import { useApp } from "@/lib/app-context";
 import { 
     Cpu, 
@@ -46,15 +47,7 @@ export function DashboardLayout() {
                 </div>
                 <div className="flex-1" />
                 <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2">
-                        <div className={`status-led ${backendAvailable ? 'connected' : 'disconnected'}`} />
-                        <Badge 
-                            variant={backendAvailable ? "default" : "destructive"} 
-                            className="text-xs font-mono candy-shimmer"
-                        >
-                            {backendAvailable ? "🟢 API Connected" : "⚠️ Offline Mode"}
-                        </Badge>
-                    </div>
+                    <BackendStatusIndicator />
                     <div className="text-xs font-mono text-muted-foreground">
                         v2.0.0
                     </div>
