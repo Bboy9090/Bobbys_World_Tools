@@ -26,7 +26,9 @@ Clean, authoritative, and honest about capabilities.
 ### ✨ Key Features
 
 #### 🔍 **Advanced Device Detection Arsenal**
+
 Multi-protocol connectivity detection system (`probeDevice.ts`):
+
 - **Unified Device Probing**: Detect devices across ADB, Fastboot, iOS, USB, and WebUSB protocols
 - **Capability Analysis**: Automatic detection of device capabilities and available operations
 - **Connection Monitoring**: Real-time device connect/disconnect event tracking
@@ -35,7 +37,9 @@ Multi-protocol connectivity detection system (`probeDevice.ts`):
 - **State Correlation**: Track device states across multiple detection methods
 
 #### 🔓 **Modular Workflow System**
+
 JSON-defined workflows for reproducible device operations:
+
 - **Android Workflows**: ADB diagnostics, FRP bypass, Fastboot unlock, partition mapping
 - **iOS Workflows**: Device restore, DFU detection, comprehensive diagnostics
 - **Mobile Workflows**: **NEW** - Enhanced mobile-first workflows
@@ -47,7 +51,9 @@ JSON-defined workflows for reproducible device operations:
 - **Custom Workflows**: Create and execute custom operation sequences
 
 #### 🔒 **Trapdoor API**
+
 Secure REST endpoints for sensitive operations (admin-only access):
+
 - `POST /api/trapdoor/frp` - Execute FRP bypass workflow
 - `POST /api/trapdoor/unlock` - Unlock bootloader workflow
 - `POST /api/trapdoor/workflow/execute` - Execute custom workflows
@@ -55,14 +61,18 @@ Secure REST endpoints for sensitive operations (admin-only access):
 - `GET /api/trapdoor/logs/shadow` - Access encrypted shadow logs
 
 #### 📝 **Shadow Logging System**
+
 Encrypted, append-only audit logs for compliance:
+
 - **AES-256 Encryption** - All sensitive operations encrypted at rest
 - **Immutable Audit Trail** - Append-only logs for compliance
 - **Anonymous Mode** - Optional operational deniability
 - **Automatic Rotation** - 90-day retention for shadow logs
 
 #### 📚 **Core Libraries**
+
 Device management libraries for ADB, Fastboot, and iOS:
+
 - `src/lib/probeDevice.ts` - **NEW** - Advanced multi-protocol device detection
 - `src/lib/usbClassDetection.ts` - Enhanced USB device classification with mobile support
 - `src/lib/deviceDetection.ts` - System-level device detection utilities
@@ -72,7 +82,9 @@ Device management libraries for ADB, Fastboot, and iOS:
 - `core/lib/shadow-logger.js` - Encrypted logging infrastructure
 
 #### 🎨 **React Components**
+
 Integrated UI components for workflow execution:
+
 - **DevModePanel** - **NEW** - Advanced device mode detection and workflow launcher
 - **Trapdoor Control Panel** - Execute sensitive operations with authorization
 - **Workflow Execution Console** - Browse and run workflows
@@ -87,7 +99,9 @@ Integrated UI components for workflow execution:
 ### ✨ New Features from Pandora Codex
 
 #### 🔓 **Pandora's Room (Bobby's Secret Room)**
+
 A powerful "trapdoor" module for advanced device operations:
+
 - **iOS Tools (A5-A11)**: checkra1n, palera1n, lockra1n, OpenBypass
 - **iOS Tools (A12+)**: MinaCriss, iRemovalTools, BriqueRamdisk
 - **Android Tools**: FRP helpers, Magisk, TWRP, APK utilities
@@ -102,7 +116,9 @@ A powerful "trapdoor" module for advanced device operations:
 - **Cross-Language Bridge**: Python/TypeScript integration via JSON API
 
 #### ⚙️ **Enhanced BootForge USB (Rust)**
+
 Advanced low-level device operations:
+
 - **Imaging Engine**: Disk imaging and forensic capabilities
 - **Thermal Monitoring**: Real-time temperature tracking
 - **Storage Analysis**: SMART data and health monitoring
@@ -110,7 +126,9 @@ Advanced low-level device operations:
 - **Multi-Platform Support**: Android, iOS, MediaTek, Qualcomm, Samsung
 
 #### 📊 **Advanced Diagnostics (TITAN 3 Engine)**
+
 Professional-grade diagnostic capabilities:
+
 - Deep hardware diagnostics
 - Thermal imaging and monitoring
 - Storage health analysis
@@ -120,6 +138,7 @@ Professional-grade diagnostic capabilities:
 ## 🚀 Core Features
 
 ### iOS DFU Flash Station
+
 - **Real DFU mode detection** via libimobiledevice
 - **checkra1n jailbreak support** with live progress tracking
 - **palera1n integration** for newer iOS versions
@@ -128,11 +147,13 @@ Professional-grade diagnostic capabilities:
 - Device state detection: Normal / Recovery / DFU modes
 
 **API Endpoints:**
+
 - `GET /api/ios/scan` - Detect connected iOS devices
 - `POST /api/ios/dfu/enter` - Automated DFU mode entry
 - `WS ws://localhost:3001/ws/flash` - Live jailbreak progress
 
 ### MediaTek Flash Panel
+
 - **SP Flash Tool integration** for MediaTek chipsets
 - **Scatter file validation** and firmware image management
 - **Preloader/VCOM detection** via USB scanning
@@ -140,12 +161,14 @@ Professional-grade diagnostic capabilities:
 - **Multi-image partition flashing** support
 
 **Supported Chipsets:**
+
 - MT6765 (Helio P35)
 - MT6762 (Helio P22)
 - MT6739, MT6737, MT6580
 - And all other MediaTek platforms via SP Flash Tool
 
 ### Security Lock Education Panel
+
 - **FRP (Factory Reset Protection) Detection**
   - Real ADB-based detection via `settings get secure android_id`
   - Confidence scoring: High / Medium / Low / Unknown
@@ -163,16 +186,19 @@ Professional-grade diagnostic capabilities:
   - Enterprise IT contact procedures for MDM
 
 **Educational Content:**
+
 - What FRP is and why it exists (anti-theft protection)
 - Legitimate recovery methods (account sign-in, recovery, proof of purchase)
 - MDM profile explanation (enterprise device management)
 - Legal notices and ethical guidelines
 
 **API Endpoints:**
+
 - `POST /api/frp/detect` - Detect FRP lock status
 - `POST /api/mdm/detect` - Detect MDM profiles
 
 ### Multi-Brand Flash Dashboard
+
 - **Samsung Odin Protocol** - Official download mode flashing
 - **Xiaomi EDL (Emergency Download)** - Qualcomm EDL for bricked devices
 - **Universal Fastboot** - Google, OnePlus, Motorola, ASUS support
@@ -180,6 +206,7 @@ Professional-grade diagnostic capabilities:
 - **MediaTek** - SP Flash Tool scatter-based flashing
 
 ### Pandora Codex Control Room
+
 - **Flash Operations Monitor** - Queue management and history
 - **Real-Time Performance** - Transfer speed, CPU, memory, USB utilization
 - **Automated Testing** - Detection, performance, optimization validation
@@ -187,6 +214,7 @@ Professional-grade diagnostic capabilities:
 - **Live Hotplug Monitor** - Device connect/disconnect event stream
 
 ### Device Diagnostics
+
 - **Real USB Detection** - ADB and Fastboot device enumeration
 - **Battery Health** - Capacity percentage and cycle count
 - **Storage Diagnostics** - SMART data and health status
@@ -196,6 +224,7 @@ Professional-grade diagnostic capabilities:
 ## 🔧 Backend API Architecture
 
 ### WebSocket Endpoints
+
 ```typescript
 ws://localhost:3001/ws/flash - Flash progress streaming
 ws://localhost:3001/ws/hotplug - Device hotplug events
@@ -205,6 +234,7 @@ ws://localhost:3001/ws/correlation - Device correlation tracking
 ### REST API Endpoints
 
 #### iOS Flashing
+
 ```
 GET  /api/ios/scan - Scan for iOS devices
 POST /api/ios/dfu/enter - Enter DFU mode
@@ -212,6 +242,7 @@ POST /api/ios/jailbreak - Start jailbreak (checkra1n/palera1n)
 ```
 
 #### Android Flashing
+
 ```
 GET  /api/android/devices - List ADB devices
 GET  /api/fastboot/devices - List Fastboot devices
@@ -221,6 +252,7 @@ POST /api/edl/flash - Xiaomi EDL flash
 ```
 
 #### MediaTek
+
 ```
 GET  /api/mtk/scan - Detect MTK devices
 POST /api/mtk/flash - SP Flash Tool operation
@@ -228,6 +260,7 @@ GET  /api/mtk/preloader - Check preloader mode
 ```
 
 #### Security Detection
+
 ```
 POST /api/frp/detect - Detect FRP lock
 POST /api/mdm/detect - Detect MDM profile
@@ -235,6 +268,7 @@ GET  /api/security/info - Device security info
 ```
 
 #### Pandora Codex
+
 ```
 GET  /api/flash/history - Flash operation history
 POST /api/flash/start - Start flash operation
@@ -248,6 +282,7 @@ GET  /api/hotplug/events - Device hotplug event log
 ## 📦 Required System Dependencies
 
 ### Linux/macOS
+
 ```bash
 # Android tools
 sudo apt install android-tools-adb android-tools-fastboot
@@ -266,6 +301,7 @@ sudo apt install firejail
 ```
 
 ### Windows
+
 ```powershell
 # Install via Chocolatey
 choco install adb fastboot
@@ -280,6 +316,7 @@ choco install adb fastboot
 ## 🚨 Legal & Ethical Guidelines
 
 ### What This Toolkit DOES
+
 ✅ Detect device security states (FRP, MDM, bootloader locks)  
 ✅ Provide educational resources for legitimate recovery  
 ✅ Link to official manufacturer unlock procedures  
@@ -288,6 +325,7 @@ choco install adb fastboot
 ✅ Provide secure, sandboxed execution of tools (Trapdoor)  
 
 ### What This Toolkit DOES NOT DO
+
 ❌ Bypass FRP on devices you don't own  
 ❌ Remove MDM from enterprise-managed devices without authorization  
 ❌ Enable device theft or unauthorized access  
@@ -295,12 +333,15 @@ choco install adb fastboot
 ❌ Provide "hacking" or "cracking" tools  
 
 ### Legal Notice - Trapdoor Module
+
 The **Trapdoor** module provides access to powerful device exploitation and bypass tools. **This software is intended for authorized repair technicians only.** Use only on:
+
 - Devices you personally own
 - Devices where you have explicit owner authorization
 - Devices in professional repair contexts with proper documentation
 
 Bypassing security features on devices you do not own is **illegal** under:
+
 - Computer Fraud and Abuse Act (CFAA) - United States
 - Computer Misuse Act - United Kingdom
 - Similar laws in most jurisdictions
@@ -342,6 +383,7 @@ npm run build
 ```
 
 ### Start Development Server
+
 ```bash
 # Install dependencies
 npm install
@@ -355,12 +397,14 @@ make trapdoor:build
 ```
 
 ### Build for Production
+
 ```bash
 npm run build
 npm run preview
 ```
 
 ### Start Backend Services
+
 ```bash
 # Start WebSocket flash progress server
 node server/flash-ws.js
@@ -373,6 +417,7 @@ node server/correlation-ws.js
 ```
 
 ### Build Trapdoor CLI
+
 ```bash
 # Using Make
 make trapdoor:build
@@ -388,6 +433,7 @@ cargo build --release --bin trapdoor_cli
 ## 📚 Documentation
 
 ### Core Documentation
+
 - [Bobby's World Complete README](./README_COMPLETE.md)
 - [Bobby's Secret Workshop Integration](./BOBBY_SECRET_WORKSHOP.md) - **NEW**
 - [iOS DFU Flash Guide](./docs/IOS_DFU_FLASH.md)
@@ -398,6 +444,7 @@ cargo build --release --bin trapdoor_cli
 - [Backend API Implementation](./BACKEND_API_IMPLEMENTATION.md)
 
 ### Trapdoor / Pandora's Room Documentation
+
 - [Trapdoor CLI Usage Guide](./TRAPDOOR_CLI_USAGE.md) - Command-line interface
 - [Trapdoor Implementation Summary](./TRAPDOOR_IMPLEMENTATION_SUMMARY.md) - Technical details
 - [Trapdoor Bobby Dev Integration](./TRAPDOOR_BOBBY_DEV_INTEGRATION.md) - Integration architecture
@@ -406,7 +453,9 @@ cargo build --release --bin trapdoor_cli
 ## 🔄 Pandora Codex Merge - Change Log
 
 ### What Was Merged
+
 **✅ Integrated Features:**
+
 - **Trapdoor Module**: Complete Rust implementation with CLI, sandboxing, and verification
 - **BootForge USB Enhancements**: Imaging engine, thermal monitoring, storage analysis
 - **Pandora's Room UI**: New dashboard tab for advanced device operations
@@ -415,6 +464,7 @@ cargo build --release --bin trapdoor_cli
 - **Build System**: Updated Makefile with trapdoor and bootforge targets
 
 **📦 Merged Components:**
+
 - `crates/bootforge-usb/` - Complete Rust crate workspace
   - `libbootforge` - Core library with trapdoor module
   - `bootforge-cli` - Main CLI tool
@@ -424,7 +474,9 @@ cargo build --release --bin trapdoor_cli
 - `TRAPDOOR_*.md` - Documentation files
 
 ### What Was Excluded
+
 **❌ Not Merged:**
+
 - CRM API (incomplete, not needed for repair toolkit)
 - Prisma/PostgreSQL setup (unnecessary complexity)
 - Electron wrapper (not applicable)
@@ -433,6 +485,7 @@ cargo build --release --bin trapdoor_cli
 - Any secrets or credentials (only .env.example files were present)
 
 ### History Preservation
+
 All Pandora Codex commit history has been preserved via **git subtree merge**. You can view the complete history:
 
 ```bash
@@ -443,6 +496,7 @@ git log --all --graph --decorate --oneline | grep -A5 "Subtree merge"
 ## 🤝 Contributing
 
 Contributions welcome for:
+
 - Additional device brand support
 - Educational repair guides
 - Legitimate security unlock procedures
@@ -450,6 +504,7 @@ Contributions welcome for:
 - Trapdoor module tool integrations (with proper legal disclaimers)
 
 **We will not accept contributions that:**
+
 - Enable unauthorized device access
 - Bypass security without owner consent
 - Violate terms of service or warranties
@@ -458,6 +513,7 @@ Contributions welcome for:
 ### Branch Protection
 
 This repository uses GitHub Rulesets to enforce code quality standards. All pull requests to `main` must:
+
 - Pass all required status checks (tests, security scans, linting)
 - Receive at least one approving review
 - Be up-to-date with the base branch
