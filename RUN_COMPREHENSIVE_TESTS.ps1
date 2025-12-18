@@ -326,9 +326,15 @@ $foundSecrets = $false
 foreach ($file in $securityFiles) {
     $content = Get-Content $file.FullName -Raw
     
+<<<<<<< Updated upstream
     if ($content -match "password\s*=\s*['\"][^'\"]{8,}['\"]" -or 
         $content -match "api[_-]?key\s*=\s*['\"][^'\"]{16,}['\"]" -or
         $content -match "secret\s*=\s*['\"][^'\"]{16,}['\"]") {
+=======
+    if ($content -match "password\s*=\s*['\`"][^\`"']{8,}['\`"]" -or 
+        $content -match "api[_-]?key\s*=\s*['\`"][^\`"']{16,}['\`"]" -or
+        $content -match "secret\s*=\s*['\`"][^\`"']{16,}['\`"]") {
+>>>>>>> Stashed changes
         $foundSecrets = $true
         Log-Test "No hardcoded secrets in: $($file.Name)" "FAIL" "Potential secret found"
     }
