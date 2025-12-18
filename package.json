@@ -30,7 +30,12 @@
         "phoenix:dev": "cd phoenix-key && python3 main.py",
         "phoenix:build": "cd phoenix-key && python3 -m build",
         "bootforge:build": "cd backend/bootforge_usb && cargo build --release",
-        "bootforge:test": "cd backend/bootforge_usb && cargo test"
+        "bootforge:test": "cd backend/bootforge_usb && cargo test",
+        "tauri:dev": "cargo tauri dev",
+        "tauri:build": "cargo tauri build",
+        "tauri:build:windows": "cargo tauri build --target x86_64-pc-windows-msvc",
+        "tauri:build:macos": "cargo tauri build --target x86_64-apple-darwin",
+        "tauri:build:linux": "cargo tauri build --target x86_64-unknown-linux-gnu"
     },
     "dependencies": {
         "@github/spark": ">=0.43.1 <1",
