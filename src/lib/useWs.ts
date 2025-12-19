@@ -2,6 +2,7 @@
 // Part of Bobby's World real-time communication layer
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { getWSUrl } from './apiConfig';
 
 export interface WsMessage {
   type: string;
@@ -30,7 +31,7 @@ export interface UseWsReturn {
 
 export function useWs(options: UseWsOptions = {}): UseWsReturn {
   const {
-    url = 'ws://localhost:3001/ws',
+    url = getWSUrl('/ws'),
     autoConnect = true,
     reconnect = true,
     reconnectInterval = 3000,

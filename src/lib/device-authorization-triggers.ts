@@ -1,143 +1,141 @@
-// Device Authorization Triggers - Handles device-specific authorization workflows
-// Triggered by specific device actions or operations
+// Backend-backed authorization trigger client (no mock/demo paths).
 
-import type { DetectedDevice } from '@/types/plugin-sdk';
+import { getAPIUrl } from '@/lib/apiConfig';
 
-export type AuthorizationTriggerType = 
-  | 'high-risk-operation'
-  | 'first-connection'
-  | 'bootloader-unlock'
-  | 'data-wipe'
-  | 'flash-operation'
-  | 'frp-bypass'
-  | 'root-operation';
+export type DevicePlatform = 'android' | 'ios' | 'fastboot' | 'samsung' | 'qualcomm' | 'mediatek';
 
-export interface AuthorizationTrigger {
-  type: AuthorizationTriggerType;
-  deviceSerial: string;
-  operation: string;
-  requiredLevel: 'user' | 'admin' | 'owner';
-  prompt: string;
-  expectedResponse?: string;
-  timeout?: number;
-}
-
-export interface AuthorizationResult {
-  granted: boolean;
-  userId: string;
-  timestamp: number;
-  expiresAt?: number;
-  reason?: string;
-}
-
-export interface DeviceAuthorizationTriggersAPI {
-  checkRequired(deviceSerial: string, operation: string): Promise<AuthorizationTrigger | null>;
-  requestAuthorization(trigger: AuthorizationTrigger, userResponse: string): Promise<AuthorizationResult>;
-  getActiveAuthorizations(deviceSerial: string): Promise<AuthorizationResult[]>;
-  revokeAuthorization(deviceSerial: string, operation: string): Promise<boolean>;
-}
-
-// In-memory storage
-const activeAuthorizations: Map<string, AuthorizationResult[]> = new Map();
-
-// Operations that require authorization
-const AUTHORIZATION_REQUIRED: Record<string, AuthorizationTriggerType> = {
-  'bootloader-unlock': 'bootloader-unlock',
-  'factory-reset': 'data-wipe',
-  'flash-system': 'flash-operation',
-  'flash-boot': 'flash-operation',
-  'frp-bypass': 'frp-bypass',
-  'root-install': 'root-operation',
+export type AuthorizationTriggerResult = {
+  success: boolean;
+  message: string;
+  triggered?: boolean;
+  requiresUserAction?: boolean;
+  authorizationType?: string;
+  error?: string;
+  toolMissing?: boolean;
+  installGuide?: string;
+  manualCommand?: string;
+  alternativeCommand?: string;
+  manualSteps?: string[];
+  warning?: string;
+  note?: string;
+  deviceSerial?: string;
+  deviceUdid?: string;
 };
 
-export const deviceAuthorizationTriggers: DeviceAuthorizationTriggersAPI = {
-  async checkRequired(deviceSerial: string, operation: string): Promise<AuthorizationTrigger | null> {
-    const triggerType = AUTHORIZATION_REQUIRED[operation];
-    
-    if (!triggerType) {
-      return null;
-    }
-
-    // Check if already authorized
-    const auths = activeAuthorizations.get(deviceSerial) || [];
-    const existingAuth = auths.find(a => a.granted && (!a.expiresAt || a.expiresAt > Date.now()));
-    
-    if (existingAuth) {
-      return null; // Already authorized
-    }
-
-    return {
-      type: triggerType,
-      deviceSerial,
-      operation,
-      requiredLevel: triggerType === 'bootloader-unlock' || triggerType === 'frp-bypass' ? 'owner' : 'admin',
-      prompt: getPromptForTrigger(triggerType),
-      expectedResponse: getExpectedResponse(triggerType),
-      timeout: 60000 // 1 minute
-    };
-  },
-
-  async requestAuthorization(trigger: AuthorizationTrigger, userResponse: string): Promise<AuthorizationResult> {
-    const isValid = !trigger.expectedResponse || 
-      userResponse.toLowerCase() === trigger.expectedResponse.toLowerCase();
-
-    const result: AuthorizationResult = {
-      granted: isValid,
-      userId: 'current-user',
-      timestamp: Date.now(),
-      expiresAt: isValid ? Date.now() + 3600000 : undefined, // 1 hour
-      reason: isValid ? undefined : 'Invalid response'
-    };
-
-    if (isValid) {
-      if (!activeAuthorizations.has(trigger.deviceSerial)) {
-        activeAuthorizations.set(trigger.deviceSerial, []);
-      }
-      activeAuthorizations.get(trigger.deviceSerial)!.push(result);
-    }
-
-    return result;
-  },
-
-  async getActiveAuthorizations(deviceSerial: string): Promise<AuthorizationResult[]> {
-    const auths = activeAuthorizations.get(deviceSerial) || [];
-    return auths.filter(a => a.granted && (!a.expiresAt || a.expiresAt > Date.now()));
-  },
-
-  async revokeAuthorization(deviceSerial: string, _operation: string): Promise<boolean> {
-    const auths = activeAuthorizations.get(deviceSerial);
-    if (!auths) return false;
-    
-    // Revoke all for device
-    activeAuthorizations.set(deviceSerial, auths.map(a => ({ ...a, granted: false })));
-    return true;
-  }
+export type TriggerAllResponse = {
+  success: boolean;
+  message: string;
+  deviceId?: string;
+  platform?: string;
+  totalTriggers?: number;
+  successfulTriggers?: number;
+  failedTriggers?: number;
+  results: Array<
+    {
+      triggerId: string;
+      triggerName: string;
+    } & AuthorizationTriggerResult
+  >;
 };
 
-function getPromptForTrigger(type: AuthorizationTriggerType): string {
-  switch (type) {
-    case 'bootloader-unlock':
-      return "Type 'UNLOCK' to confirm bootloader unlock. WARNING: This will erase all data.";
-    case 'data-wipe':
-      return "Type 'ERASE' to confirm data wipe. All user data will be permanently deleted.";
-    case 'flash-operation':
-      return "Type 'FLASH' to confirm flashing operation.";
-    case 'frp-bypass':
-      return "Type 'I OWN THIS DEVICE' to confirm FRP bypass authorization.";
-    case 'root-operation':
-      return "Type 'ROOT' to confirm root installation.";
-    default:
-      return "Type 'CONFIRM' to proceed.";
+async function postJson<TResponse>(endpoint: string, body: unknown): Promise<TResponse> {
+  const response = await fetch(getAPIUrl(endpoint), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(30000),
+  });
+
+  const text = await response.text();
+  const maybeJson = text ? (JSON.parse(text) as unknown) : null;
+
+  if (!response.ok) {
+    const message =
+      (maybeJson && typeof maybeJson === 'object' && 'error' in maybeJson && typeof (maybeJson as any).error === 'string')
+        ? (maybeJson as any).error
+        : `Request failed (${response.status})`;
+    throw new Error(message);
   }
+
+  return maybeJson as TResponse;
 }
 
-function getExpectedResponse(type: AuthorizationTriggerType): string {
-  switch (type) {
-    case 'bootloader-unlock': return 'UNLOCK';
-    case 'data-wipe': return 'ERASE';
-    case 'flash-operation': return 'FLASH';
-    case 'frp-bypass': return 'I OWN THIS DEVICE';
-    case 'root-operation': return 'ROOT';
-    default: return 'CONFIRM';
+async function getJson<TResponse>(endpoint: string): Promise<TResponse> {
+  const response = await fetch(getAPIUrl(endpoint), {
+    method: 'GET',
+    signal: AbortSignal.timeout(10000),
+  });
+
+  const text = await response.text();
+  const maybeJson = text ? (JSON.parse(text) as unknown) : null;
+
+  if (!response.ok) {
+    const message =
+      (maybeJson && typeof maybeJson === 'object' && 'error' in maybeJson && typeof (maybeJson as any).error === 'string')
+        ? (maybeJson as any).error
+        : `Request failed (${response.status})`;
+    throw new Error(message);
   }
+
+  return maybeJson as TResponse;
 }
+
+export const authTriggers = {
+  // Android / ADB
+  triggerADBUSBDebugging: (serial: string) =>
+    postJson<AuthorizationTriggerResult>('/api/authorization/adb/trigger-usb-debugging', { serial }),
+  triggerADBFileTransfer: (serial: string) =>
+    postJson<AuthorizationTriggerResult>('/api/authorization/adb/trigger-file-transfer', { serial }),
+  triggerADBBackupAuth: (serial: string) =>
+    postJson<AuthorizationTriggerResult>('/api/authorization/adb/trigger-backup', { serial }),
+  triggerADBScreenshotAuth: (serial: string) =>
+    postJson<AuthorizationTriggerResult>('/api/authorization/adb/trigger-screen-capture', { serial }),
+  triggerWiFiADBAuth: (serial: string) =>
+    postJson<AuthorizationTriggerResult>('/api/authorization/adb/trigger-wifi-adb', { serial }),
+  verifyDeveloperOptions: (serial: string) =>
+    postJson<AuthorizationTriggerResult>('/api/authorization/adb/verify-developer-options', { serial }),
+  checkUSBDebuggingStatus: (serial: string) =>
+    postJson<AuthorizationTriggerResult>('/api/authorization/adb/check-debugging-status', { serial }),
+  rebootToRecovery: (serial: string) =>
+    postJson<AuthorizationTriggerResult>('/api/authorization/adb/reboot-recovery', { serial }),
+  rebootToBootloader: (serial: string) =>
+    postJson<AuthorizationTriggerResult>('/api/authorization/adb/reboot-bootloader', { serial }),
+  rebootToEDL: (serial: string) =>
+    postJson<AuthorizationTriggerResult>('/api/authorization/adb/reboot-edl', { serial }),
+
+  // iOS
+  triggerIOSTrustComputer: (udid: string) =>
+    postJson<AuthorizationTriggerResult>('/api/authorization/ios/trigger-trust-computer', { udid }),
+  triggerIOSPairing: (udid: string) =>
+    postJson<AuthorizationTriggerResult>('/api/authorization/ios/trigger-pairing', { udid }),
+  triggerIOSBackupEncryption: (udid: string) =>
+    postJson<AuthorizationTriggerResult>('/api/authorization/ios/trigger-backup-encryption', { udid }),
+  triggerDFUModeEntry: (udid: string) =>
+    postJson<AuthorizationTriggerResult>('/api/authorization/ios/trigger-dfu', { udid }),
+  triggerIOSAppInstallAuth: (udid: string) =>
+    postJson<AuthorizationTriggerResult>('/api/authorization/ios/trigger-app-install', { udid }),
+  triggerIOSDeveloperTrust: (udid: string) =>
+    postJson<AuthorizationTriggerResult>('/api/authorization/ios/trigger-developer-trust', { udid }),
+
+  // Fastboot
+  triggerFastbootUnlockVerify: (serial: string) =>
+    postJson<AuthorizationTriggerResult>('/api/authorization/fastboot/verify-unlock', { serial }),
+  triggerFastbootOEMUnlock: (serial: string) =>
+    postJson<AuthorizationTriggerResult>('/api/authorization/fastboot/trigger-oem-unlock', { serial }),
+
+  // Samsung / Qualcomm / MTK
+  triggerOdinDownloadMode: (serial: string) =>
+    postJson<AuthorizationTriggerResult>('/api/authorization/samsung/trigger-download-mode', { serial }),
+  triggerEDLAuthorization: (serial: string) =>
+    postJson<AuthorizationTriggerResult>('/api/authorization/qualcomm/verify-edl', { serial }),
+  triggerMTKSPFlashAuth: (serial: string) =>
+    postJson<AuthorizationTriggerResult>('/api/authorization/mediatek/verify-flash', { serial }),
+
+  // Catalog / One-click
+  getAllAvailableTriggers: (platform: DevicePlatform | 'all' = 'all') =>
+    getJson<{ success: boolean; triggers: any; platform?: string; totalCount?: number }>(
+      `/api/authorization/triggers?platform=${encodeURIComponent(platform)}`
+    ),
+  triggerAllAvailableAuthorizations: (deviceId: string, platform: DevicePlatform) =>
+    postJson<TriggerAllResponse>('/api/authorization/trigger-all', { deviceId, platform }),
+} as const;

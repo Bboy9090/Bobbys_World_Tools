@@ -29,6 +29,7 @@ import { FlashProgressMonitor, useFlashProgressSimulator } from './FlashProgress
 import type { FlashProgress } from './FlashProgressMonitor';
 import { LiveProgressMonitor } from './LiveProgressMonitor';
 import { useAudioNotifications } from '@/hooks/use-audio-notifications';
+import { getAPIUrl } from '@/lib/apiConfig';
 
 interface Device {
   serial: string;
@@ -112,41 +113,40 @@ export function DeviceFlashingDashboard() {
     setIsScanning(true);
     try {
       const response = await fetch('http://localhost:3001/api/devices/scan');
-      if (response.ok) {
-        const data = await response.json();
-        setDevices(data.devices || []);
-        toast.success(`Found ${data.devices?.length || 0} device(s)`);
-      } else {
-        setDevices([
-          {
-            serial: 'ABC123XYZ',
-            model: 'Pixel 6',
-            platform: 'android',
-            mode: 'fastboot',
-            confidence: 95,
-            correlationBadge: 'CORRELATED',
-            matchedIds: ['ABC123XYZ'],
-            usbPort: 'usb-0000:00:14.0-1',
-            vendor: 'Google'
-          }
-        ]);
-        toast.info('Using demo device (backend offline)');
+      const response = await fetch(getAPIUrl('/api/devices/scan'));
+      if (!response.ok) {
+        const text = await response.text().catch(() => '');
+        throw new Error(text || `HTTP ${response.status}`);
       }
+
+      const data = await response.json();
+      const scanned = Array.isArray(data.devices) ? data.devices : [];
+      const mapped: Device[] = scanned.map((d: any) => {
+        const evidence = (d?.evidence ?? {}) as any;
+        const rawConfidence = typeof d?.confidence === 'number' ? d.confidence : 0;
+        const percentConfidence = rawConfidence <= 1 ? Math.round(rawConfidence * 100) : Math.round(rawConfidence);
+        const serial = typeof evidence?.serial === 'string' ? evidence.serial : (typeof d?.display_name === 'string' ? d.display_name : String(d?.device_uid ?? 'unknown'));
+
+        return {
+          serial,
+          model: typeof d?.display_name === 'string' ? d.display_name : undefined,
+          platform: d?.platform_hint === 'android' || d?.platform_hint === 'ios' ? d.platform_hint : 'unknown',
+          mode: typeof d?.mode === 'string' ? d.mode : 'unknown',
+          confidence: Number.isFinite(percentConfidence) ? percentConfidence : 0,
+          correlationBadge: typeof d?.correlation_badge === 'string' ? d.correlation_badge : 'UNCONFIRMED',
+          matchedIds: Array.isArray(d?.matched_tool_ids) ? d.matched_tool_ids : [],
+          usbPort: typeof evidence?.pnpDeviceId === 'string' ? evidence.pnpDeviceId : undefined,
+          vendor: typeof evidence?.manufacturer === 'string' ? evidence.manufacturer : undefined,
+        };
+      });
+
+      setDevices(mapped);
+      toast.success(`Found ${mapped.length} device(s)`);
     } catch (error) {
-      setDevices([
-        {
-          serial: 'ABC123XYZ',
-          model: 'Pixel 6',
-          platform: 'android',
-          mode: 'fastboot',
-          confidence: 95,
-          correlationBadge: 'CORRELATED',
-          matchedIds: ['ABC123XYZ'],
-          usbPort: 'usb-0000:00:14.0-1',
-          vendor: 'Google'
-        }
-      ]);
-      toast.info('Using demo device (backend offline)');
+      setDevices([]);
+      toast.error('Device scan failed', {
+        description: error instanceof Error ? error.message : 'Unknown error',
+      });
     } finally {
       setIsScanning(false);
     }

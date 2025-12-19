@@ -817,7 +817,7 @@ function PluginSubmissionForm() {
 
           <Card className="p-4 bg-muted/50">
             <div className="flex gap-3">
-              <Sparkle className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+              <Sparkle className="w-5 h-5 text-primary shrink-0 mt-0.5" />
               <div className="text-sm space-y-2">
                 <p className="font-medium">Plugin Certification Process</p>
                 <ul className="text-muted-foreground space-y-1 list-disc list-inside">

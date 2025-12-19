@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { getWSUrl } from '@/lib/apiConfig';
 
 export type CorrelationBadge = 'CORRELATED' | 'SYSTEM-CONFIRMED' | 'LIKELY' | 'UNCONFIRMED' | 'CORRELATED (WEAK)';
 
