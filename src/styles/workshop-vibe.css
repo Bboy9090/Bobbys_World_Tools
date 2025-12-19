@@ -1,0 +1,361 @@
+/**
+ * Bobby's Workshop - 90s/00s Bronx Street Aesthetic
+ * Inspired by: Jordan's, Nikes, PlayStation, repair benches, candy wrappers
+ */
+
+/* Workshop Background Textures */
+.workshop-bg {
+  background: linear-gradient(135deg, #0A0A0A 0%, #121212 50%, #0A0A0A 100%);
+  position: relative;
+}
+
+.workshop-bg::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    radial-gradient(circle at 20% 80%, rgba(207, 162, 77, 0.03) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(30, 202, 211, 0.02) 0%, transparent 50%),
+    radial-gradient(circle at 40% 40%, rgba(46, 204, 113, 0.02) 0%, transparent 30%);
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+/* Street Gradient Accents */
+.street-gradient {
+  background: linear-gradient(135deg, 
+    rgba(30, 202, 211, 0.1) 0%, 
+    rgba(207, 162, 77, 0.05) 50%, 
+    rgba(231, 76, 60, 0.05) 100%
+  );
+}
+
+/* Sneaker-Box Card Style */
+.sneaker-box-card {
+  background: linear-gradient(to bottom, #1A1A1A 0%, #121212 100%);
+  border: 1px solid rgba(207, 162, 77, 0.2);
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 0 0 1px rgba(207, 162, 77, 0.1);
+  position: relative;
+}
+
+.sneaker-box-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    rgba(30, 202, 211, 0.3) 50%, 
+    transparent 100%
+  );
+}
+
+/* PlayStation Button Colors */
+.ps-triangle {
+  color: #2ECC71; /* Green */
+}
+
+.ps-circle {
+  color: #E74C3C; /* Red */
+}
+
+.ps-x {
+  color: #3498DB; /* Blue */
+}
+
+.ps-square {
+  color: #CFA24D; /* Gold */
+}
+
+/* Candy Wrapper Shimmer */
+.candy-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.candy-shimmer::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent 30%,
+    rgba(207, 162, 77, 0.1) 50%,
+    transparent 70%
+  );
+  animation: candy-shine 3s ease-in-out infinite;
+}
+
+@keyframes candy-shine {
+  0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+  100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+}
+
+/* Phone Stack Effect */
+.phone-stack {
+  position: relative;
+  transform-style: preserve-3d;
+}
+
+.phone-stack::before,
+.phone-stack::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  left: -2px;
+  right: -2px;
+  bottom: -4px;
+  background: rgba(31, 38, 50, 0.6);
+  border-radius: inherit;
+  z-index: -1;
+  transform: translateZ(-2px);
+}
+
+.phone-stack::after {
+  top: 8px;
+  left: -4px;
+  right: -4px;
+  bottom: -8px;
+  background: rgba(31, 38, 50, 0.3);
+  transform: translateZ(-4px);
+}
+
+/* Laundry Pile Texture */
+.laundry-texture {
+  background-image: 
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 10px,
+      rgba(30, 202, 211, 0.02) 10px,
+      rgba(30, 202, 211, 0.02) 20px
+    );
+}
+
+/* Jordan/Nike Swoosh Accent */
+.swoosh-accent {
+  position: relative;
+}
+
+.swoosh-accent::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 60px;
+  height: 3px;
+  background: linear-gradient(90deg, 
+    rgba(30, 202, 211, 0.8) 0%, 
+    rgba(30, 202, 211, 0) 100%
+  );
+  border-radius: 2px;
+  transform: skewX(-20deg);
+}
+
+/* Repair Table Surface */
+.repair-table {
+  background: 
+    linear-gradient(180deg, rgba(18, 18, 18, 0.9) 0%, rgba(10, 10, 10, 0.9) 100%),
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.02) 0px,
+      rgba(255, 255, 255, 0.02) 1px,
+      transparent 1px,
+      transparent 40px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.02) 0px,
+      rgba(255, 255, 255, 0.02) 1px,
+      transparent 1px,
+      transparent 40px
+    );
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Street Sign Typography */
+.street-sign-text {
+  font-family: 'Bebas Neue', 'Impact', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  text-shadow: 
+    2px 2px 0 rgba(0, 0, 0, 0.5),
+    0 0 20px rgba(30, 202, 211, 0.3);
+}
+
+/* Box of Phones Container */
+.phone-box {
+  background: linear-gradient(145deg, #0F0F0F 0%, #1A1A1A 100%);
+  border: 2px dashed rgba(207, 162, 77, 0.3);
+  position: relative;
+}
+
+.phone-box::before {
+  content: '📦';
+  position: absolute;
+  top: -12px;
+  right: -12px;
+  font-size: 24px;
+  opacity: 0.4;
+  filter: grayscale(80%);
+}
+
+/* Graffiti Tag Accent */
+.graffiti-tag {
+  position: relative;
+  padding-left: 12px;
+}
+
+.graffiti-tag::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 80%;
+  background: linear-gradient(180deg, 
+    rgba(30, 202, 211, 0.8) 0%, 
+    rgba(207, 162, 77, 0.8) 50%,
+    rgba(231, 76, 60, 0.8) 100%
+  );
+  border-radius: 2px;
+}
+
+/* Device Status LED Effects */
+.status-led {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  position: relative;
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.status-led.connected {
+  background: #2ECC71;
+  box-shadow: 0 0 8px rgba(46, 204, 113, 0.6), 0 0 16px rgba(46, 204, 113, 0.3);
+}
+
+.status-led.disconnected {
+  background: #8C8C8C;
+  box-shadow: 0 0 4px rgba(140, 140, 140, 0.3);
+  animation: none;
+}
+
+.status-led.error {
+  background: #E74C3C;
+  box-shadow: 0 0 8px rgba(231, 76, 60, 0.6), 0 0 16px rgba(231, 76, 60, 0.3);
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(0.95); }
+}
+
+/* Console Text Effect */
+.console-text {
+  font-family: 'Space Mono', 'Courier New', monospace;
+  color: #2ECC71;
+  text-shadow: 0 0 8px rgba(46, 204, 113, 0.4);
+  letter-spacing: 0.02em;
+}
+
+/* Worn Sticker Effect */
+.sticker-worn {
+  position: relative;
+  opacity: 0.85;
+}
+
+.sticker-worn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 2px,
+    rgba(255, 255, 255, 0.03) 2px,
+    rgba(255, 255, 255, 0.03) 4px
+  );
+  pointer-events: none;
+}
+
+/* Workshop Ambient Glow */
+.ambient-glow-cyan {
+  box-shadow: 
+    0 0 20px rgba(30, 202, 211, 0.15),
+    0 0 40px rgba(30, 202, 211, 0.08);
+}
+
+.ambient-glow-gold {
+  box-shadow: 
+    0 0 20px rgba(207, 162, 77, 0.15),
+    0 0 40px rgba(207, 162, 77, 0.08);
+}
+
+/* Interactive Button Hover - Sneaker Colorway */
+.btn-sneaker {
+  background: linear-gradient(135deg, #1ECAD3 0%, #2ECC71 100%);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-sneaker::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.btn-sneaker:hover::before {
+  left: 100%;
+}
+
+.btn-sneaker:hover {
+  transform: translateY(-2px);
+  box-shadow: 
+    0 4px 12px rgba(30, 202, 211, 0.3),
+    0 8px 24px rgba(30, 202, 211, 0.15);
+}
+
+/* Device Card - Game Console Style */
+.device-card-console {
+  background: linear-gradient(145deg, #1A1A1A 0%, #0F0F0F 100%);
+  border: 1px solid rgba(30, 202, 211, 0.2);
+  border-radius: 8px;
+  padding: 16px;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.device-card-console:hover {
+  border-color: rgba(30, 202, 211, 0.5);
+  transform: translateY(-2px);
+  box-shadow: 
+    0 8px 16px rgba(0, 0, 0, 0.3),
+    0 0 20px rgba(30, 202, 211, 0.1);
+}
+
+/* Workshop Floor Grid */
+.floor-grid {
+  background-image: 
+    linear-gradient(rgba(30, 202, 211, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(30, 202, 211, 0.05) 1px, transparent 1px);
+  background-size: 50px 50px;
+}
