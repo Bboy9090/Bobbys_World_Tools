@@ -50,6 +50,7 @@ Each workflow is a JSON file with the following structure:
 All workflows now include a `metadata` section with the following fields:
 
 - **status**: Current workflow development status
+
   - `backlog` - Planned but not started
   - `in_progress` - Currently being developed
   - `review` - Under review/testing

@@ -12,8 +12,8 @@ Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "Bobby's Workshop - Comprehensive Tests" -ForegroundColor Cyan
 Write-Host "========================================`n" -ForegroundColor Cyan
 
-# Function to log test results
-function Log-Test {
+# Function to write test results
+function Write-TestResult {
     param(
         [string]$Name,
         [string]$Status,
@@ -59,23 +59,23 @@ if (Get-Command node -ErrorAction SilentlyContinue) {
 # Check npm
 if (Get-Command npm -ErrorAction SilentlyContinue) {
     $npmVersion = npm --version
-    Log-Test "npm installed" "PASS" "Version: $npmVersion"
+    Write-TestResult "npm installed" "PASS" "Version: $npmVersion"
 } else {
-    Log-Test "npm installed" "FAIL" "npm not found"
+    Write-TestResult "npm installed" "FAIL" "npm not found"
 }
 
 # Check for package.json
 if (Test-Path "package.json") {
-    Log-Test "package.json exists" "PASS"
+    Write-TestResult "package.json exists" "PASS"
 } else {
-    Log-Test "package.json exists" "FAIL" "Not found in current directory"
+    Write-TestResult "package.json exists" "FAIL" "Not found in current directory"
 }
 
 # Check for node_modules
 if (Test-Path "node_modules") {
-    Log-Test "Dependencies installed" "PASS"
+    Write-TestResult "Dependencies installed" "PASS"
 } else {
-    Log-Test "Dependencies installed" "SKIP" "Run 'npm install' first"
+    Write-TestResult "Dependencies installed" "SKIP" "Run 'npm install' first"
 }
 
 # ============================================================================
@@ -85,16 +85,16 @@ if (Test-Path "node_modules") {
 Write-Host "`n[2] Running Linting Tests..." -ForegroundColor Cyan
 
 try {
-    $lintOutput = npm run lint 2>&1
+    npm run lint 2>&1 | Out-Null
     $lintExit = $LASTEXITCODE
     
     if ($lintExit -eq 0) {
-        Log-Test "ESLint" "PASS"
+        Write-TestResult "ESLint" "PASS"
     } else {
-        Log-Test "ESLint" "FAIL" "Linting errors found"
+        Write-TestResult "ESLint" "FAIL" "Linting errors found"
     }
 } catch {
-    Log-Test "ESLint" "FAIL" $_.Exception.Message
+    Write-TestResult "ESLint" "FAIL" $_.Exception.Message
 }
 
 # ============================================================================
@@ -104,16 +104,16 @@ try {
 Write-Host "`n[3] Running TypeScript Type Checking..." -ForegroundColor Cyan
 
 try {
-    $tscOutput = npx tsc --noEmit 2>&1
+    npx tsc --noEmit 2>&1 | Out-Null
     $tscExit = $LASTEXITCODE
     
     if ($tscExit -eq 0) {
-        Log-Test "TypeScript compilation" "PASS"
+        Write-TestResult "TypeScript compilation" "PASS"
     } else {
-        Log-Test "TypeScript compilation" "FAIL" "Type errors found"
+        Write-TestResult "TypeScript compilation" "FAIL" "Type errors found"
     }
 } catch {
-    Log-Test "TypeScript compilation" "FAIL" $_.Exception.Message
+    Write-TestResult "TypeScript compilation" "FAIL" $_.Exception.Message
 }
 
 # ============================================================================
@@ -123,16 +123,16 @@ try {
 Write-Host "`n[4] Running Unit Tests..." -ForegroundColor Cyan
 
 try {
-    $testOutput = npm run test 2>&1
+    npm run test 2>&1 | Out-Null
     $testExit = $LASTEXITCODE
     
     if ($testExit -eq 0) {
-        Log-Test "Unit tests (vitest)" "PASS"
+        Write-TestResult "Unit tests (vitest)" "PASS"
     } else {
-        Log-Test "Unit tests (vitest)" "FAIL" "Some tests failed"
+        Write-TestResult "Unit tests (vitest)" "FAIL" "Some tests failed"
     }
 } catch {
-    Log-Test "Unit tests (vitest)" "FAIL" $_.Exception.Message
+    Write-TestResult "Unit tests (vitest)" "FAIL" $_.Exception.Message
 }
 
 # ============================================================================
@@ -143,19 +143,19 @@ Write-Host "`n[5] Running Workflow System Tests..." -ForegroundColor Cyan
 
 try {
     if (Test-Path "tests/workflow-system.test.js") {
-        $workflowOutput = npm run test:workflow 2>&1
+        npm run test:workflow 2>&1 | Out-Null
         $workflowExit = $LASTEXITCODE
         
         if ($workflowExit -eq 0) {
-            Log-Test "Workflow system tests" "PASS"
+            Write-TestResult "Workflow system tests" "PASS"
         } else {
-            Log-Test "Workflow system tests" "FAIL" "Workflow tests failed"
+            Write-TestResult "Workflow system tests" "FAIL" "Workflow tests failed"
         }
     } else {
-        Log-Test "Workflow system tests" "SKIP" "Test file not found"
+        Write-TestResult "Workflow system tests" "SKIP" "Test file not found"
     }
 } catch {
-    Log-Test "Workflow system tests" "FAIL" $_.Exception.Message
+    Write-TestResult "Workflow system tests" "FAIL" $_.Exception.Message
 }
 
 # ============================================================================
@@ -166,23 +166,23 @@ Write-Host "`n[6] Running Build Tests..." -ForegroundColor Cyan
 
 try {
     Write-Host "  Building application..." -ForegroundColor Gray
-    $buildOutput = npm run build 2>&1
+    npm run build 2>&1 | Out-Null
     $buildExit = $LASTEXITCODE
     
     if ($buildExit -eq 0) {
-        Log-Test "Frontend build" "PASS"
+        Write-TestResult "Frontend build" "PASS"
     } else {
-        Log-Test "Frontend build" "FAIL" "Build failed"
+        Write-TestResult "Frontend build" "FAIL" "Build failed"
     }
 } catch {
-    Log-Test "Frontend build" "FAIL" $_.Exception.Message
+    Write-TestResult "Frontend build" "FAIL" $_.Exception.Message
 }
 
 # Check if dist folder was created
 if (Test-Path "dist") {
-    Log-Test "Build artifacts created" "PASS" "dist/ folder exists"
+    Write-TestResult "Build artifacts created" "PASS" "dist/ folder exists"
 } else {
-    Log-Test "Build artifacts created" "FAIL" "dist/ folder not found"
+    Write-TestResult "Build artifacts created" "FAIL" "dist/ folder not found"
 }
 
 # ============================================================================
@@ -210,9 +210,9 @@ $requiredFiles = @(
 
 foreach ($file in $requiredFiles) {
     if (Test-Path $file) {
-        Log-Test "File exists: $file" "PASS"
+        Write-TestResult "File exists: $file" "PASS"
     } else {
-        Log-Test "File exists: $file" "FAIL" "File not found"
+        Write-TestResult "File exists: $file" "FAIL" "File not found"
     }
 }
 
@@ -234,16 +234,16 @@ foreach ($file in $deviceDetectionFiles) {
         
         # Check for real API calls (not mocks)
         if ($content -match "fetch.*api") {
-            Log-Test "Uses real API: $file" "PASS"
+            Write-TestResult "Uses real API: $file" "PASS"
         } else {
-            Log-Test "Uses real API: $file" "FAIL" "No fetch calls found"
+            Write-TestResult "Uses real API: $file" "FAIL" "No fetch calls found"
         }
         
         # Check for error handling
         if ($content -match "catch|error") {
-            Log-Test "Has error handling: $file" "PASS"
+            Write-TestResult "Has error handling: $file" "PASS"
         } else {
-            Log-Test "Has error handling: $file" "FAIL" "No error handling found"
+            Write-TestResult "Has error handling: $file" "FAIL" "No error handling found"
         }
     }
 }
@@ -258,16 +258,16 @@ if (Test-Path "src\lib\app-context.tsx") {
     $appContext = Get-Content "src\lib\app-context.tsx" -Raw
     
     if ($appContext -match "isDemoMode") {
-        Log-Test "Demo mode context exists" "PASS"
+        Write-TestResult "Demo mode context exists" "PASS"
     } else {
-        Log-Test "Demo mode context exists" "FAIL"
+        Write-TestResult "Demo mode context exists" "FAIL"
     }
 }
 
 if (Test-Path "src\components\DemoModeBanner.tsx") {
-    Log-Test "Demo mode banner component exists" "PASS"
+    Write-TestResult "Demo mode banner component exists" "PASS"
 } else {
-    Log-Test "Demo mode banner component exists" "FAIL"
+    Write-TestResult "Demo mode banner component exists" "FAIL"
 }
 
 # Check for DEMO labeling in components
@@ -281,9 +281,9 @@ foreach ($comp in $demoComponents) {
         $content = Get-Content $comp -Raw
         
         if ($content -match "\[DEMO\]|DEMO") {
-            Log-Test "Has DEMO labeling: $(Split-Path -Leaf $comp)" "PASS"
+            Write-TestResult "Has DEMO labeling: $(Split-Path -Leaf $comp)" "PASS"
         } else {
-            Log-Test "Has DEMO labeling: $(Split-Path -Leaf $comp)" "FAIL"
+            Write-TestResult "Has DEMO labeling: $(Split-Path -Leaf $comp)" "FAIL"
         }
     }
 }
@@ -304,12 +304,12 @@ foreach ($endpoint in $apiEndpoints) {
     try {
         $response = Invoke-WebRequest -Uri $endpoint.URL -TimeoutSec 2 -ErrorAction Stop
         if ($response.StatusCode -eq 200) {
-            Log-Test "API endpoint: $($endpoint.Name)" "PASS"
+            Write-TestResult "API endpoint: $($endpoint.Name)" "PASS"
         } else {
-            Log-Test "API endpoint: $($endpoint.Name)" "FAIL" "Status: $($response.StatusCode)"
+            Write-TestResult "API endpoint: $($endpoint.Name)" "FAIL" "Status: $($response.StatusCode)"
         }
     } catch {
-        Log-Test "API endpoint: $($endpoint.Name)" "SKIP" "Backend not running"
+        Write-TestResult "API endpoint: $($endpoint.Name)" "SKIP" "Backend not running"
     }
 }
 
@@ -326,23 +326,23 @@ $foundSecrets = $false
 foreach ($file in $securityFiles) {
     $content = Get-Content $file.FullName -Raw
     
-    if ($content -match "password\s*=\s*['\"][^'\"]{8,}['\"]" -or 
-        $content -match "api[_-]?key\s*=\s*['\"][^'\"]{16,}['\"]" -or
-        $content -match "secret\s*=\s*['\"][^'\"]{16,}['\"]") {
+    if ($content -match "password\s*=\s*['\`"][^\`'`"]{8,}['\`"]" -or 
+        $content -match "api[_-]?key\s*=\s*['\`"][^\`'`"]{16,}['\`"]" -or
+        $content -match "secret\s*=\s*['\`"][^\`'`"]{16,}['\`"]") {
         $foundSecrets = $true
-        Log-Test "No hardcoded secrets in: $($file.Name)" "FAIL" "Potential secret found"
+        Write-TestResult "No hardcoded secrets in: $($file.Name)" "FAIL" "Potential secret found"
     }
 }
 
 if (-not $foundSecrets) {
-    Log-Test "No hardcoded secrets" "PASS"
+    Write-TestResult "No hardcoded secrets" "PASS"
 }
 
 # Check for .env.example
 if (Test-Path ".env.example") {
-    Log-Test ".env.example exists" "PASS"
+    Write-TestResult ".env.example exists" "PASS"
 } else {
-    Log-Test ".env.example exists" "SKIP" "Not found"
+    Write-TestResult ".env.example exists" "SKIP" "Not found"
 }
 
 # ============================================================================
@@ -363,12 +363,12 @@ foreach ($doc in $docFiles) {
     if (Test-Path $doc) {
         $size = (Get-Item $doc).Length
         if ($size -gt 1000) {
-            Log-Test "Documentation: $doc" "PASS" "Size: $size bytes"
+            Write-TestResult "Documentation: $doc" "PASS" "Size: $size bytes"
         } else {
-            Log-Test "Documentation: $doc" "FAIL" "Too small: $size bytes"
+            Write-TestResult "Documentation: $doc" "FAIL" "Too small: $size bytes"
         }
     } else {
-        Log-Test "Documentation: $doc" "FAIL" "Not found"
+        Write-TestResult "Documentation: $doc" "FAIL" "Not found"
     }
 }
 

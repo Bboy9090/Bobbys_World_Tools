@@ -11,6 +11,7 @@
 This guide provides step-by-step instructions for deploying Bobby's World Tools (Pandora Codex) in various environments, from single-user workstations to enterprise deployments.
 
 **Deployment Models:**
+
 1. **Single-User Workstation** - Developer or repair technician
 2. **Shared Workstation** - Repair shop with multiple users
 3. **Enterprise Deployment** - Fleet management with centralized backend
@@ -21,27 +22,27 @@ This guide provides step-by-step instructions for deploying Bobby's World Tools 
 
 ### Minimum Requirements
 
-| Component | Specification |
-|-----------|--------------|
-| **OS** | Ubuntu 20.04+, macOS 11+, Windows 10+ |
-| **CPU** | 2 cores, 2.0 GHz |
-| **RAM** | 4 GB |
-| **Storage** | 10 GB free space |
-| **USB** | USB 2.0 ports for device connections |
-| **Node.js** | 20.x LTS or higher |
-| **npm** | 9.x or higher |
+| Component   | Specification                         |
+| ----------- | ------------------------------------- |
+| **OS**      | Ubuntu 20.04+, macOS 11+, Windows 10+ |
+| **CPU**     | 2 cores, 2.0 GHz                      |
+| **RAM**     | 4 GB                                  |
+| **Storage** | 10 GB free space                      |
+| **USB**     | USB 2.0 ports for device connections  |
+| **Node.js** | 20.x LTS or higher                    |
+| **npm**     | 9.x or higher                         |
 
 ### Recommended Requirements
 
-| Component | Specification |
-|-----------|--------------|
-| **OS** | Ubuntu 22.04 LTS |
-| **CPU** | 4+ cores, 3.0+ GHz |
-| **RAM** | 8+ GB |
-| **Storage** | 50+ GB SSD |
-| **USB** | USB 3.0 ports with hub support |
-| **Node.js** | 20.x LTS |
-| **npm** | 10.x |
+| Component   | Specification                  |
+| ----------- | ------------------------------ |
+| **OS**      | Ubuntu 22.04 LTS               |
+| **CPU**     | 4+ cores, 3.0+ GHz             |
+| **RAM**     | 8+ GB                          |
+| **Storage** | 50+ GB SSD                     |
+| **USB**     | USB 3.0 ports with hub support |
+| **Node.js** | 20.x LTS                       |
+| **npm**     | 10.x                           |
 
 ---
 
@@ -50,6 +51,7 @@ This guide provides step-by-step instructions for deploying Bobby's World Tools 
 ### Core Dependencies
 
 #### Linux (Ubuntu/Debian)
+
 ```bash
 # Update package lists
 sudo apt update
@@ -81,6 +83,7 @@ cargo --version
 ```
 
 #### macOS
+
 ```bash
 # Install Homebrew if not already installed
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
@@ -107,6 +110,7 @@ cargo --version
 ```
 
 #### Windows
+
 ```powershell
 # Install via Chocolatey
 choco install nodejs-lts -y
@@ -248,6 +252,7 @@ npm run preview
 ## 🐳 Docker Deployment (Alternative)
 
 ### Prerequisites
+
 - Docker 20.10+
 - Docker Compose 2.0+
 
@@ -256,7 +261,7 @@ npm run preview
 Create `docker-compose.yml`:
 
 ```yaml
-version: '3.8'
+version: "3.8"
 
 services:
   frontend:
@@ -429,6 +434,7 @@ curl http://localhost:3001/api/ios/scan
 **Symptom**: Backend fails to start or crashes immediately
 
 **Solution**:
+
 ```bash
 # Check logs
 cat /var/log/pandora-codex/server.log
@@ -446,6 +452,7 @@ lsof -i :3001
 **Symptom**: Banner shows "Demo Mode - Backend API Unavailable"
 
 **Solution**:
+
 ```bash
 # Verify backend is running
 curl http://localhost:3001/health
@@ -463,6 +470,7 @@ grep VITE_API_URL .env
 **Symptom**: Connected device not showing in UI
 
 **Solution**:
+
 ```bash
 # Test ADB directly
 adb devices
@@ -530,6 +538,7 @@ npm run preview
 ## 📞 Support
 
 **Documentation**: See `docs/` directory
+
 - `OPERATIONS.md` - Day-to-day operations guide
 - `SECURITY.md` - Security best practices
 - `docs/audits/` - Audit reports and compliance docs
@@ -544,5 +553,5 @@ npm run preview
 
 ---
 
-*"Deploy confidently. Scale reliably. Operate securely."*  
+_"Deploy confidently. Scale reliably. Operate securely."_  
 — **Pandora Codex Deployment Standards**

@@ -20,11 +20,13 @@ feature/<feature-name>
 **Active Feature Branches:**
 
 1. **`feature/trapdoor-api`** - Trapdoor API enhancements
+
    - Focus: Secure admin-only API endpoints
    - Lead: Backend team
    - Status: Active development
 
 2. **`feature/workflow-system`** - Workflow system improvements
+
    - Focus: JSON-defined workflows with execution logging
    - Lead: DevOps team
    - Status: Active development
@@ -46,12 +48,14 @@ cd Bobbys_World_Tools
 ### 2. Set Up Your Development Environment
 
 #### Frontend Setup
+
 ```bash
 npm install
 npm run dev
 ```
 
 #### Backend Setup
+
 ```bash
 cd server
 npm install
@@ -59,6 +63,7 @@ npm start
 ```
 
 #### Rust Components (Optional)
+
 ```bash
 # Install Rust
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
@@ -83,18 +88,21 @@ git checkout -b feature/your-feature-name
 ### Working on a Feature
 
 1. **Make changes in your feature branch**
+
    ```bash
    git checkout feature/your-feature-name
    # Make your changes
    ```
 
 2. **Commit frequently with clear messages**
+
    ```bash
    git add .
    git commit -m "feat: add device detection for workflow system"
    ```
 
 3. **Keep your branch up to date**
+
    ```bash
    git checkout main
    git pull origin main
@@ -131,11 +139,13 @@ npm run lint
 ### Creating a Pull Request
 
 1. **Push your feature branch to GitHub**
+
    ```bash
    git push origin feature/your-feature-name
    ```
 
 2. **Create PR on GitHub**
+
    - Go to the repository on GitHub
    - Click "New Pull Request"
    - Select `feature/your-feature-name` → `main`
@@ -211,16 +221,19 @@ All workflows must follow this structure:
 ### Feature Branch Lifecycle
 
 1. **Development Phase**
+
    - Active development on feature branch
    - Regular commits and pushes
    - Keep branch updated with main
 
 2. **Testing Phase**
+
    - All automated tests passing
    - Manual testing completed
    - Code review requested
 
 3. **Review Phase**
+
    - Code review by team members
    - Address feedback
    - Update PR as needed
@@ -291,6 +304,7 @@ Our automated pipeline runs on all branches:
 ### Status Checks
 
 All these must pass before merge:
+
 - ✅ Lint check
 - ✅ Unit tests
 - ✅ Integration tests
@@ -315,6 +329,7 @@ All these must pass before merge:
 ## ⚖️ Legal Compliance
 
 All contributions must:
+
 - Respect device ownership and authorization
 - Include proper legal disclaimers for bypass features
 - Comply with CFAA and similar laws
@@ -324,4 +339,4 @@ All contributions must:
 
 **Thank you for contributing to Bobby's World Tools!**
 
-*Professional repair diagnostics - Use responsibly. Repair ethically. Respect the law.*
+_Professional repair diagnostics - Use responsibly. Repair ethically. Respect the law._

@@ -280,4 +280,4 @@ describe("Shadow Logger Tests", () => {
   });
 });
 
-console.log("✅ Workflow system tests defined");
+console.log(" Workflow system tests defined");

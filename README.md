@@ -173,8 +173,8 @@ Professional-grade diagnostic capabilities:
   - Real ADB-based detection via `settings get secure android_id`
   - Confidence scoring: High / Medium / Low / Unknown
   - Device manufacturer and Android version identification
-  
 - **MDM (Mobile Device Management) Detection**
+
   - Enterprise profile identification
   - Organization name extraction
   - Restriction list analysis
@@ -322,7 +322,7 @@ choco install adb fastboot
 ✅ Link to official manufacturer unlock procedures  
 ✅ Support authorized repairs on owned devices  
 ✅ Teach proper diagnostic and repair techniques  
-✅ Provide secure, sandboxed execution of tools (Trapdoor)  
+✅ Provide secure, sandboxed execution of tools (Trapdoor)
 
 ### What This Toolkit DOES NOT DO
 
@@ -330,7 +330,7 @@ choco install adb fastboot
 ❌ Remove MDM from enterprise-managed devices without authorization  
 ❌ Enable device theft or unauthorized access  
 ❌ Violate manufacturer warranties or terms of service  
-❌ Provide "hacking" or "cracking" tools  
+❌ Provide "hacking" or "cracking" tools
 
 ### Legal Notice - Trapdoor Module
 
@@ -533,7 +533,7 @@ This software is provided "as is" for educational and legitimate repair purposes
 ---
 
 **Bobby's World** - Workshop Toolkit  
-*Now with Pandora Codex Integration*
+_Now with Pandora Codex Integration_
 
 Professional repair diagnostics and educational resources  
 **Use responsibly. Repair ethically. Respect the law.**

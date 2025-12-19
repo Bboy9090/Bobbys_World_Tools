@@ -123,13 +123,13 @@ Make sure the `LiveProgressMonitor` component is configured with the correct Web
 
 ```typescript
 // Default configuration in LiveProgressMonitor.tsx
-const [wsUrl, setWsUrl] = useState('ws://localhost:3001/flash-progress');
+const [wsUrl, setWsUrl] = useState("ws://localhost:3001/flash-progress");
 ```
 
 For the Python server:
 
 ```typescript
-const [wsUrl, setWsUrl] = useState('ws://localhost:8000/flash-progress');
+const [wsUrl, setWsUrl] = useState("ws://localhost:8000/flash-progress");
 ```
 
 ## WebSocket Message Flow
@@ -258,24 +258,24 @@ docker run -p 3000:3000 -p 3001:3001 bobbys-world-flash-ws
 1. **Use WSS (Secure WebSocket)**
 
    ```javascript
-   const https = require('https');
-   const fs = require('fs');
-   
+   const https = require("https");
+   const fs = require("fs");
+
    const server = https.createServer({
-     cert: fs.readFileSync('/path/to/cert.pem'),
-     key: fs.readFileSync('/path/to/key.pem')
+     cert: fs.readFileSync("/path/to/cert.pem"),
+     key: fs.readFileSync("/path/to/key.pem"),
    });
-   
+
    const wss = new WebSocket.Server({ server });
    ```
 
 2. **Add Authentication**
 
    ```javascript
-   wss.on('connection', (ws, req) => {
-     const token = new URL(req.url, 'ws://base').searchParams.get('token');
+   wss.on("connection", (ws, req) => {
+     const token = new URL(req.url, "ws://base").searchParams.get("token");
      if (!verifyToken(token)) {
-       ws.close(1008, 'Unauthorized');
+       ws.close(1008, "Unauthorized");
        return;
      }
      // ... handle connection
@@ -285,21 +285,26 @@ docker run -p 3000:3000 -p 3001:3001 bobbys-world-flash-ws
 3. **Rate Limiting**
 
    ```javascript
-   const rateLimit = require('express-rate-limit');
-   
-   app.use('/api/flash', rateLimit({
-     windowMs: 15 * 60 * 1000,
-     max: 100
-   }));
+   const rateLimit = require("express-rate-limit");
+
+   app.use(
+     "/api/flash",
+     rateLimit({
+       windowMs: 15 * 60 * 1000,
+       max: 100,
+     }),
+   );
    ```
 
 4. **CORS Configuration**
 
    ```javascript
-   app.use(cors({
-     origin: 'https://yourdomain.com',
-     credentials: true
-   }));
+   app.use(
+     cors({
+       origin: "https://yourdomain.com",
+       credentials: true,
+     }),
+   );
    ```
 
 ## Troubleshooting
@@ -350,7 +355,7 @@ Modify the `perform_flash` function to randomly fail:
 
 ```javascript
 if (Math.random() < 0.1) {
-  manager.flashFailed(jobId, deviceId, 'Simulated random failure');
+  manager.flashFailed(jobId, deviceId, "Simulated random failure");
   return;
 }
 ```

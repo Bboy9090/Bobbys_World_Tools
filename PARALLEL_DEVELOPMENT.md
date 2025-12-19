@@ -13,18 +13,21 @@ The foundation of our parallel development strategy is a set of modular, well-de
 #### Core Libraries
 
 1. **`adb.js`** - Android Debug Bridge Operations
+
    - Device detection and management
    - Command execution
    - FRP detection
    - Status queries
 
 2. **`fastboot.js`** - Fastboot Device Management
+
    - Bootloader operations
    - Partition flashing
    - Device unlocking
    - Variable queries
 
 3. **`ios.js`** - iOS Device Operations
+
    - libimobiledevice integration
    - Device mode detection
    - Recovery operations
@@ -110,7 +113,9 @@ React components for user interaction with modular design.
 ### Team Structure
 
 #### Team A: Trapdoor API (`feature/trapdoor-api`)
+
 **Responsibilities:**
+
 - Enhance API endpoints
 - Improve authentication and authorization
 - Add rate limiting
@@ -118,16 +123,20 @@ React components for user interaction with modular design.
 - API documentation
 
 **Dependencies:**
+
 - Core libraries (`adb.js`, `fastboot.js`, `ios.js`, `shadow-logger.js`)
 - Workflow engine
 
 **Minimal Conflicts:**
+
 - Works primarily in `core/api/`
 - Limited frontend interaction
 - Independent testing
 
 #### Team B: Workflow System (`feature/workflow-system`)
+
 **Responsibilities:**
+
 - Add new workflow definitions
 - Enhance workflow engine
 - Implement execution logging
@@ -135,16 +144,20 @@ React components for user interaction with modular design.
 - Workflow testing framework
 
 **Dependencies:**
+
 - Core libraries
 - Workflow engine schema
 
 **Minimal Conflicts:**
+
 - Works primarily in `workflows/` and `core/tasks/`
 - Can add workflows without code changes
 - Independent JSON definitions
 
 #### Team C: Frontend Dashboard (`feature/frontend-dashboard`)
+
 **Responsibilities:**
+
 - Create workflow visualizer
 - Implement log viewer UI
 - Add device interaction components
@@ -152,11 +165,13 @@ React components for user interaction with modular design.
 - Dashboard enhancements
 
 **Dependencies:**
+
 - Trapdoor API endpoints
 - Workflow definitions
 - WebSocket infrastructure
 
 **Minimal Conflicts:**
+
 - Works primarily in `src/components/`
 - Uses API contracts, not implementations
 - Independent UI testing
@@ -164,6 +179,7 @@ React components for user interaction with modular design.
 ### Development Phases
 
 #### Phase 1: Foundation (Week 1)
+
 - ✅ Set up core libraries
 - ✅ Define API contracts
 - ✅ Create workflow schema
@@ -171,12 +187,15 @@ React components for user interaction with modular design.
 - ✅ Configure CI/CD pipeline
 
 #### Phase 2: Parallel Development (Weeks 2-4)
+
 - **Team A**: Enhance Trapdoor API
+
   - Add new endpoints
   - Implement security features
   - Create API documentation
 
 - **Team B**: Expand Workflow System
+
   - Add workflow definitions
   - Enhance execution engine
   - Build validation tools
@@ -187,6 +206,7 @@ React components for user interaction with modular design.
   - Add real-time monitoring
 
 #### Phase 3: Integration (Week 5)
+
 - Merge feature branches
 - Integration testing
 - Performance testing
@@ -194,6 +214,7 @@ React components for user interaction with modular design.
 - Documentation updates
 
 #### Phase 4: Quality Assurance (Week 6)
+
 - End-to-end testing
 - User acceptance testing
 - Bug fixes
@@ -256,24 +277,28 @@ interface WorkflowVisualizerProps {
 ## Testing Strategy
 
 ### Unit Tests
+
 - Test individual functions in isolation
 - Mock external dependencies
 - Fast execution (< 5 seconds)
 - Run on every commit
 
 ### Integration Tests
+
 - Test component interactions
 - Use test database/mocked services
 - Moderate execution (< 30 seconds)
 - Run on PR creation
 
 ### End-to-End Tests
+
 - Test complete workflows
 - Use mocked device environment
 - Slower execution (< 5 minutes)
 - Run before merge
 
 ### Coverage Goals
+
 - Unit tests: 80%+ coverage
 - Integration tests: 60%+ coverage
 - E2E tests: Critical paths covered
@@ -283,16 +308,14 @@ interface WorkflowVisualizerProps {
 ### Automated Checks
 
 ```yaml
-On Push/PR:
-  ├── Lint Check
+On Push/PR: ├── Lint Check
   ├── Unit Tests
   ├── Integration Tests
   ├── Build Verification
   ├── Workflow Validation
   └── Security Scan
 
-On Merge to Main:
-  ├── All above checks
+On Merge to Main: ├── All above checks
   ├── E2E Tests
   ├── Performance Tests
   └── Production Build
@@ -301,6 +324,7 @@ On Merge to Main:
 ### Branch Protection
 
 Main branch is protected:
+
 - ✅ All CI checks must pass
 - ✅ At least 1 approval required
 - ✅ Branch must be up to date
@@ -333,11 +357,13 @@ git commit -m "merge: resolve conflicts with main"
 ## Communication Channels
 
 ### Synchronous
+
 - Daily standup meetings
 - Slack/Discord for quick questions
 - Pair programming sessions
 
 ### Asynchronous
+
 - GitHub Issues for feature requests
 - Pull Request reviews
 - Documentation updates
@@ -346,17 +372,20 @@ git commit -m "merge: resolve conflicts with main"
 ## Success Metrics
 
 ### Development Velocity
+
 - Feature branches merged per week
 - Average PR cycle time
 - Code review turnaround time
 
 ### Code Quality
+
 - Test coverage percentage
 - Number of bugs post-merge
 - CI/CD success rate
 - Code review feedback density
 
 ### Collaboration Health
+
 - Number of merge conflicts
 - Time to resolve conflicts
 - Team satisfaction surveys
@@ -395,21 +424,25 @@ git commit -m "merge: resolve conflicts with main"
 ## Tools & Infrastructure
 
 ### Version Control
+
 - Git with feature branch workflow
 - GitHub for hosting and PRs
 - Branch protection rules
 
 ### Testing
+
 - Vitest for unit/integration tests
 - Mocked device environments
 - Coverage reporting
 
 ### CI/CD
+
 - GitHub Actions for automation
 - Automated testing on all branches
 - Security scanning (CodeQL, npm audit)
 
 ### Documentation
+
 - Markdown for all docs
 - JSDoc for code documentation
 - OpenAPI for API specs

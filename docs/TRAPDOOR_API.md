@@ -25,6 +25,7 @@ Execute Factory Reset Protection bypass workflow on authorized devices.
 **Endpoint:** `POST /api/trapdoor/frp`
 
 **Request Body:**
+
 ```json
 {
   "deviceSerial": "ABC123XYZ",
@@ -36,6 +37,7 @@ Execute Factory Reset Protection bypass workflow on authorized devices.
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -62,6 +64,7 @@ Unlock device bootloader (WARNING: Erases all data).
 **Endpoint:** `POST /api/trapdoor/unlock`
 
 **Request Body:**
+
 ```json
 {
   "deviceSerial": "ABC123XYZ",
@@ -81,6 +84,7 @@ Execute any available workflow by category and ID.
 **Endpoint:** `POST /api/trapdoor/workflow/execute`
 
 **Request Body:**
+
 ```json
 {
   "category": "android",
@@ -94,6 +98,7 @@ Execute any available workflow by category and ID.
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -109,6 +114,7 @@ Get all available workflows across all categories.
 **Endpoint:** `GET /api/trapdoor/workflows`
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -132,9 +138,11 @@ Access encrypted audit logs for a specific date.
 **Endpoint:** `GET /api/trapdoor/logs/shadow?date=2024-01-01`
 
 **Query Parameters:**
+
 - `date` (optional): Date in YYYY-MM-DD format. Defaults to today.
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -165,6 +173,7 @@ Retrieve statistics about shadow and public logs.
 **Endpoint:** `GET /api/trapdoor/logs/stats`
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -185,6 +194,7 @@ Trigger log rotation based on retention policy.
 **Endpoint:** `POST /api/trapdoor/logs/rotate`
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -199,6 +209,7 @@ Execute multiple workflows in sequence with optional throttling.
 **Endpoint:** `POST /api/trapdoor/batch/execute`
 
 **Request Body:**
+
 ```json
 {
   "deviceSerial": "ABC123XYZ",
@@ -219,9 +230,11 @@ Execute multiple workflows in sequence with optional throttling.
 ```
 
 **Query Parameters:**
+
 - `throttle` (optional): Milliseconds to wait between commands. Default: 0.
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -246,6 +259,7 @@ Execute multiple workflows in sequence with optional throttling.
 ### Encryption
 
 All sensitive operations are logged to encrypted shadow logs using:
+
 - **Algorithm**: AES-256-GCM
 - **Key Derivation**: PBKDF2 with 100,000 iterations
 - **Authentication**: GCM authentication tag
@@ -286,6 +300,7 @@ All endpoints return consistent error responses:
 ```
 
 **HTTP Status Codes:**
+
 - `200`: Success
 - `400`: Bad Request (missing parameters)
 - `403`: Unauthorized (invalid API key)
@@ -305,35 +320,37 @@ All endpoints return consistent error responses:
 ## Example Usage
 
 ### Node.js
+
 ```javascript
-const axios = require('axios');
+const axios = require("axios");
 
 async function executeFRPBypass(deviceSerial) {
   try {
     const response = await axios.post(
-      'http://localhost:3001/api/trapdoor/frp',
+      "http://localhost:3001/api/trapdoor/frp",
       {
         deviceSerial,
         authorization: {
           confirmed: true,
-          userInput: 'I OWN THIS DEVICE'
-        }
+          userInput: "I OWN THIS DEVICE",
+        },
       },
       {
         headers: {
-          'X-API-Key': 'your-admin-key'
-        }
-      }
+          "X-API-Key": "your-admin-key",
+        },
+      },
     );
-    
+
     return response.data;
   } catch (error) {
-    console.error('FRP bypass failed:', error.response.data);
+    console.error("FRP bypass failed:", error.response.data);
   }
 }
 ```
 
 ### cURL
+
 ```bash
 curl -X POST http://localhost:3001/api/trapdoor/frp \
   -H "Content-Type: application/json" \
@@ -350,6 +367,7 @@ curl -X POST http://localhost:3001/api/trapdoor/frp \
 ## Compliance
 
 Shadow logging provides:
+
 - **Audit Trail**: Complete record of all sensitive operations
 - **Tamper Detection**: SHA-256 hashes detect unauthorized modifications
 - **Encryption**: AES-256 protects sensitive data at rest
@@ -359,5 +377,6 @@ Shadow logging provides:
 ## Support
 
 For issues or questions:
+
 - GitHub Issues: https://github.com/Bboy9090/Bobbys_World_Tools/issues
 - Documentation: See README.md and BOBBY_SECRET_WORKSHOP.md

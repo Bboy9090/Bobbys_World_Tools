@@ -20,11 +20,13 @@ If you discover a security vulnerability, please report it responsibly:
 **Contact**: [Create a private security advisory on GitHub](https://github.com/Bboy9090/Bobbys_World_Tools/security/advisories/new)
 
 **Please DO NOT**:
+
 - Report security issues through public GitHub issues
 - Disclose vulnerabilities publicly before we've had a chance to address them
 - Exploit vulnerabilities beyond what's necessary to demonstrate the issue
 
 **Please DO**:
+
 - Provide detailed reproduction steps
 - Include the affected version(s)
 - Describe the potential impact
@@ -49,6 +51,7 @@ If you discover a security vulnerability, please report it responsibly:
 **Principle**: No fake success responses, no silent failures
 
 **Implementation**:
+
 - All operations return real results
 - Confidence scoring for device detection
 - Evidence-based classifications
@@ -61,6 +64,7 @@ If you discover a security vulnerability, please report it responsibly:
 **Feature**: 36+ mapped device authorization prompts
 
 **Implementation**:
+
 - Every sensitive operation requires explicit authorization
 - Typed confirmations (e.g., "UNLOCK", "RESET")
 - Full audit logging with timestamps
@@ -73,6 +77,7 @@ If you discover a security vulnerability, please report it responsibly:
 **Feature**: Blocked access to critical device partitions
 
 **Protected Partitions**:
+
 - `bootloader` - Device bootloader
 - `radio` - Baseband firmware
 - `aboot` - Android bootloader
@@ -87,11 +92,13 @@ If you discover a security vulnerability, please report it responsibly:
 **Feature**: Whitelist of safe ADB commands
 
 **Blocked Commands**:
+
 - Direct root shell access
 - Package installation without verification
 - System modification commands
 
 **Allowed Commands**:
+
 - Device information queries
 - Non-destructive diagnostics
 - Authorized operations only
@@ -101,6 +108,7 @@ If you discover a security vulnerability, please report it responsibly:
 **Feature**: Signed, immutable audit logs
 
 **Implementation**:
+
 - SHA-256 signing of evidence bundles
 - Timestamped operation logs
 - Chain-of-custody preservation
@@ -113,12 +121,14 @@ If you discover a security vulnerability, please report it responsibly:
 **Feature**: Admin operations require API key
 
 **Implementation**:
+
 ```bash
 # All admin endpoints check x-api-key header
 curl -H "x-api-key: $ADMIN_API_KEY" http://localhost:3001/api/admin/...
 ```
 
 **Endpoints Protected**:
+
 - Authorization triggers
 - System configuration
 - Evidence export
@@ -140,6 +150,7 @@ ADMIN_API_KEY=generated_key_here
 ```
 
 **Never use**:
+
 - Default keys
 - Weak passwords
 - Keys in source control
@@ -152,6 +163,7 @@ sudo certbot --nginx -d your-domain.com
 ```
 
 **Never expose**:
+
 - HTTP-only endpoints in production
 - Unencrypted WebSocket connections
 
@@ -219,6 +231,7 @@ sha256sum evidence-bundle.json
 **Issue**: USB devices must be trusted by the operator
 
 **Mitigation**:
+
 - Visual device identification
 - Device serial number verification
 - Authorization trigger confirmation
@@ -230,6 +243,7 @@ sha256sum evidence-bundle.json
 **Issue**: Android devices require ADB authorization
 
 **Mitigation**:
+
 - Physical device access required
 - User must approve ADB authorization on device
 - Authorization tracked in audit logs
@@ -241,6 +255,7 @@ sha256sum evidence-bundle.json
 **Issue**: Trapdoor module provides access to powerful bypass tools
 
 **Mitigation**:
+
 - Admin-only access
 - Firejail sandboxing (optional)
 - Full audit logging
@@ -257,12 +272,14 @@ sha256sum evidence-bundle.json
 The following features are **intentionally excluded** for legal and ethical reasons:
 
 ❌ **iOS**:
+
 - Apple ID bypass
 - Activation lock bypass
 - MDM profile removal (unauthorized)
 - Jailbreaking without user consent
 
 ❌ **Android**:
+
 - FRP (Factory Reset Protection) bypass
 - Bootloader unlock bypass
 - IMEI alteration
@@ -272,6 +289,7 @@ The following features are **intentionally excluded** for legal and ethical reas
 **Rationale**: Legal compliance, ownership respect, ethical boundaries
 
 **Legal Note**: Bypassing security features on devices you do not own is illegal under:
+
 - Computer Fraud and Abuse Act (CFAA) - United States
 - Computer Misuse Act - United Kingdom
 - Similar laws in most jurisdictions
@@ -318,6 +336,7 @@ The following features are **intentionally excluded** for legal and ethical reas
 **Findings**: See `docs/audits/production-reality-audit.md`
 
 **Key Results**:
+
 - ✅ No hardcoded success responses
 - ✅ No silent error swallowing
 - ✅ Proper error propagation
@@ -354,5 +373,5 @@ The following features are **intentionally excluded** for legal and ethical reas
 
 ---
 
-*"Security through transparency. Trust through audit. Protection through design."*  
+_"Security through transparency. Trust through audit. Protection through design."_  
 — **Pandora Codex Security Principles**
