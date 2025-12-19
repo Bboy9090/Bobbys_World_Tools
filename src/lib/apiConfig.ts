@@ -6,6 +6,7 @@ export const API_CONFIG = {
     SYSTEM_TOOLS: '/api/system-tools',
     SYSTEM_TOOLS_RUST: '/api/system-tools/rust',
     SYSTEM_TOOLS_ANDROID: '/api/system-tools/android',
+    SYSTEM_TOOLS_ANDROID_ENSURE: '/api/system-tools/android/ensure',
     SYSTEM_TOOLS_PYTHON: '/api/system-tools/python',
     SYSTEM_INFO: '/api/system-info',
     ADB_DEVICES: '/api/adb/devices',
@@ -54,4 +55,17 @@ export async function checkAPIHealth(): Promise<boolean> {
 
 export function getAPIUrl(endpoint: string): string {
   return `${API_CONFIG.BASE_URL}${endpoint}`;
+}
+
+export function getWSUrl(path: string): string {
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+
+  try {
+    const base = new URL(API_CONFIG.BASE_URL);
+    const wsProtocol = base.protocol === 'https:' ? 'wss:' : 'ws:';
+    const basePath = base.pathname && base.pathname !== '/' ? base.pathname.replace(/\/+$/g, '') : '';
+    return `${wsProtocol}//${base.host}${basePath}${normalizedPath}`;
+  } catch {
+    return `ws://localhost:3001${normalizedPath}`;
+  }
 }

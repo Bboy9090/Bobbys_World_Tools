@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { getWSUrl } from '@/lib/apiConfig';
 import { toast } from 'sonner';
 import { useAudioNotifications } from './use-audio-notifications';
 import type { CorrelationBadge } from '@/types/correlation';
@@ -36,7 +37,7 @@ interface UseDeviceHotplugOptions {
 
 export function useDeviceHotplug(options: UseDeviceHotplugOptions = {}) {
   const {
-    wsUrl = 'ws://localhost:3001/ws/device-events',
+    wsUrl = getWSUrl('/ws/device-events'),
     autoConnect = true,
     showToasts = true,
     onConnect,

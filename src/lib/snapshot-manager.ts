@@ -28,20 +28,30 @@ const DEFAULT_CONFIG: SnapshotManagerConfig = {
 };
 
 interface SnapshotManager {
-  createSnapshot(type: SnapshotType, deviceId: string, data: any, options?: Partial<Snapshot>): Promise<Snapshot>;
+  createSnapshot(type: SnapshotType, data: any, options?: Partial<Snapshot>): Promise<Snapshot>;
+  listSnapshots(filter?: Partial<{ type: SnapshotType; deviceId: string; priority: RetentionPriority }>): Promise<Snapshot[]>;
   getSnapshot(id: string): Promise<Snapshot | null>;
   getSnapshots(filter?: Partial<{ type: SnapshotType; deviceId: string; priority: RetentionPriority }>): Promise<Snapshot[]>;
-  deleteSnapshot(id: string): Promise<boolean>;
-  deleteSnapshots(ids: string[]): Promise<number>;
+  deleteSnapshot(id: string, manual?: boolean): Promise<boolean>;
+  deleteSnapshots(ids: string[], manual?: boolean): Promise<number>;
   compressSnapshot(id: string): Promise<Snapshot>;
+  listPolicies(): Promise<RetentionPolicy[]>;
   getRetentionPolicies(): Promise<RetentionPolicy[]>;
   setRetentionPolicies(policies: RetentionPolicy[]): Promise<void>;
+  updatePolicy(policy: RetentionPolicy): Promise<void>;
+  deletePolicy(id: string): Promise<void>;
   getRetentionStats(): Promise<RetentionStats>;
-  applyRetentionPolicies(): Promise<RetentionAction[]>;
+  applyRetentionPolicies(): Promise<number>;
   getRetentionHistory(): Promise<RetentionAction[]>;
+  getRecentActions(limit?: number): Promise<RetentionAction[]>;
+  exportSnapshots(ids?: string[]): Promise<string>;
+  clearAllSnapshots(): Promise<void>;
   exportSnapshot(id: string): Promise<Blob>;
   importSnapshot(blob: Blob): Promise<Snapshot>;
   estimateStorageUsage(): Promise<{ used: number; available: number; percentage: number }>;
+
+  formatBytes(bytes: number): string;
+  formatAge(timestampMs: number): string;
 }
 
 function generateId(): string {
@@ -53,17 +63,14 @@ function estimateSize(data: any): number {
 }
 
 export const snapshotManager: SnapshotManager = {
-  async createSnapshot(
-    type: SnapshotType, 
-    deviceId: string, 
-    data: any, 
-    options?: Partial<Snapshot>
-  ): Promise<Snapshot> {
+  async createSnapshot(type: SnapshotType, data: any, options?: Partial<Snapshot>): Promise<Snapshot> {
     const snapshot: Snapshot = {
       id: generateId(),
       type,
       timestamp: Date.now(),
-      deviceId,
+      deviceId: options?.deviceId,
+      deviceSerial: options?.deviceSerial,
+      deviceModel: options?.deviceModel,
       priority: options?.priority || 'normal',
       sizeBytes: estimateSize(data),
       compressed: false,
@@ -76,6 +83,10 @@ export const snapshotManager: SnapshotManager = {
 
     snapshots.push(snapshot);
     return snapshot;
+  },
+
+  async listSnapshots(filter?: Partial<{ type: SnapshotType; deviceId: string; priority: RetentionPriority }>): Promise<Snapshot[]> {
+    return this.getSnapshots(filter);
   },
 
   async getSnapshot(id: string): Promise<Snapshot | null> {
@@ -98,7 +109,7 @@ export const snapshotManager: SnapshotManager = {
     return result.sort((a, b) => b.timestamp - a.timestamp);
   },
 
-  async deleteSnapshot(id: string): Promise<boolean> {
+  async deleteSnapshot(id: string, manual: boolean = true): Promise<boolean> {
     const index = snapshots.findIndex(s => s.id === id);
     if (index >= 0) {
       snapshots.splice(index, 1);
@@ -107,17 +118,17 @@ export const snapshotManager: SnapshotManager = {
         snapshotId: id,
         reason: 'Manual deletion',
         timestamp: Date.now(),
-        manual: true
+        manual
       });
       return true;
     }
     return false;
   },
 
-  async deleteSnapshots(ids: string[]): Promise<number> {
+  async deleteSnapshots(ids: string[], manual: boolean = true): Promise<number> {
     let deleted = 0;
     for (const id of ids) {
-      if (await this.deleteSnapshot(id)) {
+      if (await this.deleteSnapshot(id, manual)) {
         deleted++;
       }
     }
@@ -147,6 +158,10 @@ export const snapshotManager: SnapshotManager = {
     });
 
     return snapshot;
+  },
+
+  async listPolicies(): Promise<RetentionPolicy[]> {
+    return this.getRetentionPolicies();
   },
 
   async getRetentionPolicies(): Promise<RetentionPolicy[]> {
@@ -198,6 +213,22 @@ export const snapshotManager: SnapshotManager = {
     policies = [...newPolicies];
   },
 
+  async updatePolicy(policy: RetentionPolicy): Promise<void> {
+    const current = await this.getRetentionPolicies();
+    const index = current.findIndex(p => p.id === policy.id);
+    if (index >= 0) {
+      current[index] = policy;
+    } else {
+      current.push(policy);
+    }
+    await this.setRetentionPolicies(current);
+  },
+
+  async deletePolicy(id: string): Promise<void> {
+    const current = await this.getRetentionPolicies();
+    await this.setRetentionPolicies(current.filter(p => p.id !== id));
+  },
+
   async getRetentionStats(): Promise<RetentionStats> {
     const now = Date.now();
     const snapshotsByType: Record<SnapshotType, number> = {
@@ -241,8 +272,9 @@ export const snapshotManager: SnapshotManager = {
     };
   },
 
-  async applyRetentionPolicies(): Promise<RetentionAction[]> {
+  async applyRetentionPolicies(): Promise<number> {
     const actions: RetentionAction[] = [];
+    let deletedCount = 0;
     const now = Date.now();
     const currentPolicies = await this.getRetentionPolicies();
 
@@ -276,7 +308,8 @@ export const snapshotManager: SnapshotManager = {
         if (policy.autoDeleteEnabled && age > policy.maxAge) {
           const typeSnapshots = policySnapshots.filter(s => s.type === snapshot.type);
           if (typeSnapshots.length > policy.minRetainCount) {
-            await this.deleteSnapshot(snapshot.id);
+            const deleted = await this.deleteSnapshot(snapshot.id, false);
+            if (deleted) deletedCount++;
             actions.push({
               action: 'delete',
               snapshotId: snapshot.id,
@@ -290,11 +323,42 @@ export const snapshotManager: SnapshotManager = {
     }
 
     retentionActions.push(...actions);
-    return actions;
+    return deletedCount;
   },
 
   async getRetentionHistory(): Promise<RetentionAction[]> {
     return [...retentionActions].sort((a, b) => b.timestamp - a.timestamp);
+  },
+
+  async getRecentActions(limit: number = 50): Promise<RetentionAction[]> {
+    const history = await this.getRetentionHistory();
+    return history.slice(0, Math.max(0, limit));
+  },
+
+  async exportSnapshots(ids?: string[]): Promise<string> {
+    const all = await this.getSnapshots();
+    const selected = ids && ids.length > 0 ? all.filter(s => ids.includes(s.id)) : all;
+    return JSON.stringify({
+      exportedAt: Date.now(),
+      count: selected.length,
+      snapshots: selected,
+    });
+  },
+
+  async clearAllSnapshots(): Promise<void> {
+    if (snapshots.length === 0) return;
+    const clearedIds = snapshots.map(s => s.id);
+    snapshots.splice(0, snapshots.length);
+    const now = Date.now();
+    for (const id of clearedIds) {
+      retentionActions.push({
+        action: 'delete',
+        snapshotId: id,
+        reason: 'Cleared all snapshots',
+        timestamp: now,
+        manual: true,
+      });
+    }
   },
 
   async exportSnapshot(id: string): Promise<Blob> {
@@ -320,5 +384,30 @@ export const snapshotManager: SnapshotManager = {
     const percentage = (used / DEFAULT_CONFIG.maxStorageBytes) * 100;
     
     return { used, available, percentage };
+  },
+
+  formatBytes(bytes: number): string {
+    if (!Number.isFinite(bytes) || bytes < 0) return '0 B';
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    let value = bytes;
+    let unitIndex = 0;
+    while (value >= 1024 && unitIndex < units.length - 1) {
+      value /= 1024;
+      unitIndex++;
+    }
+    const precision = unitIndex === 0 ? 0 : value < 10 ? 2 : 1;
+    return `${value.toFixed(precision)} ${units[unitIndex]}`;
+  },
+
+  formatAge(timestampMs: number): string {
+    const diff = Math.max(0, Date.now() - timestampMs);
+    const seconds = Math.floor(diff / 1000);
+    if (seconds < 60) return `${seconds}s`;
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h`;
+    const days = Math.floor(hours / 24);
+    return `${days}d`;
   }
 };
