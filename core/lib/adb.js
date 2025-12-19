@@ -1,69 +1,78 @@
 // ADB Library - Android Debug Bridge operations
 // Provides safe wrappers around ADB commands
 
-import { execSync } from 'child_process';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 
-function safeExec(cmd, options = {}) {
+const execAsync = promisify(exec);
+
+async function safeExec(cmd, options = {}) {
   try {
+    const { stdout, stderr } = await execAsync(cmd, {
+      timeout: options.timeout ?? 10000,
+      ...options,
+    });
     return {
       success: true,
-      stdout: execSync(cmd, { 
-        encoding: 'utf-8', 
-        timeout: options.timeout || 10000,
-        ...options
-      }).trim()
+      stdout: (stdout ?? '').toString().trim(),
+      stderr: (stderr ?? '').toString().trim(),
     };
   } catch (error) {
     return {
       success: false,
-      error: error.message,
-      stderr: error.stderr?.toString() || ''
+      error: error?.message || String(error),
+      stdout: (error?.stdout ?? '').toString().trim(),
+      stderr: (error?.stderr ?? '').toString().trim(),
     };
-  }
-}
-
-function commandExists(cmd) {
-  try {
-    execSync(`command -v ${cmd}`, { stdio: 'ignore', timeout: 2000 });
-    return true;
-  } catch {
-    return false;
   }
 }
 
 const ADBLibrary = {
   /**
+   * Check if ADB is available
+   */
+  async isAvailable() {
+    try {
+      const { stdout, stderr } = await execAsync('adb version');
+      const version = (stdout || stderr || '').toString().trim();
+      return { success: true, version };
+    } catch (error) {
+      const message = error?.message ? `: ${error.message}` : '';
+      return { success: false, error: `ADB not found${message}` };
+    }
+  },
+
+  /**
    * Check if ADB is installed
    */
-  isInstalled() {
-    return commandExists('adb');
+  async isInstalled() {
+    const result = await this.isAvailable();
+    return result.success;
   },
 
   /**
    * Get ADB version
    */
-  getVersion() {
-    if (!this.isInstalled()) {
+  async getVersion() {
+    const result = await this.isAvailable();
+    if (!result.success) {
       return { success: false, error: 'ADB not installed' };
     }
-    return safeExec('adb --version');
+    return { success: true, stdout: result.version };
   },
 
   /**
    * List connected devices
    */
-  listDevices() {
-    if (!this.isInstalled()) {
-      return { success: false, error: 'ADB not installed', devices: [] };
-    }
-    
-    const result = safeExec('adb devices -l');
+  async listDevices() {
+    const result = await safeExec('adb devices -l');
     if (!result.success) {
-      return { ...result, devices: [] };
+      return { success: false, error: result.error, devices: [] };
     }
-    
-    const lines = result.stdout.split('\n').slice(1).filter(l => l.trim());
-    const devices = lines.map(line => {
+
+    const lines = result.stdout.split('\n').slice(1).filter((line) => line.trim());
+    const devices = lines
+      .map((line) => {
       const parts = line.trim().split(/\s+/);
       const serial = parts[0];
       const state = parts[1];
@@ -76,8 +85,9 @@ const ADBLibrary = {
         model: infoStr.match(/model:(\S+)/)?.[1] || null,
         device: infoStr.match(/device:(\S+)/)?.[1] || null
       };
-    }).filter(d => d.serial && d.state);
-    
+      })
+      .filter((d) => d.serial && d.state);
+
     return { success: true, devices };
   },
 
@@ -86,17 +96,14 @@ const ADBLibrary = {
    * @param {string} serial - Device serial number
    * @param {string} command - ADB command to execute (without 'adb' prefix)
    */
-  executeCommand(serial, command) {
-    if (!this.isInstalled()) {
-      return { success: false, error: 'ADB not installed' };
-    }
-    
+  async executeCommand(serial, command) {
     // Sanitize command to prevent injection
     if (command.includes(';') || command.includes('|') || command.includes('&')) {
       return { success: false, error: 'Command contains invalid characters' };
     }
-    
-    return safeExec(`adb -s ${serial} ${command}`, { timeout: 30000 });
+
+    const adbCommand = serial ? `adb -s ${serial} ${command}` : `adb ${command}`;
+    return await safeExec(adbCommand, { timeout: 30000 });
   },
 
   /**
@@ -104,16 +111,16 @@ const ADBLibrary = {
    * @param {string} serial - Device serial number
    * @param {string} shellCommand - Shell command to execute
    */
-  shell(serial, shellCommand) {
-    return this.executeCommand(serial, `shell "${shellCommand}"`);
+  async shell(serial, shellCommand) {
+    return await this.executeCommand(serial, `shell ${shellCommand}`);
   },
 
   /**
    * Get device properties
    * @param {string} serial - Device serial number
    */
-  getProperties(serial) {
-    const result = this.shell(serial, 'getprop');
+  async getProperties(serial) {
+    const result = await this.shell(serial, 'getprop');
     if (!result.success) {
       return result;
     }
@@ -134,8 +141,8 @@ const ADBLibrary = {
    * Get device mode (normal, recovery, sideload, etc.)
    * @param {string} serial - Device serial number
    */
-  getDeviceMode(serial) {
-    const devices = this.listDevices();
+  async getDeviceMode(serial) {
+    const devices = await this.listDevices();
     if (!devices.success) {
       return devices;
     }
@@ -172,14 +179,53 @@ const ADBLibrary = {
    * @param {string} serial - Device serial number
    * @param {string} mode - Reboot mode: 'system', 'recovery', 'bootloader'
    */
-  reboot(serial, mode = 'system') {
+  async reboot(serial, mode = 'system') {
     const validModes = ['system', 'recovery', 'bootloader'];
     if (!validModes.includes(mode)) {
       return { success: false, error: `Invalid mode. Must be one of: ${validModes.join(', ')}` };
     }
     
     const command = mode === 'system' ? 'reboot' : `reboot ${mode}`;
-    return this.executeCommand(serial, command);
+    return await this.executeCommand(serial, command);
+  },
+
+  /**
+   * Retrieve basic device info
+   */
+  async getDeviceInfo(serial) {
+    const manufacturer = (await this.executeCommand(serial, 'shell getprop ro.product.manufacturer')).stdout || '';
+    const model = (await this.executeCommand(serial, 'shell getprop ro.product.model')).stdout || '';
+    const androidVersion = (await this.executeCommand(serial, 'shell getprop ro.build.version.release')).stdout || '';
+    const deviceSerial = (await this.executeCommand(serial, 'shell getprop ro.serialno')).stdout || '';
+
+    return {
+      success: true,
+      manufacturer: manufacturer.trim(),
+      model: model.trim(),
+      androidVersion: androidVersion.trim(),
+      deviceSerial: deviceSerial.trim(),
+    };
+  },
+
+  /**
+   * Best-effort FRP status heuristic
+   */
+  async checkFRPStatus(serial) {
+    const result = await this.executeCommand(serial, 'shell settings get secure android_id');
+    const androidId = (result.stdout || '').trim();
+
+    if (!result.success || !androidId) {
+      return { success: false, error: 'Unable to determine FRP status' };
+    }
+
+    const hasFRP = androidId.length < 10;
+
+    return {
+      success: true,
+      hasFRP,
+      androidId,
+      confidence: hasFRP ? 'high' : 'low',
+    };
   }
 };
 
