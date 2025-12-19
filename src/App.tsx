@@ -4,8 +4,8 @@ import { DemoModeBanner } from "./components/DemoModeBanner";
 import { Toaster } from "@/components/ui/sonner";
 import { AppProvider, useApp } from "./lib/app-context";
 import { checkBackendHealth } from "./lib/backend-health";
-import { MockBatchDiagnosticsWebSocket } from "./lib/mock-batch-diagnostics-websocket";
-import { setupMockRegistryAPI } from "./lib/mock-plugin-registry-server";
+// import { MockBatchDiagnosticsWebSocket } from "./lib/mock-batch-diagnostics-websocket";
+// import { setupMockRegistryAPI } from "./lib/mock-plugin-registry-server";
 
 function AppContent() {
     const { isDemoMode, setDemoMode, setBackendAvailable } = useApp();
@@ -18,8 +18,8 @@ function AppContent() {
             if (!backendHealthy) {
                 console.warn('[App] Backend API unavailable - enabling demo mode');
                 setDemoMode(true);
-                MockBatchDiagnosticsWebSocket.initialize();
-                setupMockRegistryAPI();
+                // MockBatchDiagnosticsWebSocket.initialize();
+                // setupMockRegistryAPI();
                 console.log('[App] Mock services initialized for demo mode');
             } else {
                 console.log('[App] Backend API connected - running in production mode');
@@ -31,7 +31,7 @@ function AppContent() {
 
         return () => {
             if (isDemoMode) {
-                MockBatchDiagnosticsWebSocket.cleanup();
+                // MockBatchDiagnosticsWebSocket.cleanup();
             }
         };
     }, [setDemoMode, setBackendAvailable]);
@@ -41,7 +41,7 @@ function AppContent() {
         if (backendHealthy) {
             setBackendAvailable(true);
             setDemoMode(false);
-            MockBatchDiagnosticsWebSocket.cleanup();
+            // MockBatchDiagnosticsWebSocket.cleanup();
             window.location.reload();
         }
     };

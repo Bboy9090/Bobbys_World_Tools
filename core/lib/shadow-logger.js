@@ -170,7 +170,21 @@ class ShadowLogger {
    */
   async readShadowLogs(date = null) {
     try {
-      const targetDate = date || new Date().toISOString().split('T')[0];
+      // Validate that date, if provided, matches YYYY-MM-DD
+      let targetDate;
+      if (date) {
+        // Only allow ISO date strings (2024-04-20)
+        if (typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+          return {
+            success: false,
+            error: 'Invalid date format. Expected YYYY-MM-DD.',
+            entries: []
+          };
+        }
+        targetDate = date;
+      } else {
+        targetDate = new Date().toISOString().split('T')[0];
+      }
       const logFile = path.join(this.shadowLogsDir, `shadow-${targetDate}.log`);
 
       if (!existsSync(logFile)) {

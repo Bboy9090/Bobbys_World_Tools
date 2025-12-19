@@ -10,9 +10,9 @@
     "test": "echo 'Backend tests not yet implemented' && exit 0"
   },
   "dependencies": {
-    "express": "^5.0.1",
     "cors": "^2.8.5",
     "multer": "^2.0.2",
-    "ws": "^8.18.3"
+      "express": "^4.22.1",
+       "ws": "^8.18.3"
   }
 }
