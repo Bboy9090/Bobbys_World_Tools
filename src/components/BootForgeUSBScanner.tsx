@@ -8,6 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { CorrelationBadgeDisplay } from './CorrelationBadgeDisplay';
 import { BootForgeUSBInstallGuide } from './BootForgeUSBInstallGuide';
 import { useCorrelationTracking } from '@/hooks/use-correlation-tracking';
+import { getAPIUrl } from '@/lib/apiConfig';
 import type { CorrelationBadge } from '@/types/correlation';
 import { 
   MagnifyingGlass, 
@@ -21,8 +22,6 @@ import {
   ArrowsClockwise
 } from '@phosphor-icons/react';
 import { toast } from 'sonner';
-
-const API_BASE = 'http://localhost:3001';
 
 interface USBEvidence {
   vid: string;
@@ -176,7 +175,7 @@ export function BootForgeUSBScanner() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/api/bootforgeusb/status`);
+      const res = await fetch(getAPIUrl('/api/bootforgeusb/status'));
       if (!res.ok) {
         throw new Error(`HTTP ${res.status}`);
       }
