@@ -9,6 +9,7 @@ import { ADBFastbootDetector } from './ADBFastbootDetector';
 import { BootForgeUSBScanner } from './BootForgeUSBScanner';
 import { CorrelationBadgeDisplay } from './CorrelationBadgeDisplay';
 import { useAndroidDevices } from '@/hooks/use-android-devices';
+import { getAPIUrl } from '@/lib/apiConfig';
 import type { CorrelationBadge } from '@/types/correlation';
 import type { AndroidDevice, AndroidDeviceProperties, FastbootDeviceProperties } from '@/types/android-devices';
 import { 
@@ -22,8 +23,6 @@ import {
   ArrowsClockwise
 } from '@phosphor-icons/react';
 import { toast } from 'sonner';
-
-const API_BASE = 'http://localhost:3001';
 
 interface USBEvidence {
   vid: string;
@@ -82,7 +81,7 @@ export function RealTimeUSBDiagnostics() {
   async function scanBootForge() {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/bootforgeusb/scan?demo=false`);
+      const res = await fetch(getAPIUrl('/api/bootforgeusb/scan?demo=false'));
       const data = await res.json();
       
       if (data.success && data.devices) {
@@ -100,17 +99,12 @@ export function RealTimeUSBDiagnostics() {
     } finally {
       setLoading(false);
     }
-        const res = await fetch(getAPIUrl('/api/bootforgeusb/scan?demo=false'));
+  }
 
   function correlateDevices() {
-        if (res.ok && !data.demo && data.success && data.devices) {
+    if (androidDevices.length === 0 && bootforgeDevices.length === 0) {
       setCorrelatedDevices([]);
       return;
-        } else if (data.demo) {
-          setBootforgeDevices([]);
-          toast.error('BootForgeUSB returned demo data', {
-            description: 'Install/enable BootForgeUSB CLI to scan real USB devices.',
-          });
     }
     
     const correlated: CorrelatedDevice[] = [];

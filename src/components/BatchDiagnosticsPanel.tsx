@@ -101,7 +101,6 @@ export function BatchDiagnosticsPanel() {
   const scanDevices = async () => {
     setIsScanning(true);
     try {
-      const response = await fetch('http://localhost:3001/api/devices/scan');
       const response = await fetch(getAPIUrl('/api/devices/scan'));
       if (!response.ok) {
         const text = await response.text().catch(() => '');
@@ -110,7 +109,6 @@ export function BatchDiagnosticsPanel() {
       const data = await response.json();
       const scannedDevices: ConnectedDevice[] = Array.isArray(data.devices) ? data.devices : [];
       
-      if (data.devices && Array.isArray(data.devices)) {
       if (scannedDevices.length >= 0) {
         setConnectedDevices(scannedDevices);
         
