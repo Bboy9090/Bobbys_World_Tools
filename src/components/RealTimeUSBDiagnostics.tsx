@@ -100,17 +100,12 @@ export function RealTimeUSBDiagnostics() {
     } finally {
       setLoading(false);
     }
-        const res = await fetch(getAPIUrl('/api/bootforgeusb/scan?demo=false'));
+  }
 
   function correlateDevices() {
-        if (res.ok && !data.demo && data.success && data.devices) {
+    if (androidDevices.length === 0 && bootforgeDevices.length === 0) {
       setCorrelatedDevices([]);
       return;
-        } else if (data.demo) {
-          setBootforgeDevices([]);
-          toast.error('BootForgeUSB returned demo data', {
-            description: 'Install/enable BootForgeUSB CLI to scan real USB devices.',
-          });
     }
     
     const correlated: CorrelatedDevice[] = [];

@@ -199,14 +199,13 @@ export function BootForgeUSBScanner() {
     setIsDemoMode(false);
     try {
       const useDemoFallback = !forceReal;
-      const res = await fetch(`${API_BASE}/api/bootforgeusb/scan${useDemoFallback ? '?demo=true' : ''}`);
+      const res = await fetch(getAPIUrl(`/api/bootforgeusb/scan${useDemoFallback ? '?demo=true' : ''}`));
       const data: ScanResponse = await res.json();
       
       if (!res.ok) {
         if (res.status === 503) {
           setError(data.message || 'BootForgeUSB CLI not installed');
           setDevices([]);
-          const res = await fetch(getAPIUrl('/api/bootforgeusb/status'));
         }
         throw new Error(data.error || `HTTP ${res.status}`);
       }
@@ -228,7 +227,6 @@ export function BootForgeUSBScanner() {
             mode: device.mode,
             confidence: device.confidence,
             correlationBadge,
-          const res = await fetch(getAPIUrl(`/api/bootforgeusb/scan${useDemoFallback ? '?demo=true' : ''}`));
             correlationNotes: device.correlation_notes || [],
             vendorId: parseInt(device.evidence.usb.vid, 16),
             productId: parseInt(device.evidence.usb.pid, 16),
