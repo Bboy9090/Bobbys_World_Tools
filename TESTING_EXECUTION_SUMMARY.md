@@ -9,6 +9,7 @@
 ## TESTING RESOURCES CREATED
 
 ### 1. Test Plan Documentation
+**File**: `COMPREHENSIVE_TEST_PLAN.md`
 
 **File**: `COMPREHENSIVE_TEST_PLAN.md`
 
@@ -18,11 +19,9 @@
 - Success criteria defined
 
 ### 2. Automated Test Execution Script
-
 **File**: `RUN_COMPREHENSIVE_TESTS.ps1`
 
 **Capabilities**:
-
 - ✅ Prerequisite validation (Node.js, npm, dependencies)
 - ✅ Lint testing (ESLint)
 - ✅ TypeScript type checking
@@ -63,13 +62,11 @@
 - Plugin system (`/api/plugins/list`, `/api/plugins/registry`)
 
 **WebSocket Endpoints Documented**:
-
 - `ws://localhost:3001/ws/flash`
 - `ws://localhost:3001/ws/hotplug`
 - `ws://localhost:3001/ws/correlation`
 
 **Usage**:
-
 ```powershell
 # Start backend first
 npm run server:dev
@@ -122,6 +119,9 @@ npm run server:dev
 - ✅ Graceful degradation if WebUSB unavailable
 
 #### 3. **iOS Detection** (libimobiledevice integration)
+**Endpoint**: `GET /api/ios/scan`
+
+**Modes Detected**:
 
 **Endpoint**: `GET /api/ios/scan`
 
@@ -138,6 +138,7 @@ npm run server:dev
 - ✅ Clear tool installation status
 
 #### 4. **Unified Device Probing** (`probeDevice.ts`)
+**Advanced Features**:
 
 **Advanced Features**:
 
@@ -233,7 +234,7 @@ npm run server:dev
 4. `src/lib/deviceDetection.ts` - ✅ System-level detection
 5. `src/lib/usbClassDetection.ts` - ✅ Enhanced USB classification
 
-### Demo Mode & State Management
+###State Management
 
 1. `src/lib/app-context.tsx` - ✅ Global demo mode state
 2. `src/lib/backend-health.ts` - ✅ Backend availability check
@@ -241,8 +242,7 @@ npm run server:dev
 4. `src/components/EmptyState.tsx` - ✅ Reusable component
 5. `src/components/ErrorState.tsx` - ✅ Reusable component
 
-### Updated Components (Demo Mode Compliant)
-
+### Updated Components
 1. `src/components/PandoraFlashPanel.tsx` - ✅ [DEMO] labels
 2. `src/components/PandoraTestsPanel.tsx` - ✅ [DEMO] labels
 3. `src/components/PandoraMonitorPanel.tsx` - ✅ Empty states
@@ -445,6 +445,14 @@ npm run build
 
 ### Expected Results
 
+| Test Suite | Expected | Status |
+|-----------|----------|--------|
+| ESLint | 0 errors | ✅ Run script to verify |
+| TypeScript | 0 errors | ✅ Run script to verify |
+| Unit Tests | All pass | ✅ Run script to verify |
+| Integration | All pass | ⚠️ Requires backend |
+| E2E | All pass | ⚠️ Requires devices |
+| Build | Success | ✅ Run script to verify |
 | Test Suite  | Expected | Status                  |
 | ----------- | -------- | ----------------------- |
 | ESLint      | 0 errors | ✅ Run script to verify |
@@ -464,6 +472,8 @@ npm run build
    ```powershell
    .\RUN_COMPREHENSIVE_TESTS.ps1
    ```
+   
+2. **Fix Any Test Failures**
 2. **Fix Any Test Failures**
 
    - Address lint errors

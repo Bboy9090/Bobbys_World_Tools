@@ -122,17 +122,14 @@
   - Fails gracefully if tools missing
 
 ### 2.4 WebSocket Endpoints
-
-# <<<<<<< Updated upstream
-
-> > > > > > > Stashed changes
-
 - [ ] **Flash Progress** (`ws://localhost:3001/ws/flash`)
   - Real-time progress streaming
   - Connection status clearly shown
+  
 - [ ] **Hotplug Events** (`ws://localhost:3001/ws/hotplug`)
   - Device connect/disconnect events
   - Shows "No events" when empty
+  
 - [ ] **Correlation Tracking** (`ws://localhost:3001/ws/correlation`)
   - Device state correlation across protocols
   - Empty state if no activity
@@ -361,11 +358,6 @@
 - [ ] No automatic state promotion
 
 ### 5.4 Error Transparency
-
-# <<<<<<< Updated upstream
-
-> > > > > > > Stashed changes
-
 - [ ] Backend errors shown to user
 - [ ] Tool installation status clear
 - [ ] Device authorization status clear
@@ -376,22 +368,12 @@
 ## 6. INTEGRATION TESTS
 
 ### 6.1 Frontend + Backend
-
-# <<<<<<< Updated upstream
-
-> > > > > > > Stashed changes
-
 - [ ] Frontend handles backend unavailable
 - [ ] API contract adherence
 - [ ] WebSocket reconnection logic
 - [ ] CORS and security headers
 
 ### 6.2 Multi-Component Coordination
-
-# <<<<<<< Updated upstream
-
-> > > > > > > Stashed changes
-
 - [ ] DeviceSidebar updates on detection
 - [ ] Flash panel shows real operations
 - [ ] Hotplug events trigger UI updates
@@ -414,13 +396,6 @@
 
 ### 7.1 Build Process
 
-<<<<<<< Updated upstream
-
-```bash
-npm run build
-```
-
-=======
 
 ```bash
 npm run build
@@ -435,13 +410,6 @@ npm run build
 
 ### 7.2 Linting
 
-<<<<<<< Updated upstream
-
-```bash
-npm run lint
-```
-
-=======
 
 ```bash
 npm run lint
@@ -454,20 +422,13 @@ npm run lint
 - [ ] Code style consistent
 
 ### 7.3 Unit Tests
-
-<<<<<<< Updated upstream
-
 ```bash
 npm run test
 ```
 
-=======
-
 ```bash
 npm run test
 ```
-
-> > > > > > > Stashed changes
 
 - [ ] Workflow engine tests pass
 - [ ] Shadow logger tests pass
@@ -475,20 +436,13 @@ npm run test
 - [ ] Fastboot library tests pass
 
 ### 7.4 Integration Tests
-
-<<<<<<< Updated upstream
-
 ```bash
 npm run test:integration
 ```
 
-=======
-
 ```bash
 npm run test:integration
 ```
-
-> > > > > > > Stashed changes
 
 - [ ] Trapdoor API tests pass
 - [ ] Backend integration tests pass
@@ -496,13 +450,6 @@ npm run test:integration
 
 ### 7.5 E2E Tests
 
-<<<<<<< Updated upstream
-
-```bash
-npm run test:e2e
-```
-
-=======
 
 ```bash
 npm run test:e2e

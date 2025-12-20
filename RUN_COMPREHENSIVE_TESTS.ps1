@@ -52,6 +52,9 @@ Write-Host "`n[1] Checking Prerequisites..." -ForegroundColor Cyan
 # Check Node.js
 if (Get-Command node -ErrorAction SilentlyContinue) {
     $nodeVersion = node --version
+    Log-Test "Node.js installed" "PASS" "Version: $nodeVersion"
+} else {
+    Log-Test "Node.js installed" "FAIL" "Node.js not found"
     Out-TestResult "Node.js installed" "PASS" "Version: $nodeVersion"
 } else {
     Out-TestResult "Node.js installed" "FAIL" "Node.js not found"
