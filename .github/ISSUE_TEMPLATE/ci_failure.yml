@@ -1,0 +1,194 @@
+name: 🔴 CI/Build Failure
+description: Report a failing CI/CD pipeline or build issue
+title: "[CI Failure]: "
+labels: ["ci", "build", "needs-investigation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## CI/Build Failure Report
+        
+        This template helps diagnose and fix CI/CD failures quickly.
+        
+        **Prime Rule:** Attach actual logs. No summaries or guesses.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Failure Summary
+      description: One-line description of the failure
+      placeholder: "Build fails on Windows with 'cargo: command not found'"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: failure_type
+    attributes:
+      label: Failure Type
+      description: What type of failure is this?
+      options:
+        - "Build failure"
+        - "Test failure"
+        - "Lint failure"
+        - "Deployment failure"
+        - "Workflow configuration error"
+        - "Timeout"
+        - "Other"
+    validations:
+      required: true
+
+  - type: input
+    id: workflow
+    attributes:
+      label: Workflow Name
+      description: Which workflow failed?
+      placeholder: "CI Guardrails / node-python-ci"
+    validations:
+      required: true
+
+  - type: input
+    id: run_url
+    attributes:
+      label: Workflow Run URL
+      description: Link to the failed workflow run
+      placeholder: "https://github.com/Bboy9090/Bobbys-Workshop-/actions/runs/123456789"
+    validations:
+      required: true
+
+  - type: input
+    id: commit
+    attributes:
+      label: Commit SHA
+      description: Which commit triggered the failure?
+      placeholder: "abc1234567890def"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: reproducible
+    attributes:
+      label: Reproducible Locally?
+      description: Can you reproduce this failure on your local machine?
+      options:
+        - "Yes - Fails locally too"
+        - "No - Only fails in CI"
+        - "Unknown - Haven't tested locally"
+    validations:
+      required: true
+
+  - type: textarea
+    id: error_logs
+    attributes:
+      label: Error Logs
+      description: Paste the relevant error logs from the failed workflow
+      placeholder: |
+        ```
+        Run cargo build --release
+        /bin/sh: 1: cargo: not found
+        Error: Process completed with exit code 127.
+        ```
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: full_logs
+    attributes:
+      label: Full Logs (if error logs not sufficient)
+      description: If error isn't clear, paste full step output
+      placeholder: "Paste full output here or attach as file"
+      render: shell
+
+  - type: dropdown
+    id: when_started
+    attributes:
+      label: When Did This Start Failing?
+      description: Has this always failed or recently started?
+      options:
+        - "Always failed (new workflow/job)"
+        - "Started failing recently"
+        - "Intermittent (flaky)"
+        - "First time running"
+    validations:
+      required: true
+
+  - type: input
+    id: last_success
+    attributes:
+      label: Last Successful Run (if regression)
+      description: Link to last successful workflow run
+      placeholder: "https://github.com/Bboy9090/Bobbys-Workshop-/actions/runs/123456788"
+
+  - type: textarea
+    id: recent_changes
+    attributes:
+      label: Recent Changes
+      description: What changed recently that might have caused this?
+      placeholder: |
+        - Added Rust build step in PR #123
+        - Updated Node.js version in workflow
+        - Added new dependency: cargo-audit
+
+  - type: textarea
+    id: attempted_fixes
+    attributes:
+      label: Attempted Fixes
+      description: What have you tried to fix this?
+      placeholder: |
+        - Tried running `cargo --version` first (not found)
+        - Checked Rust installation step (missing!)
+        - Added setup-rust action but still fails
+
+  - type: dropdown
+    id: blocking
+    attributes:
+      label: Is This Blocking?
+      description: Does this prevent PRs from being merged?
+      options:
+        - "Yes - Blocking all PRs"
+        - "Yes - Blocking specific PRs"
+        - "No - Optional check"
+    validations:
+      required: true
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact
+      description: What is the impact of this failure?
+      placeholder: |
+        - All PRs are blocked from merging
+        - Windows builds are not being tested
+        - Rust code changes are not being validated
+
+  - type: checkboxes
+    id: investigation
+    attributes:
+      label: Investigation Checklist
+      description: What have you checked?
+      options:
+        - label: I have reviewed the full error logs
+        - label: I have checked if this is a known issue
+        - label: I have tried to reproduce locally
+        - label: I have identified recent changes that might have caused this
+        - label: I have checked workflow file for configuration errors
+
+  - type: textarea
+    id: proposed_fix
+    attributes:
+      label: Proposed Fix (if known)
+      description: Do you know how to fix this?
+      placeholder: |
+        Add Rust installation step before cargo build:
+        ```yaml
+        - uses: actions-rust-lang/setup-rust-toolchain@v1
+          with:
+            toolchain: stable
+        ```
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Any other relevant information
+      placeholder: "This only fails on Windows runners, Linux and macOS are fine."

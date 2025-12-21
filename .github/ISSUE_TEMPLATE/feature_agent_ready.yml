@@ -1,0 +1,180 @@
+name: ✨ Feature Request (Agent Ready)
+description: Propose a new feature with clear requirements for AI agents
+title: "[Feature]: "
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Feature Request — Production-Ready Format
+        
+        This template helps AI agents (and humans) understand and implement features correctly.
+        
+        **Prime Rule:** Be specific. Vague requests lead to placeholder implementations.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Feature Summary
+      description: One-line description of the feature
+      placeholder: "Add batch device flashing capability"
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: What problem does this solve? Why is it needed?
+      placeholder: |
+        Currently, users can only flash one device at a time. When testing firmware updates 
+        across multiple devices (10+ devices), this is time-consuming and requires manual 
+        intervention for each device.
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: How should this work? Be specific.
+      placeholder: |
+        Add a "Batch Flash" mode:
+        1. User selects firmware file
+        2. User selects multiple devices (checkboxes in device list)
+        3. User clicks "Flash All Selected"
+        4. System flashes devices in parallel (max 3 concurrent)
+        5. Progress shown for each device individually
+        6. Summary shown when complete (succeeded/failed for each)
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Acceptance Criteria
+      description: What must be true for this feature to be considered complete?
+      placeholder: |
+        - [ ] User can select multiple devices (checkboxes)
+        - [ ] "Flash All Selected" button appears when >1 device selected
+        - [ ] Flashing happens in parallel (max 3 concurrent)
+        - [ ] Individual progress bars for each device
+        - [ ] Summary shows success/failure for each device
+        - [ ] If any device fails, others continue
+        - [ ] Error details shown for failed devices
+        - [ ] Works on Windows, macOS, Linux
+      value: |
+        - [ ] 
+        - [ ] 
+        - [ ] 
+    validations:
+      required: true
+
+  - type: textarea
+    id: user_story
+    attributes:
+      label: User Story
+      description: Who needs this and why?
+      placeholder: |
+        As a firmware tester,
+        I want to flash multiple devices simultaneously,
+        So that I can test firmware updates across all devices quickly without manual intervention.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: What other solutions did you consider?
+      placeholder: |
+        1. Flash devices sequentially (rejected: too slow)
+        2. External script (rejected: should be in UI)
+        3. Unlimited parallel flashing (rejected: USB bandwidth limits)
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: How important is this feature?
+      options:
+        - "Critical - Blocking production use"
+        - "High - Significantly improves workflow"
+        - "Medium - Nice to have"
+        - "Low - Minor improvement"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: size
+    attributes:
+      label: Estimated Size
+      description: How complex is this feature?
+      options:
+        - "Small - Few hours"
+        - "Medium - 1-2 days"
+        - "Large - 3-5 days"
+        - "X-Large - 1+ weeks"
+    validations:
+      required: true
+
+  - type: textarea
+    id: technical_notes
+    attributes:
+      label: Technical Implementation Notes (Optional)
+      description: Any specific technical requirements or constraints?
+      placeholder: |
+        - Use Worker threads for parallel flashing
+        - Limit to 3 concurrent to avoid USB bandwidth issues
+        - Store flash history in database (Prisma schema change needed)
+        - WebSocket for progress updates
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies / Blockers
+      description: Does this depend on other features or changes?
+      placeholder: |
+        - Requires WebSocket implementation (#123)
+        - Requires device locking mechanism (prevent concurrent flash on same device)
+
+  - type: textarea
+    id: risks
+    attributes:
+      label: Risks & Concerns
+      description: What could go wrong? What are the risks?
+      placeholder: |
+        - USB bandwidth limitations (max 3 concurrent should mitigate)
+        - Device brick risk if flash interrupted (add recovery mode)
+        - Memory usage with many devices (test with 20+ devices)
+
+  - type: checkboxes
+    id: validation
+    attributes:
+      label: Pre-Submission Checklist
+      description: Verify these before submitting
+      options:
+        - label: I have searched existing issues (not a duplicate)
+          required: true
+        - label: I have clearly described the problem
+          required: true
+        - label: I have provided specific acceptance criteria
+          required: true
+        - label: I have considered alternatives
+          required: true
+        - label: This is a single focused feature (not multiple features)
+          required: true
+
+  - type: textarea
+    id: mockups
+    attributes:
+      label: Mockups / Examples (Optional)
+      description: Attach mockups, wireframes, or examples from other tools
+      placeholder: "Drag and drop images here, or provide links"
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Any other relevant information
+      placeholder: "This feature was requested by 5 beta testers. Similar to how Fastboot Tool handles batch operations."
