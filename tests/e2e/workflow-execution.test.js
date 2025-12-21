@@ -66,7 +66,7 @@ describe('Workflow E2E Tests', () => {
     // Initialize test-friendly workflow engine
     workflowEngine = new TestWorkflowEngine({
       workflowsDir: path.join(process.cwd(), 'workflows'),
-      validateWorkflows: false // Disable validation for E2E tests
+      validateWorkflows: true // Enable validation to test real production behavior
     });
   });
 
@@ -217,7 +217,7 @@ describe('Workflow E2E Tests', () => {
       const deviceSerial = 'MOCK_IOS_DEVICE_UDID';
 
       // Mock iOS command responses
-      mockIOS.executeCommand = vi.fn().mockImplementation(async (serial, command) => {
+      mockIOS.executeCommand.mockImplementation(async (serial, command) => {
         if (command.includes('idevice_id')) {
           return {
             success: true,
@@ -247,13 +247,13 @@ describe('Workflow E2E Tests', () => {
       // but should at least execute some steps
       expect(result.results).toBeDefined();
       expect(result.results.length).toBeGreaterThan(0);
-    }, 30000); // 30 second timeout with mocked waits
+    }, 5000); // 5 second timeout with mocked waits
 
     it('should detect device mode correctly', async () => {
       const deviceSerial = 'MOCK_IOS_DEVICE_UDID';
 
       // Mock iOS device in normal mode
-      mockIOS.executeCommand = vi.fn().mockImplementation(async (serial, command) => {
+      mockIOS.executeCommand.mockImplementation(async (serial, command) => {
         if (command.includes('idevice_id')) {
           return {
             success: true,
@@ -283,7 +283,8 @@ describe('Workflow E2E Tests', () => {
       
       // Mode detection step should exist in the workflow
       expect(result.results).toBeDefined();
-    }, 30000); // 30 second timeout with mocked waits
+      expect(modeDetectionStep).toBeDefined();
+    }, 5000); // 5 second timeout with mocked waits
   });
 
   describe('Mobile Workflows', () => {
@@ -315,18 +316,9 @@ describe('Workflow E2E Tests', () => {
 
       // Verify workflow executed
       expect(result).toBeDefined();
-      
-      // The workflow might not exist or might have a different structure
-      // Check if the workflow loaded correctly
-      if (!result.success && result.error) {
-        // If workflow doesn't exist, skip with informative message
-        expect(result.error).toContain('Workflow not found');
-      } else {
-        // If workflow exists, verify it executed
-        expect(result.workflow).toBeDefined();
-        expect(result.results).toBeDefined();
-        expect(result.results.length).toBeGreaterThan(0);
-      }
+      expect(result.workflow).toBeDefined();
+      expect(result.results).toBeDefined();
+      expect(result.results.length).toBeGreaterThan(0);
     });
 
     it('should complete battery health analysis', async () => {
@@ -350,7 +342,7 @@ current_avg: 250`
         return { success: true, stdout: 'OK' };
       });
 
-      mockIOS.executeCommand = vi.fn().mockImplementation(async (serial, command) => {
+      mockIOS.executeCommand.mockImplementation(async (serial, command) => {
         if (command.includes('ioreg IOPMPowerSource')) {
           return {
             success: true,
@@ -369,18 +361,9 @@ current_avg: 250`
 
       // Verify workflow executed
       expect(result).toBeDefined();
-      
-      // The workflow might not exist or might have a different structure
-      // Check if the workflow loaded correctly
-      if (!result.success && result.error) {
-        // If workflow doesn't exist, skip with informative message
-        expect(result.error).toContain('Workflow not found');
-      } else {
-        // If workflow exists, verify it executed
-        expect(result.workflow).toBeDefined();
-        expect(result.results).toBeDefined();
-        expect(result.results.length).toBeGreaterThan(0);
-      }
+      expect(result.workflow).toBeDefined();
+      expect(result.results).toBeDefined();
+      expect(result.results.length).toBeGreaterThan(0);
     });
   });
 });
