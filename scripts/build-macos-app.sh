@@ -96,13 +96,9 @@ echo -e "${BLUE}Building macOS .app bundle for $TARGET...${NC}"
 echo -e "${YELLOW}This may take several minutes...${NC}"
 cargo tauri build --target "$TARGET"
 
-# Find the built .app bundle
-APP_PATH=""
-if [ -d "src-tauri/target/release/bundle/macos" ]; then
-    APP_PATH=$(find src-tauri/target/release/bundle/macos -name "*.app" -type d | head -n 1)
-elif [ -d "src-tauri/target/$TARGET/release/bundle/macos" ]; then
-    APP_PATH=$(find "src-tauri/target/$TARGET/release/bundle/macos" -name "*.app" -type d | head -n 1)
-fi
+# Find the built .app bundle using flexible search
+echo -e "${BLUE}Locating built .app bundle...${NC}"
+APP_PATH=$(find src-tauri/target -name "*.app" -type d 2>/dev/null | head -n 1)
 
 # Check if build succeeded
 if [ -n "$APP_PATH" ] && [ -d "$APP_PATH" ]; then

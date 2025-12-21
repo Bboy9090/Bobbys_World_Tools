@@ -335,21 +335,30 @@ Approximate file sizes:
 
 ### Current Support
 
-- **x86_64** (Intel Macs): ✅ Fully supported
-- **aarch64** (Apple Silicon/M1/M2): ⚠️ Should work but not tested
+- **x86_64** (Intel Macs): ✅ Fully supported and tested
+- **aarch64** (Apple Silicon/M1/M2/M3): ✅ Supported via cross-compilation (not tested on hardware)
+- **Universal Binary**: ✅ Supported but requires both architectures
 
 ### Building for Apple Silicon
+
+The scripts support building for Apple Silicon, though testing on actual M-series hardware is recommended:
 
 ```bash
 # Add aarch64 target
 rustup target add aarch64-apple-darwin
 
 # Build for Apple Silicon
-cargo tauri build --target aarch64-apple-darwin
+MACOS_TARGET=aarch64-apple-darwin ./scripts/build-macos-app.sh
+
+# Or via npm
+npm run tauri:build -- --target aarch64-apple-darwin
 
 # Universal Binary (both architectures)
-cargo tauri build --target universal-apple-darwin
+rustup target add x86_64-apple-darwin aarch64-apple-darwin
+MACOS_TARGET=universal-apple-darwin ./scripts/build-macos-app.sh
 ```
+
+**Note**: Cross-compilation from Intel to Apple Silicon (and vice versa) is supported by Rust/Tauri, but end-to-end testing on actual hardware is recommended before distribution.
 
 ## Testing the Build
 
