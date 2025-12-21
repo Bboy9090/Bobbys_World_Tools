@@ -46,21 +46,6 @@ class WorkflowValidator {
 
     return { success: true, workflow };
   }
-
-  /**
-   * Validate workflow authorization requirements
-   */
-  static validateAuthorization(workflow, authorization) {
-    if (workflow.requires_authorization && !authorization) {
-      return {
-        success: false,
-        error: 'Authorization required',
-        authorizationPrompt: workflow.authorization_prompt
-      };
-    }
-
-    return { success: true };
-  }
 }
 
 export default WorkflowValidator;
