@@ -31,6 +31,7 @@ import {
 import { toast } from 'sonner';
 import { useKV } from '@github/spark/hooks';
 import type { AndroidDevice } from '@/types/android-devices';
+import { useAudioNotifications } from '@/hooks/use-audio-notifications';
 
 interface PartitionInfo {
   name: string;
@@ -78,6 +79,7 @@ export function FastbootFlashingPanel() {
   const [deviceInfo, setDeviceInfo] = useState<any>(null);
   const [currentProgress, setCurrentProgress] = useState<FlashProgress | null>(null);
   const progressIntervalRef = useRef<NodeJS.Timeout | undefined>(undefined);
+  const { handleJobStart, handleJobError, handleJobComplete } = useAudioNotifications();
 
   useEffect(() => {
     fetchDevices();
@@ -159,6 +161,9 @@ export function FastbootFlashingPanel() {
     };
 
     setOperations(prev => [operation, ...(prev || [])]);
+
+    // Start audio atmosphere for flash operation
+    handleJobStart(operationId);
 
     const startTime = Date.now();
     const totalBytes = selectedFile.size;
@@ -248,6 +253,10 @@ export function FastbootFlashingPanel() {
             : op
         ));
         toast.success(`Successfully flashed ${selectedPartition}`);
+        
+        // Audio notification for successful completion
+        handleJobComplete();
+        
         setSelectedFile(null);
         
         setTimeout(() => {
@@ -267,6 +276,9 @@ export function FastbootFlashingPanel() {
           : op
       ));
       toast.error(`Flash failed: ${error.message}`);
+      
+      // Audio notification for error
+      handleJobError();
       
       setTimeout(() => {
         setCurrentProgress(null);
