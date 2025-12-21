@@ -1,6 +1,5 @@
 // Unit tests for ADB Library
 import { describe, it, expect, vi } from 'vitest';
-import { exec } from 'child_process';
 
 // Mock child_process
 vi.mock('child_process', () => ({

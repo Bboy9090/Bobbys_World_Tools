@@ -1,5 +1,5 @@
 // Unit tests for Fastboot Library
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 describe('Fastboot Library', () => {
   it('should check if Fastboot is available', () => {

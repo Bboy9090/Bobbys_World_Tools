@@ -21,6 +21,7 @@ import {
 } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { useFlashProgressWebSocket } from '@/hooks/use-flash-progress-websocket';
+import { useAudioNotifications } from '@/hooks/use-audio-notifications';
 
 interface MTKDevice {
   id: string;
@@ -48,6 +49,7 @@ export function MediaTekFlashPanel() {
   const [imageFiles, setImageFiles] = useState<string[]>([]);
   const [isScanning, setIsScanning] = useState(false);
   const [currentJob, setCurrentJob] = useState<MTKFlashJob | null>(null);
+  const { handleJobStart, handleJobError, handleJobComplete } = useAudioNotifications();
 
   const {
     isConnected,
@@ -136,6 +138,9 @@ export function MediaTekFlashPanel() {
     };
 
     setCurrentJob(newJob);
+
+    // Start audio atmosphere for MTK flash operation
+    handleJobStart(jobId);
 
     send({
       type: 'flash_started',

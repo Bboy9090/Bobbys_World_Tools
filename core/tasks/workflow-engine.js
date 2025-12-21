@@ -1,5 +1,6 @@
 // Workflow Engine - Execute JSON-defined workflows
 // Supports Android, iOS, and universal workflows with full audit logging
+// Includes workflow schema validation for safety and correctness
 
 import fs from 'fs/promises';
 import path from 'path';
@@ -8,6 +9,7 @@ import ADBLibrary from '../lib/adb.js';
 import FastbootLibrary from '../lib/fastboot.js';
 import IOSLibrary from '../lib/ios.js';
 import ShadowLogger from '../lib/shadow-logger.js';
+import WorkflowValidator from '../lib/workflow-validator.js';
 
 export class WorkflowEngine {
   constructor(options = {}) {
@@ -16,6 +18,7 @@ export class WorkflowEngine {
     this.adb = ADBLibrary;
     this.fastboot = FastbootLibrary;
     this.ios = IOSLibrary;
+    this.validateWorkflows = options.validateWorkflows !== false; // Default to true
   }
 
   /**
@@ -35,6 +38,21 @@ export class WorkflowEngine {
 
       const content = await fs.readFile(workflowPath, 'utf8');
       const workflow = JSON.parse(content);
+
+      // Validate workflow schema if validation is enabled
+      if (this.validateWorkflows) {
+        const validation = WorkflowValidator.validateAndSanitize(workflow);
+        
+        if (!validation.success) {
+          return { 
+            success: false, 
+            error: 'Workflow validation failed', 
+            validationErrors: validation.errors 
+          };
+        }
+        
+        return { success: true, workflow: validation.workflow };
+      }
 
       return { success: true, workflow };
     } catch (error) {
@@ -124,38 +142,132 @@ export class WorkflowEngine {
     // Execute steps
     const results = [];
     let workflowSuccess = true;
+    const startTime = Date.now();
 
-    for (const step of workflow.steps) {
+    for (let i = 0; i < workflow.steps.length; i++) {
+      const step = workflow.steps[i];
+      const stepStartTime = Date.now();
+      
+      // Log step start
+      await this.shadowLogger.logPublic({
+        operation: 'workflow_step_start',
+        message: `Starting step ${i + 1}/${workflow.steps.length}: ${step.name}`,
+        metadata: { 
+          workflowId, 
+          stepId: step.id, 
+          stepName: step.name,
+          stepIndex: i + 1,
+          totalSteps: workflow.steps.length
+        }
+      });
+      
       const stepResult = await this.executeStep(step, {
         deviceSerial,
         workflow,
         userId,
         authorization
       });
+      
+      const stepDuration = Date.now() - stepStartTime;
 
-      results.push({
+      // Detailed step logging
+      const stepLogEntry = {
         stepId: step.id,
         stepName: step.name,
+        stepIndex: i + 1,
         success: stepResult.success,
+        duration: stepDuration,
         output: stepResult.output,
-        error: stepResult.error
+        error: stepResult.error,
+        timestamp: new Date().toISOString()
+      };
+      
+      results.push(stepLogEntry);
+      
+      // Log step completion with details
+      await this.shadowLogger.logPublic({
+        operation: 'workflow_step_complete',
+        message: `Step ${i + 1}/${workflow.steps.length} ${stepResult.success ? 'succeeded' : 'failed'}: ${step.name}`,
+        metadata: stepLogEntry
       });
+      
+      // Log failures to shadow log for high/destructive risk workflows
+      if (!stepResult.success && (workflow.risk_level === 'destructive' || workflow.risk_level === 'high')) {
+        await this.shadowLogger.logShadow({
+          operation: 'workflow_step_failure',
+          deviceSerial,
+          userId,
+          authorization,
+          success: false,
+          metadata: {
+            workflowId,
+            workflow: workflow.name,
+            stepId: step.id,
+            stepName: step.name,
+            error: stepResult.error,
+            duration: stepDuration
+          }
+        });
+      }
 
       // Handle failure
       if (!stepResult.success) {
         if (step.on_failure === 'abort') {
+          await this.shadowLogger.logPublic({
+            operation: 'workflow_aborted',
+            message: `Workflow aborted at step ${i + 1}: ${step.name}`,
+            metadata: { workflowId, stepId: step.id, error: stepResult.error }
+          });
           workflowSuccess = false;
           break;
         } else if (step.on_failure === 'retry') {
-          // Retry once
-          const retryResult = await this.executeStep(step, {
-            deviceSerial,
-            workflow,
-            userId,
-            authorization
-          });
+          const retryCount = step.retry_count || 1;
+          let retrySuccess = false;
           
-          if (!retryResult.success) {
+          for (let retry = 1; retry <= retryCount; retry++) {
+            await this.shadowLogger.logPublic({
+              operation: 'workflow_step_retry',
+              message: `Retrying step ${i + 1} (attempt ${retry}/${retryCount}): ${step.name}`,
+              metadata: { workflowId, stepId: step.id, retryAttempt: retry }
+            });
+            
+            // Wait before retry
+            if (step.retry_delay) {
+              await new Promise(resolve => setTimeout(resolve, step.retry_delay));
+            }
+            
+            const retryResult = await this.executeStep(step, {
+              deviceSerial,
+              workflow,
+              userId,
+              authorization
+            });
+            
+            if (retryResult.success) {
+              retrySuccess = true;
+              results[results.length - 1] = {
+                ...stepLogEntry,
+                success: true,
+                output: retryResult.output,
+                retriedAttempts: retry,
+                duration: Date.now() - stepStartTime
+              };
+              
+              await this.shadowLogger.logPublic({
+                operation: 'workflow_step_retry_success',
+                message: `Step ${i + 1} succeeded after ${retry} retry attempts`,
+                metadata: { workflowId, stepId: step.id, retryAttempt: retry }
+              });
+              break;
+            }
+          }
+          
+          if (!retrySuccess) {
+            await this.shadowLogger.logPublic({
+              operation: 'workflow_step_retry_exhausted',
+              message: `Step ${i + 1} failed after ${retryCount} retry attempts`,
+              metadata: { workflowId, stepId: step.id, retryCount }
+            });
             workflowSuccess = false;
             break;
           }
@@ -163,6 +275,8 @@ export class WorkflowEngine {
         // Continue on failure if on_failure === 'continue'
       }
     }
+    
+    const totalDuration = Date.now() - startTime;
 
     // Log workflow completion
     await this.shadowLogger.logPublic({
@@ -173,7 +287,10 @@ export class WorkflowEngine {
         category, 
         deviceSerial, 
         success: workflowSuccess,
-        stepsCompleted: results.length
+        stepsCompleted: results.length,
+        totalDuration,
+        successfulSteps: results.filter(r => r.success).length,
+        failedSteps: results.filter(r => !r.success).length
       }
     });
 
