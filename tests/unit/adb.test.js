@@ -1,8 +1,5 @@
 // Unit tests for ADB Library
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-
-// Mock child_process module with promisified exec
-const mockExecAsync = vi.fn();
+import { describe, it, expect, vi } from 'vitest';
 
 vi.mock('child_process', () => ({
   exec: vi.fn()
