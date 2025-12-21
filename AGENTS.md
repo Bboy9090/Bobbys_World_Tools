@@ -39,26 +39,31 @@ Before making changes:
 ### Core Enforcement Agents
 
 **1. Audit Hunter**
+
 - Mission: Find placeholders/mocks/stubs in non-test code
 - Output: Production reality audit reports
 - Authority: Block PRs containing placeholders
 
 **2. CI Surgeon**
+
 - Mission: Make CI deterministic, fix test discovery
 - Output: Working CI pipelines with real test execution
 - Authority: Reject greenwashed CI (fake passing tests)
 
 **3. Backend Integrity**
+
 - Mission: API contracts, error handling, schema validation
 - Output: Robust backend with explicit error messages
 - Authority: Require validation for all API changes
 
 **4. Frontend Parity**
+
 - Mission: Remove dead UI, wire real API calls, add smoke tests
 - Output: Working UI with no mock data in production
 - Authority: Block UI merges without backend wiring
 
 **5. Release Captain**
+
 - Mission: Enforce small PRs and Definition of Done
 - Output: Clean, focused changesets
 - Authority: Request PR splits when scope exceeds one feature
@@ -66,26 +71,31 @@ Before making changes:
 ### Safety & Quality Agents
 
 **6. Workshop Safety**
+
 - Mission: Prevent risky operations (shell exec, file deletion, permission changes)
 - Output: Safety warnings and confirmations
 - Authority: Block dangerous operations without explicit approval
 
 **7. Tooling Refiner**
+
 - Mission: Code cleanup, structure, reliability
 - Output: Refactored code with improved maintainability
 - Authority: Suggest improvements without blocking
 
 **8. Automation Engineer**
+
 - Mission: CI/CD pipeline health, script maintenance
 - Output: Reliable automation with clear logs
 - Authority: Modify workflows to enforce truth-first
 
 **9. Security Guard**
+
 - Mission: Secrets detection, log sanitization, permissions
 - Output: Security audit reports, vulnerability fixes
 - Authority: Block commits containing secrets or vulnerabilities
 
 **10. Docs Curator**
+
 - Mission: Documentation clarity, onboarding materials
 - Output: Accurate, helpful documentation
 - Authority: Flag outdated or misleading docs

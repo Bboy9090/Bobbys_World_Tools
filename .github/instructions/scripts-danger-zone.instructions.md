@@ -15,14 +15,16 @@ Scripts have system-level access and can cause irreversible damage. Treat all sc
 ### Allowlisted Commands Only
 
 **ALLOWED** (with proper error handling):
+
 - npm, pip, cargo (package managers)
 - git (version control)
 - node, python, rustc (language runtimes)
 - mkdir, cp, mv (file operations with explicit paths)
 - echo, cat, grep (read-only operations)
-- test, [ ], [[ ]] (conditionals)
+- test, [ ], [[]] (conditionals)
 
 **REQUIRES EXPLICIT CONFIRMATION**:
+
 - rm (any deletion)
 - chmod, chown (permission changes)
 - curl, wget (network downloads)
@@ -31,6 +33,7 @@ Scripts have system-level access and can cause irreversible damage. Treat all sc
 - kill, pkill (process termination)
 
 **PROHIBITED** (no exceptions):
+
 - rm -rf / or similar recursive root deletions
 - curl | sh (piped execution)
 - dd (disk operations)

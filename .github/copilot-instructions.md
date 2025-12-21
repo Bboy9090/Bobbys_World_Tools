@@ -30,12 +30,14 @@
 ## AI Safety Guidelines
 
 ### Explicit Confirmation Required For:
+
 - **Destructive operations**: file deletion, database drops, system-wide changes
 - **System commands**: shell execution, process termination, network operations
 - **Permission changes**: chmod, chown, access control modifications
 - **Dependency updates**: major version bumps, breaking changes
 
 ### Prohibited Actions (No Exceptions):
+
 - Uncontrolled system command execution
 - Silent failures or fake success returns
 - Bypassing security controls or authentication
@@ -43,6 +45,7 @@
 - Modifying CI/CD to skip actual test execution
 
 ### Required Practices:
+
 - Validate all external inputs before processing
 - Use structured error messages with actionable context
 - Log security-relevant events (without exposing secrets)

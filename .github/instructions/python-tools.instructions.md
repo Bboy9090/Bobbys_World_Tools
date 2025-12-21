@@ -31,13 +31,13 @@ def read_config(path):
 # GOOD: Explicit error with context
 def read_config(path: str) -> dict:
     """Read JSON configuration file.
-    
+
     Args:
         path: Absolute path to config file
-        
+
     Returns:
         Parsed configuration dictionary
-        
+
     Raises:
         FileNotFoundError: Config file not found
         JSONDecodeError: Config file is not valid JSON
@@ -71,12 +71,12 @@ def check_prerequisites():
 # GOOD: Explicit results with details
 def check_prerequisites() -> dict[str, bool | str]:
     """Check if required tools are installed.
-    
+
     Returns:
         Dictionary with tool names as keys and status/path as values
     """
     results = {}
-    
+
     node_path = shutil.which('node')
     if node_path:
         results['node'] = node_path
@@ -85,7 +85,7 @@ def check_prerequisites() -> dict[str, bool | str]:
         results['node'] = False
         print("✗ Node.js not found")
         print("  Install from: https://nodejs.org/")
-    
+
     return results
 ```
 
@@ -98,15 +98,15 @@ from pathlib import Path
 
 def get_platform_cache_dir() -> Path:
     """Get platform-specific cache directory.
-    
+
     Returns:
         Path to cache directory
-        
+
     Raises:
         RuntimeError: Unsupported platform
     """
     system = platform.system()
-    
+
     if system == 'Darwin':
         # macOS
         return Path.home() / 'Library' / 'Caches' / 'BobbysWorkshop'
@@ -141,15 +141,15 @@ def run_command(
     timeout: int = 300
 ) -> Tuple[int, str, str]:
     """Execute command and return result.
-    
+
     Args:
         cmd: Command and arguments as list
         cwd: Working directory (optional)
         timeout: Timeout in seconds (default: 300)
-        
+
     Returns:
         Tuple of (exit_code, stdout, stderr)
-        
+
     Raises:
         TimeoutError: Command exceeded timeout
         FileNotFoundError: Command not found
@@ -205,30 +205,30 @@ from pathlib import Path
 
 def validate_project_path(path: str) -> Path:
     """Validate and normalize project path.
-    
+
     Args:
         path: Project path (relative or absolute)
-        
+
     Returns:
         Absolute Path object
-        
+
     Raises:
         ValueError: Invalid or non-existent path
     """
     project_path = Path(path).resolve()
-    
+
     if not project_path.exists():
         raise ValueError(
             f"Project path does not exist: {path}\n"
             f"  Resolved to: {project_path}"
         )
-    
+
     if not project_path.is_dir():
         raise ValueError(
             f"Project path is not a directory: {path}\n"
             f"  Resolved to: {project_path}"
         )
-    
+
     # Check for required files
     package_json = project_path / 'package.json'
     if not package_json.exists():
@@ -237,7 +237,7 @@ def validate_project_path(path: str) -> Path:
             f"  Missing: package.json\n"
             f"  Hint: Ensure you're in the project root directory"
         )
-    
+
     return project_path
 ```
 

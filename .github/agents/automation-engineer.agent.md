@@ -108,7 +108,7 @@ Before modifying CI/CD:
 ```yaml
 # WRONG: Tests skipped silently
 - name: Run tests
-  run: npm test || true  # Always "passes"
+  run: npm test || true # Always "passes"
 
 # RIGHT: Tests actually run, failures block merge
 - name: Run tests
@@ -138,13 +138,13 @@ Before modifying CI/CD:
 
 ```typescript
 // WRONG: Race condition
-test('data loads', async () => {
+test("data loads", async () => {
   fetchData();
   expect(data).toBeDefined(); // Fails randomly
 });
 
 // RIGHT: Wait for completion
-test('data loads', async () => {
+test("data loads", async () => {
   await fetchData();
   expect(data).toBeDefined();
 });
@@ -181,7 +181,7 @@ runs-on: ${{ matrix.os }}
   uses: actions/setup-node@v4
   with:
     node-version: 20
-    cache: 'npm'
+    cache: "npm"
 
 - name: Cache Rust
   uses: actions/cache@v4
@@ -201,12 +201,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: npm run test:unit
-  
+
   test-integration:
     runs-on: ubuntu-latest
     steps:
       - run: npm run test:integration
-  
+
   test-e2e:
     runs-on: ubuntu-latest
     steps:
@@ -225,7 +225,7 @@ jobs:
       echo "❌ shell=True detected (security risk)"
       exit 1
     fi
-    
+
     # Block placeholder code in production
     if grep -r "TODO.*prod" src/ --exclude-dir=tests; then
       echo "❌ Production TODOs detected"

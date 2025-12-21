@@ -78,6 +78,7 @@ Before updating documentation:
 ## Inaccuracies Found
 
 ### DOC-001: Build Instructions Outdated
+
 - **File**: `README.md:42-48`
 - **Issue**: Commands reference old npm scripts
 - **Current**: `npm run build:prod`
@@ -87,6 +88,7 @@ Before updating documentation:
 ## Missing Documentation
 
 ### DOC-002: API Endpoint Undocumented
+
 - **API**: `POST /api/devices/flash`
 - **Location**: Should be in `docs/API.md`
 - **Priority**: High (public API)
@@ -95,6 +97,7 @@ Before updating documentation:
 ## Improvements Needed
 
 ### DOC-003: Troubleshooting Section Missing
+
 - **File**: `docs/SETUP.md`
 - **Issue**: No troubleshooting for common errors
 - **Suggestion**: Add section with:
@@ -114,7 +117,7 @@ Before updating documentation:
 
 ### 1. Getting Started Template
 
-```markdown
+````markdown
 # Getting Started
 
 ## Prerequisites
@@ -130,19 +133,23 @@ Before updating documentation:
    git clone https://github.com/Bboy9090/Bobbys-Workshop-.git
    cd Bobbys-Workshop-
    ```
+````
 
 2. **Install dependencies**
+
    ```bash
    npm install
    ```
 
 3. **Configure environment**
+
    ```bash
    cp .env.example .env
    # Edit .env with your values
    ```
 
 4. **Start development server**
+
    ```bash
    npm run dev
    ```
@@ -155,7 +162,8 @@ Before updating documentation:
 - [Build the project](docs/BUILD.md)
 - [Run tests](docs/TESTING.md)
 - [Contribute](CONTRIBUTING.md)
-```
+
+````
 
 ### 2. API Documentation Template
 
@@ -177,7 +185,7 @@ Flash firmware to a connected device.
   "firmwareUrl": "https://example.com/firmware.bin",
   "verify": true
 }
-```
+````
 
 **Parameters:**
 | Field | Type | Required | Description |
@@ -189,6 +197,7 @@ Flash firmware to a connected device.
 ### Response
 
 **Success (200):**
+
 ```json
 {
   "success": true,
@@ -199,6 +208,7 @@ Flash firmware to a connected device.
 ```
 
 **Error (400):**
+
 ```json
 {
   "error": "Invalid device ID",
@@ -220,12 +230,13 @@ curl -X POST http://localhost:3001/api/devices/flash \
 
 ### Errors
 
-| Code | Description | Solution |
-|------|-------------|----------|
+| Code             | Description              | Solution                  |
+| ---------------- | ------------------------ | ------------------------- |
 | DEVICE_NOT_FOUND | Device ID not recognized | Check device is connected |
-| FIRMWARE_INVALID | Firmware file corrupted | Verify file integrity |
-| FLASH_FAILED | Flash operation failed | Check device permissions |
-```
+| FIRMWARE_INVALID | Firmware file corrupted  | Verify file integrity     |
+| FLASH_FAILED     | Flash operation failed   | Check device permissions  |
+
+````
 
 ### 3. Troubleshooting Template
 
@@ -235,9 +246,11 @@ curl -X POST http://localhost:3001/api/devices/flash \
 ### Build Fails: "Module not found"
 
 **Symptom:**
-```
+````
+
 Error: Cannot find module 'react'
-```
+
+````
 
 **Cause:** Dependencies not installed
 
@@ -245,13 +258,14 @@ Error: Cannot find module 'react'
 ```bash
 rm -rf node_modules package-lock.json
 npm install
-```
+````
 
 ---
 
 ### Server Won't Start: "Port already in use"
 
 **Symptom:**
+
 ```
 Error: listen EADDRINUSE: address already in use :::5173
 ```
@@ -259,6 +273,7 @@ Error: listen EADDRINUSE: address already in use :::5173
 **Cause:** Another process using port 5173
 
 **Solution:**
+
 ```bash
 # Find process using port
 lsof -i :5173  # macOS/Linux
@@ -277,6 +292,7 @@ PORT=5174 npm run dev
 ### Tests Fail: "Timeout"
 
 **Symptom:**
+
 ```
 Test timeout: exceeded 5000ms
 ```
@@ -284,20 +300,22 @@ Test timeout: exceeded 5000ms
 **Cause:** Async operation not awaited
 
 **Solution:**
+
 ```typescript
 // WRONG
-test('fetches data', () => {
+test("fetches data", () => {
   const data = fetchData();
   expect(data).toBeDefined();
 });
 
 // RIGHT
-test('fetches data', async () => {
+test("fetches data", async () => {
   const data = await fetchData();
   expect(data).toBeDefined();
 });
 ```
-```
+
+````
 
 ## Documentation Quality Checklist
 
@@ -321,8 +339,9 @@ test('fetches data', async () => {
 ```bash
 npm test
 # Output: ✓ 42 tests passed
-```
-```
+````
+
+````
 
 ### File Paths
 
@@ -332,18 +351,23 @@ Edit the file `.github/workflows/ci.yml`
 
 # Or for longer paths
 Edit the configuration:
-```
+````
+
 /home/runner/work/project/.github/workflows/ci.yml
+
 ```
+
 ```
 
 ### Links
 
 ```markdown
 # GOOD: Descriptive link text
+
 See the [Build Instructions](docs/BUILD.md) for details.
 
 # AVOID: Generic link text
+
 Click [here](docs/BUILD.md) for build instructions.
 ```
 

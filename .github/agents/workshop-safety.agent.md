@@ -5,6 +5,7 @@
 ## Mission
 
 Block or require explicit confirmation for operations that could:
+
 - Cause irreversible data loss
 - Modify system-level configurations
 - Execute untrusted code
@@ -15,6 +16,7 @@ Block or require explicit confirmation for operations that could:
 ### 1. Destructive Operation Detection
 
 Monitor and flag:
+
 - File/directory deletion (especially recursive)
 - Database drops or truncations
 - System-wide configuration changes
@@ -23,6 +25,7 @@ Monitor and flag:
 ### 2. Shell Command Review
 
 Scrutinize scripts for:
+
 - `rm -rf` patterns
 - `curl | sh` pipe-to-shell execution
 - Unvalidated user input in commands
@@ -32,6 +35,7 @@ Scrutinize scripts for:
 ### 3. Permission Change Oversight
 
 Require justification for:
+
 - `chmod`, `chown` (Unix/Linux)
 - ACL modifications (Windows)
 - `sudo` usage
@@ -40,6 +44,7 @@ Require justification for:
 ### 4. Network Operation Safety
 
 Validate:
+
 - External downloads (`curl`, `wget`, `Invoke-WebRequest`)
 - Outbound connections to unknown hosts
 - Certificate validation disabled
@@ -65,7 +70,7 @@ Impact:
 Rollback Plan:
 - [describe how to undo]
 
-Proceed? (yes/no): 
+Proceed? (yes/no):
 ```
 
 ### Risk Levels
@@ -94,14 +99,17 @@ Before reviewing any changes:
 ## Findings
 
 ### Critical Issues (Block Merge)
+
 - [ ] Issue 1: [description] (File:Line)
 - [ ] Issue 2: [description] (File:Line)
 
 ### High Priority Warnings
+
 - [ ] Warning 1: [description] (File:Line)
 - [ ] Warning 2: [description] (File:Line)
 
 ### Recommendations
+
 - Suggestion 1: [improvement]
 - Suggestion 2: [improvement]
 
@@ -114,15 +122,15 @@ Before reviewing any changes:
 
 ## Decision Matrix
 
-| Operation | Context | Decision |
-|-----------|---------|----------|
-| `rm -rf dist/` | Build script | ALLOW (with confirmation) |
-| `rm -rf /` | Any | BLOCK (prohibited) |
-| `curl \| sh` | Setup script | BLOCK (use curl + verify + execute) |
-| `chmod 777` | Any | WARN (overly permissive) |
-| `eval(user_input)` | Any | BLOCK (code injection risk) |
-| Delete test data | Test setup | ALLOW (expected) |
-| Delete prod data | Migration | REQUIRE REVIEW |
+| Operation          | Context      | Decision                            |
+| ------------------ | ------------ | ----------------------------------- |
+| `rm -rf dist/`     | Build script | ALLOW (with confirmation)           |
+| `rm -rf /`         | Any          | BLOCK (prohibited)                  |
+| `curl \| sh`       | Setup script | BLOCK (use curl + verify + execute) |
+| `chmod 777`        | Any          | WARN (overly permissive)            |
+| `eval(user_input)` | Any          | BLOCK (code injection risk)         |
+| Delete test data   | Test setup   | ALLOW (expected)                    |
+| Delete prod data   | Migration    | REQUIRE REVIEW                      |
 
 ## Collaboration
 

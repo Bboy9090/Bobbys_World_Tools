@@ -72,53 +72,60 @@ Before security review:
 
 ### Security Audit Report
 
-```markdown
+````markdown
 # Security Audit: [PR/Issue Title]
 
 ## Critical Issues (Block Merge)
 
 ### SECRET-001: Exposed API Key
+
 - **File**: `src/config.ts:42`
 - **Type**: Hardcoded API key
 - **Secret**: `AKIAIOSFODNN7EXAMPLE` (AWS Access Key pattern)
 - **Fix**: Move to environment variable
+
   ```typescript
   // WRONG
-  const apiKey = 'AKIAIOSFODNN7EXAMPLE';
-  
+  const apiKey = "AKIAIOSFODNN7EXAMPLE";
+
   // RIGHT
   const apiKey = process.env.AWS_ACCESS_KEY_ID;
-  if (!apiKey) throw new Error('AWS_ACCESS_KEY_ID not set');
+  if (!apiKey) throw new Error("AWS_ACCESS_KEY_ID not set");
   ```
+````
 
 ## High Priority Vulnerabilities
 
 ### VULN-001: SQL Injection Risk
+
 - **File**: `src/database.ts:84`
 - **Pattern**: String concatenation in SQL query
 - **Risk**: User input directly interpolated
 - **Fix**: Use parameterized queries
+
   ```typescript
   // WRONG
   db.query(`SELECT * FROM users WHERE id = ${userId}`);
-  
+
   // RIGHT
-  db.query('SELECT * FROM users WHERE id = ?', [userId]);
+  db.query("SELECT * FROM users WHERE id = ?", [userId]);
   ```
 
 ## Medium Priority Issues
 
 ### LOG-001: Sensitive Data in Logs
+
 - **File**: `src/auth.ts:156`
 - **Pattern**: Logging full user object
 - **Risk**: PII exposure in log files
 - **Fix**: Sanitize before logging
+
   ```typescript
   // WRONG
-  logger.info('User login', user);
-  
+  logger.info("User login", user);
+
   // RIGHT
-  logger.info('User login', { userId: user.id, email: maskEmail(user.email) });
+  logger.info("User login", { userId: user.id, email: maskEmail(user.email) });
   ```
 
 ## Recommendations
@@ -133,7 +140,8 @@ Before security review:
 - [ ] SAFE TO MERGE
 - [ ] REQUIRES FIXES (list critical/high issues)
 - [ ] BLOCKED (secrets detected)
-```
+
+````
 
 ## Secret Patterns to Detect
 
@@ -160,7 +168,7 @@ xox[baprs]-[0-9a-zA-Z-]+
 
 # Passwords in URLs
 (https?://[^:]+):([^@]+)@
-```
+````
 
 ## Security Best Practices
 
@@ -171,11 +179,11 @@ xox[baprs]-[0-9a-zA-Z-]+
 const config = {
   apiKey: process.env.API_KEY,
   dbPassword: process.env.DB_PASSWORD,
-  jwtSecret: process.env.JWT_SECRET
+  jwtSecret: process.env.JWT_SECRET,
 };
 
 // Validate on startup
-const required = ['API_KEY', 'DB_PASSWORD', 'JWT_SECRET'];
+const required = ["API_KEY", "DB_PASSWORD", "JWT_SECRET"];
 for (const key of required) {
   if (!process.env[key]) {
     throw new Error(`Missing required environment variable: ${key}`);
@@ -187,20 +195,20 @@ for (const key of required) {
 
 ```typescript
 // GOOD: Validate and sanitize inputs
-import { z } from 'zod';
+import { z } from "zod";
 
 const UserSchema = z.object({
   email: z.string().email(),
   age: z.number().int().positive().max(120),
-  username: z.string().regex(/^[a-zA-Z0-9_]{3,20}$/)
+  username: z.string().regex(/^[a-zA-Z0-9_]{3,20}$/),
 });
 
-app.post('/users', (req, res) => {
+app.post("/users", (req, res) => {
   try {
     const validatedData = UserSchema.parse(req.body);
     // Use validatedData safely
   } catch (error) {
-    res.status(400).json({ error: 'Invalid input' });
+    res.status(400).json({ error: "Invalid input" });
   }
 });
 ```
@@ -215,7 +223,7 @@ const query = `SELECT * FROM users WHERE email = '${email}'`;
 const query = `SELECT * FROM users WHERE email = '${email}'`;
 
 // RIGHT: Parameterized queries
-const query = 'SELECT * FROM users WHERE email = ?';
+const query = "SELECT * FROM users WHERE email = ?";
 db.query(query, [email]);
 
 // RIGHT: ORM with query builder
@@ -245,13 +253,20 @@ function renderUserContent(content: string): string {
 ```typescript
 // GOOD: Sanitize before logging
 function sanitizeForLogging(data: any): any {
-  const sensitive = ['password', 'token', 'apiKey', 'secret', 'ssn', 'creditCard'];
-  
-  if (typeof data === 'object' && data !== null) {
+  const sensitive = [
+    "password",
+    "token",
+    "apiKey",
+    "secret",
+    "ssn",
+    "creditCard",
+  ];
+
+  if (typeof data === "object" && data !== null) {
     const sanitized = { ...data };
     for (const key of Object.keys(sanitized)) {
-      if (sensitive.some(s => key.toLowerCase().includes(s))) {
-        sanitized[key] = '[REDACTED]';
+      if (sensitive.some((s) => key.toLowerCase().includes(s))) {
+        sanitized[key] = "[REDACTED]";
       }
     }
     return sanitized;
@@ -259,7 +274,7 @@ function sanitizeForLogging(data: any): any {
   return data;
 }
 
-logger.info('User data', sanitizeForLogging(user));
+logger.info("User data", sanitizeForLogging(user));
 ```
 
 ## Dependency Security

@@ -134,12 +134,14 @@ function processOrder(order) {
 
 ```typescript
 // BEFORE: Magic numbers
-if (user.age > 18 && user.status === 1) { }
+if (user.age > 18 && user.status === 1) {
+}
 
 // AFTER: Named constants
 const MINIMUM_AGE = 18;
 const UserStatus = { ACTIVE: 1, INACTIVE: 0 };
-if (user.age > MINIMUM_AGE && user.status === UserStatus.ACTIVE) { }
+if (user.age > MINIMUM_AGE && user.status === UserStatus.ACTIVE) {
+}
 ```
 
 **3. Consolidate Conditionals**
@@ -148,14 +150,14 @@ if (user.age > MINIMUM_AGE && user.status === UserStatus.ACTIVE) { }
 // BEFORE: Nested conditions
 if (user) {
   if (user.isActive) {
-    if (user.hasPermission('write')) {
+    if (user.hasPermission("write")) {
       // do something
     }
   }
 }
 
 // AFTER: Guard clauses
-if (!user || !user.isActive || !user.hasPermission('write')) {
+if (!user || !user.isActive || !user.hasPermission("write")) {
   return;
 }
 // do something
@@ -164,6 +166,7 @@ if (!user || !user.isActive || !user.hasPermission('write')) {
 ## Guidelines
 
 ### Do Refactor When:
+
 - Code is duplicated in 3+ places
 - Function exceeds 50 lines
 - Cognitive complexity is high
@@ -172,6 +175,7 @@ if (!user || !user.isActive || !user.hasPermission('write')) {
 - Security vulnerability present
 
 ### Don't Refactor When:
+
 - Tests don't exist (add tests first)
 - Breaking changes required (coordinate with team)
 - Deadline is imminent (defer to next cycle)

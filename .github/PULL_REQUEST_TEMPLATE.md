@@ -26,9 +26,9 @@
 
 <!-- Detailed list of changes -->
 
-- 
-- 
-- 
+-
+-
+-
 
 ## Validation
 
@@ -58,9 +58,9 @@ npm test
 
 <!-- Steps you took to manually verify -->
 
-1. 
-2. 
-3. 
+1.
+2.
+3.
 
 **Result:** <!-- Describe what happened -->
 
@@ -75,20 +75,23 @@ npm test
 **Risk Level:** Low | Medium | High
 
 **Potential Issues:**
-- 
-- 
+
+-
+-
 
 **Affected Areas:**
-- 
+
+-
 
 ## Rollback Plan
 
 <!-- How to undo these changes if needed -->
 
 **Rollback Steps:**
+
 1. Revert commit: `git revert <SHA>`
-2. 
-3. 
+2.
+3.
 
 **Rollback Complexity:** Simple | Moderate | Complex
 
@@ -131,15 +134,19 @@ npm test
 <!-- Any new or updated dependencies? -->
 
 **New Dependencies:**
-- 
+
+-
 
 **Updated Dependencies:**
-- 
+
+-
 
 **Removed Dependencies:**
-- 
+
+-
 
 <!-- If adding dependencies, ensure they're security-checked -->
+
 - [ ] Dependencies scanned for vulnerabilities
 - [ ] Licenses compatible with project
 
@@ -154,8 +161,8 @@ npm test
 **Benchmarks:** (if applicable)
 
 ```
-Before: 
-After: 
+Before:
+After:
 ```
 
 ## Breaking Changes
@@ -176,14 +183,17 @@ After:
 **Primary Agent:** <!-- Audit Hunter | CI Surgeon | Backend Integrity | Frontend Parity | Release Captain | Workshop Safety | Tooling Refiner | Automation Engineer | Security Guard | Docs Curator -->
 
 **Focus Areas for Review:**
-- 
-- 
+
+-
+-
 
 **Key Files Changed:**
-- 
-- 
+
+-
+-
 
 **Testing Priority:**
+
 - [ ] Critical path (auth, payments, data loss risk)
 - [ ] High usage feature
 - [ ] Edge case or error handling
