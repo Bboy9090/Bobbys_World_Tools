@@ -182,7 +182,7 @@ describe('Workflow E2E Tests', () => {
       // Verify at least some steps succeeded
       const successfulSteps = result.results.filter(r => r.success);
       expect(successfulSteps.length).toBeGreaterThan(0);
-    }, 30000); // 30 second timeout with mocked waits
+    }, 5000); // 5 second timeout with mocked waits
 
     it('should abort workflow without proper authorization', async () => {
       const deviceSerial = 'MOCK_FASTBOOT_DEVICE';
