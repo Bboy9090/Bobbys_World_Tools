@@ -430,10 +430,11 @@ interface WorkflowExecuteParams {
 }
 
 async function executeWorkflow(params: WorkflowExecuteParams) {
+  // Call your own backend API route. The backend should attach the admin X-API-Key
+  // from a server-side environment variable when forwarding to the Trapdoor API.
   const response = await fetch('/api/trapdoor/workflow/execute', {
     method: 'POST',
     headers: {
-      'X-API-Key': import.meta.env.VITE_ADMIN_API_KEY,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify(params)
