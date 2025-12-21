@@ -1,6 +1,7 @@
 #!/bin/bash
 # Create a DMG installer for macOS from the built .app bundle
 # This makes distribution easier for end users
+# Supports finding .app bundles from multiple architectures
 
 set -e
 
@@ -22,13 +23,11 @@ if [[ "$OSTYPE" != "darwin"* ]]; then
     exit 1
 fi
 
-# Find the .app bundle
-APP_PATH=""
-if [ -d "src-tauri/target/release/bundle/macos/Bobbys-Workshop.app" ]; then
-    APP_PATH="src-tauri/target/release/bundle/macos/Bobbys-Workshop.app"
-elif [ -d "src-tauri/target/x86_64-apple-darwin/release/bundle/macos/Bobbys-Workshop.app" ]; then
-    APP_PATH="src-tauri/target/x86_64-apple-darwin/release/bundle/macos/Bobbys-Workshop.app"
-else
+# Find the .app bundle using flexible search
+echo -e "${BLUE}Searching for .app bundle...${NC}"
+APP_PATH=$(find src-tauri/target -name "Bobbys-Workshop.app" -type d 2>/dev/null | head -n 1)
+
+if [ -z "$APP_PATH" ] || [ ! -d "$APP_PATH" ]; then
     echo -e "${RED}✗ .app bundle not found${NC}"
     echo "  Please run ./scripts/build-macos-app.sh first"
     exit 1
@@ -36,12 +35,25 @@ fi
 
 echo -e "${GREEN}✓ Found .app bundle: $APP_PATH${NC}"
 
+# Detect architecture from path
+if [[ "$APP_PATH" == *"x86_64-apple-darwin"* ]]; then
+    ARCH="x86_64"
+elif [[ "$APP_PATH" == *"aarch64-apple-darwin"* ]]; then
+    ARCH="aarch64"
+elif [[ "$APP_PATH" == *"universal-apple-darwin"* ]]; then
+    ARCH="universal"
+else
+    ARCH="x86_64"  # Default
+fi
+
+echo -e "${BLUE}Detected architecture: $ARCH${NC}"
+
 # Get version from Cargo.toml
 VERSION=$(grep '^version' src-tauri/Cargo.toml | head -n1 | cut -d'"' -f2)
 echo -e "${BLUE}Version: $VERSION${NC}"
 
 # Output DMG name
-DMG_NAME="Bobbys-Workshop-${VERSION}-macOS.dmg"
+DMG_NAME="Bobbys-Workshop-${VERSION}-macOS-${ARCH}.dmg"
 DMG_PATH="dist/${DMG_NAME}"
 
 # Create dist directory if it doesn't exist

@@ -1,6 +1,7 @@
 #!/bin/bash
 # Build script for macOS .app bundle using Tauri
 # This script builds Bobby's Workshop as a native macOS application
+# Supports both Intel (x86_64) and Apple Silicon (aarch64) architectures
 
 set -e
 
@@ -11,9 +12,14 @@ BLUE='\033[0;34m'
 YELLOW='\033[0;33m'
 NC='\033[0m' # No Color
 
+# Default target (can be overridden with environment variable)
+TARGET="${MACOS_TARGET:-x86_64-apple-darwin}"
+
 echo -e "${BLUE}============================================${NC}"
 echo -e "${BLUE}Bobby's Workshop - macOS .app Builder${NC}"
 echo -e "${BLUE}============================================${NC}"
+echo ""
+echo -e "${BLUE}Target: $TARGET${NC}"
 echo ""
 
 # Check if running on macOS
@@ -65,6 +71,12 @@ else
     echo -e "${GREEN}✓ Tauri CLI $(cargo tauri --version)${NC}"
 fi
 
+# Add target if not already installed
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    echo -e "${BLUE}Ensuring Rust target is installed...${NC}"
+    rustup target add "$TARGET" 2>/dev/null || true
+fi
+
 echo ""
 
 # Install dependencies
@@ -80,42 +92,37 @@ echo -e "${GREEN}✓ Frontend built${NC}"
 echo ""
 
 # Build Tauri app
-echo -e "${BLUE}Building macOS .app bundle...${NC}"
+echo -e "${BLUE}Building macOS .app bundle for $TARGET...${NC}"
 echo -e "${YELLOW}This may take several minutes...${NC}"
-cargo tauri build --target x86_64-apple-darwin
+cargo tauri build --target "$TARGET"
+
+# Find the built .app bundle
+APP_PATH=""
+if [ -d "src-tauri/target/release/bundle/macos" ]; then
+    APP_PATH=$(find src-tauri/target/release/bundle/macos -name "*.app" -type d | head -n 1)
+elif [ -d "src-tauri/target/$TARGET/release/bundle/macos" ]; then
+    APP_PATH=$(find "src-tauri/target/$TARGET/release/bundle/macos" -name "*.app" -type d | head -n 1)
+fi
 
 # Check if build succeeded
-if [ -d "src-tauri/target/release/bundle/macos" ]; then
+if [ -n "$APP_PATH" ] && [ -d "$APP_PATH" ]; then
     echo ""
     echo -e "${GREEN}============================================${NC}"
     echo -e "${GREEN}✓ Build successful!${NC}"
     echo -e "${GREEN}============================================${NC}"
     echo ""
-    echo -e "${BLUE}Output files:${NC}"
-    ls -lh src-tauri/target/release/bundle/macos/
+    echo -e "${BLUE}Output location:${NC}"
+    echo "  $APP_PATH"
     echo ""
-    echo -e "${BLUE}The .app bundle is located at:${NC}"
-    echo "  src-tauri/target/release/bundle/macos/Bobbys-Workshop.app"
+    ls -lh "$APP_PATH" 2>/dev/null || echo "  (Bundle directory)"
     echo ""
     echo -e "${BLUE}To install:${NC}"
     echo "  1. Open Finder"
-    echo "  2. Navigate to the bundle directory"
-    echo "  3. Drag Bobbys-Workshop.app to Applications"
+    echo "  2. Navigate to: $(dirname "$APP_PATH")"
+    echo "  3. Drag $(basename "$APP_PATH") to Applications"
     echo ""
     echo -e "${BLUE}To create a DMG for distribution, run:${NC}"
     echo "  ./scripts/create-macos-dmg.sh"
-    echo ""
-elif [ -d "src-tauri/target/x86_64-apple-darwin/release/bundle/macos" ]; then
-    echo ""
-    echo -e "${GREEN}============================================${NC}"
-    echo -e "${GREEN}✓ Build successful!${NC}"
-    echo -e "${GREEN}============================================${NC}"
-    echo ""
-    echo -e "${BLUE}Output files:${NC}"
-    ls -lh src-tauri/target/x86_64-apple-darwin/release/bundle/macos/
-    echo ""
-    echo -e "${BLUE}The .app bundle is located at:${NC}"
-    echo "  src-tauri/target/x86_64-apple-darwin/release/bundle/macos/Bobbys-Workshop.app"
     echo ""
 else
     echo -e "${RED}✗ Build failed or output directory not found${NC}"

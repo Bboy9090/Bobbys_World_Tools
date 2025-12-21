@@ -48,43 +48,22 @@ jobs:
       - name: Build macOS .app bundle
         run: cargo tauri build --target x86_64-apple-darwin
       
-      - name: Create DMG (if hdiutil available)
+      - name: Create DMG using script
         id: create_dmg
         run: |
+          # Use the DMG creation script
+          ./scripts/create-macos-dmg.sh
+          
           # Get version from Cargo.toml
           VERSION=$(grep '^version' src-tauri/Cargo.toml | head -n1 | cut -d'"' -f2)
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           
-          # Find the .app bundle
-          if [ -d "src-tauri/target/release/bundle/macos/Bobbys-Workshop.app" ]; then
-            APP_PATH="src-tauri/target/release/bundle/macos/Bobbys-Workshop.app"
-          elif [ -d "src-tauri/target/x86_64-apple-darwin/release/bundle/macos/Bobbys-Workshop.app" ]; then
-            APP_PATH="src-tauri/target/x86_64-apple-darwin/release/bundle/macos/Bobbys-Workshop.app"
-          else
-            echo "Error: .app bundle not found"
-            exit 1
-          fi
-          
-          # Create DMG
-          mkdir -p dist
-          DMG_NAME="Bobbys-Workshop-${VERSION}-macOS-x86_64.dmg"
-          
-          # Create temporary directory
-          TMP_DIR=$(mktemp -d)
-          cp -R "$APP_PATH" "$TMP_DIR/"
-          ln -s /Applications "$TMP_DIR/Applications"
-          
-          # Create DMG
-          hdiutil create -volname "Bobby's Workshop" \
-            -srcfolder "$TMP_DIR" \
-            -ov -format UDZO \
-            "dist/$DMG_NAME"
-          
-          # Cleanup
-          rm -rf "$TMP_DIR"
+          # Find the created DMG
+          DMG_FILE=$(find dist -name "*.dmg" | head -n 1)
+          DMG_NAME=$(basename "$DMG_FILE")
           
           echo "DMG_NAME=$DMG_NAME" >> $GITHUB_OUTPUT
-          echo "DMG_PATH=dist/$DMG_NAME" >> $GITHUB_OUTPUT
+          echo "DMG_PATH=$DMG_FILE" >> $GITHUB_OUTPUT
         continue-on-error: false
       
       - name: Generate checksums
