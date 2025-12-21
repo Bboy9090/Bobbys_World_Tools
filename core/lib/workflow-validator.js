@@ -7,6 +7,32 @@
  */
 class WorkflowValidator {
   /**
+   * Validate workflow structure and return a { valid, errors } result.
+   * This is a compatibility wrapper for existing tests.
+   * @param {Object} workflow - The workflow to validate
+   * @returns {Object} - { valid: boolean, errors: Array }
+   */
+  static validate(workflow) {
+    const result = this.validateAndSanitize(workflow);
+    
+    if (result && typeof result.success === 'boolean') {
+      if (result.success) {
+        // On success, normalize to an empty errors array
+        return { valid: true, errors: [] };
+      }
+      
+      // On failure, propagate the errors array if present
+      return { valid: false, errors: result.errors || [] };
+    }
+    
+    // Fallback: unexpected internal result format
+    return {
+      valid: false,
+      errors: ['Unexpected validation result format']
+    };
+  }
+
+  /**
    * Validate and sanitize a workflow
    * @param {Object} workflow - The workflow to validate
    * @returns {Object} - { success: boolean, workflow?: Object, errors?: Array }
