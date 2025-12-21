@@ -81,3 +81,10 @@ devices/*.json
 !devices/README.md
 logs/public/*.log
 logs/shadow/*.enc
+
+# macOS build artifacts
+src-tauri/target/
+*.app
+*.dmg
+dist/*.dmg
+dist/*.app

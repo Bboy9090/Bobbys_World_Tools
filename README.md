@@ -279,6 +279,33 @@ GET  /api/standards - Industry benchmark standards
 GET  /api/hotplug/events - Device hotplug event log
 ```
 
+## 📦 Installation
+
+### macOS Users - Download the App
+
+Bobby's Workshop is available as a native macOS `.app` bundle:
+
+1. **Download** the latest release:
+   - Visit the [Releases](https://github.com/Bboy9090/Bobbys-Workshop-/releases) page
+   - Download `Bobbys-Workshop-{version}-macOS-x86_64.dmg`
+
+2. **Install**:
+   - Open the DMG file
+   - Drag Bobby's Workshop to your Applications folder
+   - Launch from Applications
+
+3. **First Launch**:
+   - If prompted for security, go to **System Preferences → Security & Privacy**
+   - Click **"Open Anyway"**
+
+**System Requirements**: macOS 10.15 (Catalina) or later
+
+**See [MACOS_BUILD_GUIDE.md](./MACOS_BUILD_GUIDE.md) for detailed installation instructions and troubleshooting.**
+
+### Building from Source
+
+See the [Development](#-development) section below for instructions on building from source.
+
 ## 📦 Required System Dependencies
 
 ### Linux/macOS
@@ -442,6 +469,11 @@ cargo build --release --bin trapdoor_cli
 - [Pandora Codex Architecture](./PANDORA_CODEX_MASTER.md)
 - [WebSocket API Reference](./WEBSOCKET_QUICKSTART.md)
 - [Backend API Implementation](./BACKEND_API_IMPLEMENTATION.md)
+
+### Build & Distribution
+
+- [macOS Build and Distribution Guide](./MACOS_BUILD_GUIDE.md) - **NEW** - Complete guide for building .app bundles
+- [Tauri Build Guide](./TAURI_BUILD_GUIDE.md) - General Tauri build instructions
 
 ### Trapdoor / Pandora's Room Documentation
 
