@@ -1,15 +1,16 @@
 {
-  "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Bobbys-Workshop",
-  "version": "0.1.0",
-  "identifier": "com.bboy9090.bobbysworkshop",
+  "$schema": "https://schema.tauri.app/config/1",
   "build": {
-    "frontendDist": "../dist",
-    "devUrl": "http://localhost:5173",
+    "distDir": "../dist",
+    "devPath": "http://localhost:5173",
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build"
   },
-  "app": {
+  "package": {
+    "productName": "Bobbys-Workshop",
+    "version": "0.1.0"
+  },
+  "tauri": {
     "windows": [
       {
         "title": "Bobbys-Workshop",
@@ -21,17 +22,18 @@
     ],
     "security": {
       "csp": null
+    },
+    "bundle": {
+      "active": true,
+      "targets": "all",
+      "identifier": "com.bboy9090.bobbysworkshop",
+      "icon": [
+        "icons/32x32.png",
+        "icons/128x128.png",
+        "icons/128x128@2x.png",
+        "icons/icon.icns",
+        "icons/icon.ico"
+      ]
     }
-  },
-  "bundle": {
-    "active": true,
-    "targets": "all",
-    "icon": [
-      "icons/32x32.png",
-      "icons/128x128.png",
-      "icons/128x128@2x.png",
-      "icons/icon.icns",
-      "icons/icon.ico"
-    ]
   }
 }

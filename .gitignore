@@ -82,6 +82,11 @@ devices/*.json
 logs/public/*.log
 logs/shadow/*.enc
 
+# Local dev-only tools and audit outputs
+git-audit.log
+debug-log.txt
+tools/tauri-cli-v1/
+
 # macOS build artifacts
 src-tauri/target/
 *.app
