@@ -77,7 +77,8 @@ async function findWorkflowFiles(dir) {
       if (entry.isDirectory()) {
         const subFiles = await findWorkflowFiles(fullPath);
         files.push(...subFiles);
-      } else if (entry.isFile() && entry.name.endsWith('.json')) {
+      } else if (entry.isFile() && entry.name.endsWith('.json') && !entry.name.endsWith('-schema.json')) {
+        // Skip schema definition files
         files.push(fullPath);
       }
     }
