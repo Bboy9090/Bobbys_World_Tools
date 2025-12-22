@@ -94,7 +94,9 @@ $repoRootCandidates = @(
 )
 
 $repoRoot = $null
-foreach ($candidate in ($repoRootCandidates | Select-Object -Reverse)) {
+$reversedCandidates = @($repoRootCandidates)
+[array]::Reverse($reversedCandidates)
+foreach ($candidate in $reversedCandidates) {
     if (Test-Path -LiteralPath $candidate -PathType Container) {
         $repoRoot = $candidate
         break
