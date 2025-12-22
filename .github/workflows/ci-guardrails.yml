@@ -37,6 +37,90 @@ jobs:
             && { echo "❌ Placeholders found in non-test code. Purge or gate behind EXPERIMENTAL (OFF by default)."; exit 1; } \
             || echo "✅ No placeholder keywords detected outside tests."
 
+  no-build-artifacts:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Block edits to dist/build/output folders
+        run: |
+          set -e
+          echo "Checking for modified build artifacts..."
+          
+          # Get list of changed files in this PR/push
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          else
+            # For push events, compare with parent commit
+            BASE_SHA="${{ github.event.before }}"
+            HEAD_SHA="${{ github.sha }}"
+          fi
+          
+          # List changed files matching build artifact patterns
+          CHANGED_ARTIFACTS=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA" | grep -E '\.(exe|pkg|dmg|zip|tar\.gz|deb|rpm|app)$|^dist/|^build/|^out/|^target/release/' || true)
+          
+          if [ -n "$CHANGED_ARTIFACTS" ]; then
+            echo "❌ Build artifacts should not be committed:"
+            echo "$CHANGED_ARTIFACTS"
+            echo ""
+            echo "These files should be in .gitignore and built during CI/CD."
+            exit 1
+          else
+            echo "✅ No build artifacts detected in changes."
+          fi
+
+  dangerous-patterns:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Scan for suspicious patterns
+        run: |
+          set -e
+          if ! command -v rg >/dev/null 2>&1; then sudo apt-get update && sudo apt-get install -y ripgrep; fi
+          
+          echo "Scanning for dangerous patterns..."
+          FOUND_ISSUES=0
+          
+          # Check for shell piping (curl | sh)
+          if rg -n "curl.*\|.*sh" . --glob "!.git/**" --glob "!.github/**" --glob "!node_modules/**" 2>/dev/null; then
+            echo "❌ Found curl | sh pattern (security risk)"
+            FOUND_ISSUES=1
+          fi
+          
+          # Check for rm -rf in scripts without safety checks
+          if rg -n "rm\s+-rf\s+/" . --glob "**/*.sh" --glob "**/*.bat" --glob "**/*.ps1" 2>/dev/null; then
+            echo "❌ Found 'rm -rf /' pattern (dangerous)"
+            FOUND_ISSUES=1
+          fi
+          
+          # Check for eval with user input (Python)
+          if rg -n "eval\(.*input" . --glob "**/*.py" --glob "!tests/**" 2>/dev/null; then
+            echo "❌ Found eval() with user input (code injection risk)"
+            FOUND_ISSUES=1
+          fi
+          
+          # Check for shell=True in subprocess (Python)
+          if rg -n "shell\s*=\s*True" . --glob "**/*.py" --glob "!tests/**" 2>/dev/null; then
+            echo "⚠️ Found shell=True in subprocess (review for injection risks)"
+            # Warning only, don't fail
+          fi
+          
+          if [ $FOUND_ISSUES -eq 1 ]; then
+            echo ""
+            echo "Fix these security issues before merging."
+            exit 1
+          else
+            echo "✅ No critical dangerous patterns detected."
+          fi
+
   node-python-ci:
     runs-on: ubuntu-latest
     permissions:
