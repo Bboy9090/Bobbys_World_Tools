@@ -6,7 +6,7 @@ Your **external Bootforge-usb repository** has been analyzed and an integration 
 
 ## What Was Found
 
-### External Repo Structure (`C:\Users\Bobby\Bootforge-usb-external`)
+### External Repo Structure (external clone)
 - Clean, focused USB enumeration library (v0.1.0)
 - Cross-platform architecture with platform-specific enrichment
 - Files: `lib.rs`, `types.rs`, `enumerate/` module
@@ -19,22 +19,66 @@ Your **external Bootforge-usb repository** has been analyzed and an integration 
 
 ## Manual Integration Steps Required
 
-Since PowerShell 7+ is not available on your system, please run these commands manually:
+These steps are written to be machine-agnostic. You just need:
+
+- `WORKSHOP_ROOT`: this repo root
+- `BOOTFORGE_EXTERNAL`: path to the external bootforge-usb clone
+
+### Set paths
+
+PowerShell:
+
+```powershell
+$WORKSHOP_ROOT = (git rev-parse --show-toplevel)
+$BOOTFORGE_EXTERNAL = "..\bootforge-usb-external"  # change if needed
+```
+
+bash/zsh:
+
+```bash
+WORKSHOP_ROOT="$(git rev-parse --show-toplevel)"
+BOOTFORGE_EXTERNAL="../bootforge-usb-external"  # change if needed
+```
 
 ### Step 1: Create enumerate directory
+PowerShell:
+
+```powershell
+Set-Location (Join-Path $WORKSHOP_ROOT "crates\bootforge-usb\libbootforge\src")
+New-Item -ItemType Directory -Force -Path "enumerate" | Out-Null
+```
+
+bash/zsh:
+
 ```bash
-cd "C:\Users\Bobby\Bobbys-Workshop-.worktrees\worktree-2025-12-22T07-58-32\crates\bootforge-usb\libbootforge\src"
-mkdir enumerate
+cd "$WORKSHOP_ROOT/crates/bootforge-usb/libbootforge/src"
+mkdir -p enumerate
 ```
 
 ### Step 2: Copy enumeration files
+PowerShell:
+
+```powershell
+Copy-Item -Force (Join-Path $BOOTFORGE_EXTERNAL "src\enumerate\*.rs") (Join-Path $WORKSHOP_ROOT "crates\bootforge-usb\libbootforge\src\enumerate\")
+```
+
+bash/zsh:
+
 ```bash
-copy "C:\Users\Bobby\Bootforge-usb-external\src\enumerate\*.rs" "C:\Users\Bobby\Bobbys-Workshop-.worktrees\worktree-2025-12-22T07-58-32\crates\bootforge-usb\libbootforge\src\enumerate\"
+cp -f "$BOOTFORGE_EXTERNAL"/src/enumerate/*.rs "$WORKSHOP_ROOT"/crates/bootforge-usb/libbootforge/src/enumerate/
 ```
 
 ### Step 3: Copy clean types
+PowerShell:
+
+```powershell
+Copy-Item -Force (Join-Path $BOOTFORGE_EXTERNAL "src\types.rs") (Join-Path $WORKSHOP_ROOT "crates\bootforge-usb\libbootforge\src\usb\clean_types.rs")
+```
+
+bash/zsh:
+
 ```bash
-copy "C:\Users\Bobby\Bootforge-usb-external\src\types.rs" "C:\Users\Bobby\Bobbys-Workshop-.worktrees\worktree-2025-12-22T07-58-32\crates\bootforge-usb\libbootforge\src\usb\clean_types.rs"
+cp -f "$BOOTFORGE_EXTERNAL"/src/types.rs "$WORKSHOP_ROOT"/crates/bootforge-usb/libbootforge/src/usb/clean_types.rs
 ```
 
 ### Step 4: Update Cargo.toml dependencies
@@ -126,5 +170,5 @@ If you encounter issues:
 ---
 
 **Status**: Ready for manual integration
-**External Repo**: `C:\Users\Bobby\Bootforge-usb-external` (PR #7 checked out)
-**Workshop Repo**: `C:\Users\Bobby\Bobbys-Workshop-.worktrees\worktree-2025-12-22T07-58-32`
+**External Repo**: external clone (PR #7 checked out)
+**Workshop Repo**: this repository

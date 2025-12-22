@@ -6,7 +6,7 @@ Integrating the **external Bootforge-usb repository** (clean enumeration library
 
 ## Repository Comparison
 
-### External Bootforge-usb (`C:\Users\Bobby\Bootforge-usb-external`)
+### External Bootforge-usb (external clone)
 - **Purpose**: Clean, focused USB enumeration library
 - **Version**: 0.1.0
 - **Features**:
@@ -125,6 +125,20 @@ Integrating the **external Bootforge-usb repository** (clean enumeration library
 4. ⏳ Run tests and verify functionality
 5. ⏳ Update documentation
 6. ⏳ Commit and push integration
+
+## Machine-agnostic paths (recommended)
+
+To keep this reproducible on any machine/OS, use workspace-relative paths:
+
+- Workshop repo root: `.` (this repository)
+- External repo root: `../bootforge-usb-external` (example)
+
+If you use a different location, set an env var and reuse it in commands:
+
+- PowerShell:
+  - `$env:BOOTFORGE_EXTERNAL = "..\bootforge-usb-external"`
+- Bash/zsh:
+  - `export BOOTFORGE_EXTERNAL="../bootforge-usb-external"`
 
 ---
 
