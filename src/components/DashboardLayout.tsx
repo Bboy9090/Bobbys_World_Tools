@@ -8,6 +8,7 @@ import { TestsTab } from "./tabs/TestsTab";
 import { PluginsTab } from "./tabs/PluginsTab";
 import { CommunityTab } from "./tabs/CommunityTab";
 import { SettingsTab } from "./tabs/SettingsTab";
+import { ToolboxTab } from "./tabs/ToolboxTab";
 import { PandorasRoom } from "./SecretRoom";
 import { BobbysTraproom } from "./SecretRoom/BobbysTraproom";
 import { BobbysDevCorner } from "./SecretRoom/BobbysDevCorner";
@@ -28,7 +29,8 @@ import {
     LockKey,
     ChartLine,
     Skull,
-    Code
+    Code,
+    Toolbox
 } from '@phosphor-icons/react';
 
 export function DashboardLayout() {
@@ -113,6 +115,14 @@ export function DashboardLayout() {
                                     <span className="font-medium">Reports</span>
                                 </TabsTrigger>
                                 <TabsTrigger 
+                                    value="toolbox" 
+                                    className="gap-1.5 px-4 data-[state=active]:btn-sneaker data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+                                >
+                                    <Toolbox weight="duotone" size={18} />
+                                    <span className="font-medium">🛠️ Toolbox</span>
+                                    <Badge variant="secondary" className="ml-1.5 text-[10px] px-1.5 py-0 candy-shimmer">NEW</Badge>
+                                </TabsTrigger>
+                                <TabsTrigger 
                                     value="tests" 
                                     className="gap-1.5 px-4 data-[state=active]:btn-sneaker data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
                                 >
@@ -162,6 +172,9 @@ export function DashboardLayout() {
                                 </TabsContent>
                                 <TabsContent value="reports" className="mt-0">
                                     <ReportsTab />
+                                </TabsContent>
+                                <TabsContent value="toolbox" className="mt-0">
+                                    <ToolboxTab />
                                 </TabsContent>
                                 <TabsContent value="tests" className="mt-0">
                                     <TestsTab />
