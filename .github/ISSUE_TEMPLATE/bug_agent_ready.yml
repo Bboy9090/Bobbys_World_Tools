@@ -1,39 +1,43 @@
-name: 🐛 Bug Report (Agent Ready)
+name: 🐛 Bug Report (Agent-Ready)
 description: Report a bug with full context for AI agents to investigate
-title: "[Bug]: "
+title: "[Bug] "
 labels: ["bug", "needs-triage"]
+assignees: []
+
 body:
   - type: markdown
     attributes:
       value: |
-        ## Bug Report — Truth-First Format
+        ## Bug Report Template
         
-        This template helps AI agents (and humans) understand and fix bugs quickly.
-        
-        **Prime Rule:** Only report what you can prove. No guesses.
+        This template provides structured information for both human reviewers and AI agents.
+        Fill in all sections to enable fast, accurate bug resolution.
 
   - type: textarea
-    id: summary
+    id: description
     attributes:
-      label: Bug Summary
-      description: One-line description of the bug
-      placeholder: "Device flash fails with 'USB device not found' error despite device being connected"
+      label: Bug Description
+      description: Clear description of what's broken
+      placeholder: |
+        When I click "Flash Device", the UI shows success but the device is not flashed.
     validations:
       required: true
 
   - type: textarea
-    id: reproduce
+    id: reproduction
     attributes:
       label: Steps to Reproduce
-      description: Exact steps to reproduce the bug
+      description: Exact steps to trigger the bug
       placeholder: |
-        1. Connect device via USB
-        2. Run `npm run dev`
-        3. Navigate to http://localhost:5173
+        1. Connect Android device via USB
+        2. Click "Scan Devices"
+        3. Select device from list
         4. Click "Flash Device"
-        5. Select firmware file
-        6. Click "Start Flash"
-        7. Error appears: "USB device not found"
+        5. Observe: Success message shown, but device not flashed
+      value: |
+        1. 
+        2. 
+        3. 
     validations:
       required: true
 
@@ -41,8 +45,8 @@ body:
     id: expected
     attributes:
       label: Expected Behavior
-      description: What should happen?
-      placeholder: "Device should be detected and firmware flash should begin"
+      description: What should happen
+      placeholder: Device should be flashed with selected firmware
     validations:
       required: true
 
@@ -50,105 +54,116 @@ body:
     id: actual
     attributes:
       label: Actual Behavior
-      description: What actually happens?
-      placeholder: "Error message 'USB device not found' appears, flash does not start"
+      description: What actually happens
+      placeholder: UI shows success but device is unchanged
     validations:
       required: true
 
   - type: textarea
-    id: evidence
+    id: logs
     attributes:
-      label: Evidence (Logs, Screenshots, Error Messages)
-      description: Paste relevant logs, error messages, or add screenshots
+      label: Logs & Error Messages
+      description: Relevant logs, stack traces, console output
       placeholder: |
+        Paste logs here. Use code blocks:
         ```
-        Error: USB device not found
-            at Device.scan (src/lib/device.ts:45)
-            at FlashButton.onClick (src/components/FlashButton.tsx:23)
+        [ERROR] Flash operation failed: Device not in fastboot mode
         ```
       render: shell
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      description: Impact level
+      options:
+        - Critical (blocks core functionality)
+        - High (major feature broken)
+        - Medium (workaround exists)
+        - Low (minor issue)
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Application version (check About page or package.json)
+      placeholder: "v0.1.0"
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating System
+      description: Your OS
+      options:
+        - Windows 10
+        - Windows 11
+        - macOS (Intel)
+        - macOS (Apple Silicon)
+        - Linux (Ubuntu)
+        - Linux (Fedora)
+        - Linux (Arch)
+        - Linux (Other)
     validations:
       required: true
 
   - type: textarea
     id: environment
     attributes:
-      label: Environment
-      description: Your system details
+      label: Environment Details
+      description: Additional environment info
       placeholder: |
-        - OS: Ubuntu 22.04
-        - Node: v20.10.0
-        - npm: 10.2.0
-        - Browser: Chrome 120
-        - Device: Samsung Galaxy S10 (Serial: ABC123)
-      value: |
-        - OS: 
-        - Node: 
-        - npm: 
-        - Browser: 
-        - Device:
-    validations:
-      required: true
-
-  - type: dropdown
-    id: regression
-    attributes:
-      label: Is this a regression?
-      description: Did this work in a previous version?
-      options:
-        - "No - Never worked"
-        - "Yes - Worked in previous version"
-        - "Unknown"
-    validations:
-      required: true
-
-  - type: input
-    id: last_worked
-    attributes:
-      label: Last Known Working Version (if regression)
-      description: If this is a regression, what version last worked?
-      placeholder: "v2.1.0"
+        - Node.js version: 20.10.0
+        - Browser (if relevant): Chrome 120
+        - Device model: Pixel 6
+        - Connected devices: 1
 
   - type: textarea
-    id: workaround
+    id: investigation
     attributes:
-      label: Workaround (if known)
-      description: Is there a temporary workaround?
-      placeholder: "Running with sudo works: `sudo npm run dev`"
-
-  - type: dropdown
-    id: impact
-    attributes:
-      label: Impact
-      description: How severe is this bug?
-      options:
-        - "Critical - Blocks all work"
-        - "High - Blocks major functionality"
-        - "Medium - Workaround available"
-        - "Low - Minor inconvenience"
-    validations:
-      required: true
+      label: Investigation Notes (Optional)
+      description: Any troubleshooting you've already done
+      placeholder: |
+        - Checked logs: found error "DEVICE_NOT_READY"
+        - Tried restarting app: same issue
+        - Device shows in `adb devices` output
 
   - type: checkboxes
-    id: validation
+    id: agent-hints
     attributes:
-      label: Pre-Submission Checklist
-      description: Verify these before submitting
+      label: Agent Investigation Hints
+      description: Check areas where the bug likely exists
       options:
-        - label: I have searched existing issues (this is not a duplicate)
-          required: true
-        - label: I have provided exact steps to reproduce
-          required: true
-        - label: I have included error logs or screenshots
-          required: true
-        - label: I have specified my environment details
-          required: true
-        - label: I have tested on the latest version
-          required: true
+        - label: Frontend UI (React components)
+        - label: Backend API (Express routes)
+        - label: WebSocket communication
+        - label: Device detection/scanning
+        - label: Flash operation logic
+        - label: Error handling
+        - label: Configuration/environment
 
   - type: textarea
-    id: additional
+    id: related-files
     attributes:
-      label: Additional Context
-      description: Any other relevant information
-      placeholder: "This started happening after upgrading to Ubuntu 22.04. Worked fine on Ubuntu 20.04."
+      label: Potentially Related Files
+      description: Files you think might be involved
+      placeholder: |
+        - src/components/FlashButton.tsx
+        - server/api/flash.js
+        - core/device-manager.ts
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Submission Checklist
+      description: Ensure quality bug report
+      options:
+        - label: I've searched existing issues (no duplicate)
+          required: true
+        - label: I can reproduce this consistently
+          required: true
+        - label: I've included relevant logs/errors
+          required: true
+        - label: I've specified my OS and version
+          required: true

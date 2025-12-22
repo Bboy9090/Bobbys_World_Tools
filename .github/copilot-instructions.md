@@ -27,6 +27,31 @@
 - Do not add secrets; only update .env.example-style files.
 - Logs must be actionable without leaking secrets; prefer explicit errors over silent failures.
 
+## AI Safety Guidelines
+
+### Explicit Confirmation Required For:
+
+- **Destructive operations**: file deletion, database drops, system-wide changes
+- **System commands**: shell execution, process termination, network operations
+- **Permission changes**: chmod, chown, access control modifications
+- **Dependency updates**: major version bumps, breaking changes
+
+### Prohibited Actions (No Exceptions):
+
+- Uncontrolled system command execution
+- Silent failures or fake success returns
+- Bypassing security controls or authentication
+- Executing untrusted code from external sources
+- Modifying CI/CD to skip actual test execution
+
+### Required Practices:
+
+- Validate all external inputs before processing
+- Use structured error messages with actionable context
+- Log security-relevant events (without exposing secrets)
+- Test all changes in isolation before integration
+- Document assumptions and platform-specific behavior
+
 ## Team Roles
 
 See [AGENTS.md](./AGENTS.md) for specialist roles:
@@ -36,6 +61,11 @@ See [AGENTS.md](./AGENTS.md) for specialist roles:
 3. Backend Integrity — API contracts, error handling, schema validation.
 4. Frontend Parity — remove dead UI, wire real API calls, add smoke tests.
 5. Release Captain — enforce small PRs and Definition of Done.
+6. Workshop Safety — prevent risky operations and enforce safety boundaries.
+7. Tooling Refiner — cleanup, structure, and reliability improvements.
+8. Automation Engineer — CI + scripts maintenance and optimization.
+9. Security Guard — secrets, logs, and permissions management.
+10. Docs Curator — clarity and onboarding documentation.
 
 ## Build & Test Commands
 
@@ -52,3 +82,5 @@ npm run dev           # Start development server
 - [ ] Build succeeds
 - [ ] No linting errors
 - [ ] PR is small and focused
+- [ ] No secrets committed
+- [ ] CI guardrails pass

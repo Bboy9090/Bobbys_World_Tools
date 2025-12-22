@@ -2,239 +2,238 @@
 
 ## Summary
 
-<!-- Brief description of what this PR does -->
+<!-- Brief description of what this PR does (2-3 sentences) -->
 
 ## Type of Change
 
 <!-- Check all that apply -->
 
-- [ ] 🐛 Bug fix (non-breaking change which fixes an issue)
-- [ ] ✨ New feature (non-breaking change which adds functionality)
-- [ ] 💥 Breaking change (fix or feature that would cause existing functionality to not work as expected)
-- [ ] 📝 Documentation update
-- [ ] 🔧 Configuration change
-- [ ] 🎨 Code refactoring (no functional changes)
-- [ ] ⚡ Performance improvement
-- [ ] ✅ Test addition or update
-- [ ] 🔒 Security fix
+- [ ] Bug fix (non-breaking change that fixes an issue)
+- [ ] New feature (non-breaking change that adds functionality)
+- [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
+- [ ] Refactoring (code improvement without changing functionality)
+- [ ] Documentation update
+- [ ] CI/CD or build changes
+- [ ] Security fix
+- [ ] Performance improvement
 
-## Motivation
+## Motivation and Context
 
 <!-- Why is this change needed? What problem does it solve? -->
-<!-- Link to related issues: Fixes #123, Relates to #456 -->
+<!-- Link to related issues: Fixes #123, Closes #456 -->
 
 ## Changes Made
 
-<!-- List the specific changes made in this PR -->
+<!-- Detailed list of changes -->
 
-- 
-- 
-- 
+-
+-
+-
 
-## Validation — PROOF REQUIRED
+## Validation
 
-<!-- ⚠️ NO FAKE SUCCESS. Provide actual evidence. -->
-<!-- If you didn't run it, don't claim it passed. -->
-
-### Tests
-
-<!-- Show that tests pass -->
-
-```bash
-# Command you ran:
-
-
-# Output (last 20+ lines showing results):
-
-
-```
-
-**Test Summary:**
-- ✅ / ❌ All tests pass
-- ✅ / ❌ New tests added (if applicable)
-- ✅ / ❌ Existing tests still pass
+<!-- How did you verify this works? Provide evidence! -->
 
 ### Build
 
-<!-- Show that build succeeds -->
-
 ```bash
-# Command you ran:
+# Command used to build
+npm run build
 
-
-# Output (last 10+ lines showing success):
-
+# Output (success/errors)
 
 ```
 
-**Build Status:** ✅ Success / ❌ Failed
-
-### Linting
-
-<!-- Show that linter passes -->
+### Tests
 
 ```bash
-# Command you ran:
+# Command used to test
+npm test
 
-
-# Output:
-
+# Output (pass/fail)
 
 ```
 
-**Lint Status:** ✅ Clean / ⚠️ Warnings / ❌ Errors
+### Manual Testing
 
-### Manual Testing (if applicable)
+<!-- Steps you took to manually verify -->
 
-<!-- For UI/API changes, show manual testing proof -->
+1.
+2.
+3.
 
-**What I tested:**
-- 
-- 
+**Result:** <!-- Describe what happened -->
 
-**Test Environment:**
-- OS: 
-- Browser (if UI): 
-- Node version: 
+### Screenshots (if applicable)
 
-**Results:**
-<!-- Screenshots, curl output, etc. -->
-
-
-## Truth-First Checklist
-
-<!-- These verify you followed repository rules -->
-
-- [ ] **No placeholders in production code** — No TODOs, FIXMEs, "coming soon" in runtime paths
-- [ ] **No fake success** — All returns/responses are real, not mocked (tests excluded)
-- [ ] **Tests actually run** — I ran the tests and they passed (proof above)
-- [ ] **Build actually run** — I built the code and it succeeded (proof above)
-- [ ] **Linter actually run** — I ran the linter (proof above)
-- [ ] **Small focused PR** — This PR does one thing well (not multiple unrelated changes)
-- [ ] **No generated artifacts committed** — No dist/, build/, *.exe, *.pkg files
-- [ ] **Platform-specific code guarded** — Runtime checks for Windows/Mac/Linux specific code
-- [ ] **Errors are explicit** — Error messages are actionable, not vague
-- [ ] **No secrets committed** — No API keys, passwords, tokens in code
-
-## Path-Specific Requirements
-
-<!-- Check if your changes require following specific instructions -->
-
-- [ ] **API changes** → Followed `.github/instructions/api-runtime.instructions.md`
-- [ ] **Prisma schema** → Followed `.github/instructions/prisma.instructions.md`
-- [ ] **Rust code** → Followed `.github/instructions/rust.instructions.md`
-- [ ] **Scripts** → Followed `.github/instructions/scripts-danger-zone.instructions.md`
-- [ ] **Tests** → Followed `.github/instructions/tests.instructions.md`
-- [ ] **CI/Build** → Followed `.github/instructions/build.instructions.md`
-- [ ] N/A — No path-specific requirements for this PR
+<!-- Add screenshots for UI changes -->
 
 ## Risk Assessment
 
-**Risk Level:** Low / Medium / High
+<!-- What could go wrong? How likely? -->
 
-**What could break:**
-<!-- Be honest about potential risks -->
+**Risk Level:** Low | Medium | High
 
-- 
-- 
+**Potential Issues:**
 
-**Mitigation:**
-<!-- How are risks mitigated? -->
+-
+-
 
-- 
-- 
+**Affected Areas:**
+
+-
 
 ## Rollback Plan
 
-<!-- If something goes wrong, how do we undo this? -->
+<!-- How to undo these changes if needed -->
 
 **Rollback Steps:**
-1. 
-2. 
 
-**Data Impact:** None / Reversible / Requires backup restore
+1. Revert commit: `git revert <SHA>`
+2.
+3.
+
+**Rollback Complexity:** Simple | Moderate | Complex
+
+## Truth-First Checklist
+
+<!-- Ensure this PR follows Bobby's Workshop principles -->
+
+- [ ] **No placeholders** — No TODO/FIXME/STUB/MOCK in production code
+- [ ] **Tests pass** — Actually ran tests (not just claiming they pass)
+- [ ] **Build succeeds** — Actually ran build (not just claiming it works)
+- [ ] **No fake success** — All features work end-to-end (no mocked responses)
+- [ ] **Platform tested** — Verified on relevant OS (Windows/macOS/Linux)
+- [ ] **Error handling** — Explicit, actionable error messages (no silent failures)
+- [ ] **No secrets** — No hardcoded API keys, passwords, or tokens
+- [ ] **Focused scope** — Single intent, small PR (not 10 unrelated changes)
+
+## Security Checklist
+
+<!-- Required for code changes -->
+
+- [ ] No secrets or credentials committed
+- [ ] Input validation added where needed
+- [ ] No SQL injection vulnerabilities
+- [ ] No command injection (shell=True, eval, etc.)
+- [ ] Logs don't expose sensitive data
+- [ ] Dependencies checked for vulnerabilities (`npm audit`)
+
+## Documentation
+
+<!-- Has documentation been updated? -->
+
+- [ ] README updated (if public API changed)
+- [ ] API docs updated (if backend changed)
+- [ ] Code comments added (for complex logic)
+- [ ] CHANGELOG.md updated (if user-facing)
+- [ ] Migration guide (if breaking change)
+
+## Dependencies
+
+<!-- Any new or updated dependencies? -->
+
+**New Dependencies:**
+
+-
+
+**Updated Dependencies:**
+
+-
+
+**Removed Dependencies:**
+
+-
+
+<!-- If adding dependencies, ensure they're security-checked -->
+
+- [ ] Dependencies scanned for vulnerabilities
+- [ ] Licenses compatible with project
+
+## Performance Impact
+
+<!-- Does this affect performance? -->
+
+- [ ] No performance impact expected
+- [ ] Performance improved (provide metrics)
+- [ ] Performance may be affected (describe)
+
+**Benchmarks:** (if applicable)
+
+```
+Before:
+After:
+```
 
 ## Breaking Changes
 
-<!-- Are there any breaking changes? -->
+<!-- Are there breaking changes? -->
 
 - [ ] No breaking changes
 - [ ] Breaking changes (describe below)
 
-**If breaking changes, describe migration path:**
-<!-- How should users/developers adapt to this change? -->
+**Breaking Changes Description:**
 
+**Migration Path:**
 
-## Documentation
+## Agent Review Guidance
 
-- [ ] Documentation updated (README, API docs, etc.)
-- [ ] Inline code comments added (for complex logic)
-- [ ] CHANGELOG.md updated (if applicable)
-- [ ] N/A — No documentation changes needed
+<!-- Help AI agents review effectively -->
 
-## Security Review
+**Primary Agent:** <!-- Audit Hunter | CI Surgeon | Backend Integrity | Frontend Parity | Release Captain | Workshop Safety | Tooling Refiner | Automation Engineer | Security Guard | Docs Curator -->
 
-- [ ] No security-sensitive changes
-- [ ] Security changes reviewed (describe below)
+**Focus Areas for Review:**
 
-**If security-sensitive:**
-<!-- What security measures were taken? -->
+-
+-
 
+**Key Files Changed:**
 
-## Performance Impact
+-
+-
 
-- [ ] No performance impact
-- [ ] Performance improved (show benchmarks)
-- [ ] Performance degraded (justify below)
+**Testing Priority:**
 
-**If performance impact:**
-<!-- Show before/after measurements -->
+- [ ] Critical path (auth, payments, data loss risk)
+- [ ] High usage feature
+- [ ] Edge case or error handling
+- [ ] Low risk change
 
+## Related Issues/PRs
 
-## Deployment Notes
+<!-- Link related issues and PRs -->
 
-<!-- Anything special needed for deployment? -->
+- Fixes #
+- Related to #
+- Depends on #
+- Blocks #
 
-- [ ] No special deployment steps
-- [ ] Requires environment variable changes (document below)
-- [ ] Requires database migration (document below)
-- [ ] Requires cache clear
-- [ ] Other (describe below)
+## Post-Merge Actions
 
-**Special deployment instructions:**
+<!-- Actions needed after merge -->
 
+- [ ] Deploy to staging
+- [ ] Run migrations
+- [ ] Update environment variables
+- [ ] Notify team/users
+- [ ] Monitor error logs
+- [ ] Update external documentation
 
-## Agent Assignment (Optional)
+## Additional Notes
 
-<!-- Which specialized agent should review this? -->
-
-- [ ] @api-guardian — API changes
-- [ ] @prisma-steward — Database schema
-- [ ] @rust-forge — Rust code
-- [ ] @automation-engineer — Scripts
-- [ ] @security-guard — Security review
-- [ ] @docs-onboarding — Documentation
-- [ ] @audit-hunter — Placeholder detection
-- [ ] @ci-surgeon — CI/CD changes
-
-## Additional Context
-
-<!-- Any other information reviewers should know -->
-
+<!-- Anything else reviewers should know -->
 
 ---
 
-## For Reviewers
+## Reviewer Checklist
 
-**Review Checklist:**
-- [ ] Code follows repository standards
-- [ ] Validation proof is adequate (tests/build/lint actually ran)
-- [ ] No placeholders or fake success in production code
-- [ ] PR is small and focused (one thing per PR)
-- [ ] Breaking changes are justified and documented
-- [ ] Security implications considered
-- [ ] Documentation updated appropriately
-- [ ] Rollback plan is reasonable
+<!-- For reviewers to verify -->
 
-**Questions for author:**
-<!-- Reviewers: ask questions here -->
+- [ ] Code follows project style and conventions
+- [ ] Changes are focused and appropriate in scope
+- [ ] Tests cover new/changed functionality
+- [ ] Documentation is updated
+- [ ] No obvious security vulnerabilities
+- [ ] Error handling is robust
+- [ ] Performance is acceptable
+- [ ] PR description is accurate and complete

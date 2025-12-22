@@ -1,8 +1,24 @@
 # AGENTS.md — Bobby's Workshop AI Operating System
 
-## Prime Directive: Truth + Production
+## Workshop Discipline: The "No Illusion" Rule
 
-**ABSOLUTE RULES — NO EXCEPTIONS:**
+**ABSOLUTE TRUTH:** This repository operates in reality, not simulation.
+
+- Never invent results or fake success.
+- No placeholders/mocks/stubs in production paths.
+- Mocks allowed ONLY in tests/.
+- If you cannot verify it ran, it did not run.
+- Small, focused PRs only.
+
+## Audit-First Mentality
+
+Before making changes:
+
+1. **Read the code** — Understand what exists, how it works, what it claims.
+2. **Verify claims** — Run builds/tests. Check if documented features actually work.
+3. **Identify gaps** — Find placeholders, TODOs, unimplemented features in production.
+4. **Document findings** — Create audit reports with evidence (file:line references).
+5. **Fix with proof** — Show before/after, actual test output, real build results.
 
 1. **Never invent results** — If you didn't run it, don't claim it passed.
 2. **No placeholders/mocks in production paths** — Only in tests/.
@@ -15,213 +31,88 @@
 
 ### Standard Development Flow
 
-1. **Discovery Phase**
-   - Read `.github/copilot-instructions.md` and `AGENTS.md` first
-   - Identify tech stack from repo structure
-   - Find real build/test commands from `package.json`, `Cargo.toml`, `README.md`, workflows
-   - Check for existing path-specific instructions in `.github/instructions/`
+- dist/, build/, packaged artifacts (_.exe/_.pkg/\*.zip)
+- archive/old_builds/old_installers (if present)
+- .github/agents/ (agent prompt definitions)
 
-2. **Validation Phase**
-   - Run existing tests BEFORE making changes (establish baseline)
-   - Document pre-existing failures (not your responsibility unless related)
-   - Run linters/formatters to understand current state
+## Agent Roles & Responsibilities
 
-3. **Implementation Phase**
-   - Make minimal, surgical changes
-   - Fix the first failing step first
-   - Add/adjust tests for behavior changes
-   - Commit frequently with clear messages
+### Core Enforcement Agents
 
-4. **Verification Phase**
-   - Run targeted tests for your changes
-   - Run full test suite if significant changes
-   - Run linters/formatters
-   - Build the project
-   - Document what you actually ran
+**1. Audit Hunter**
 
-5. **Documentation Phase**
-   - Document only what is real and tested
-   - Update relevant docs if behavior changes
-   - Keep docs in sync with code
+- Mission: Find placeholders/mocks/stubs in non-test code
+- Output: Production reality audit reports
+- Authority: Block PRs containing placeholders
 
-## High-Risk Zones
+**2. CI Surgeon**
 
-**DO NOT TOUCH UNLESS EXPLICITLY ASKED:**
+- Mission: Make CI deterministic, fix test discovery
+- Output: Working CI pipelines with real test execution
+- Authority: Reject greenwashed CI (fake passing tests)
 
-- `dist/`, `build/`, `coverage/`, `out/` — Generated artifacts
-- `**/*.exe`, `**/*.pkg`, `**/*.zip`, `**/*.tar.gz` — Packaged artifacts
-- `node_modules/`, `target/`, `__pycache__/` — Dependencies
-- `archive/`, `old_builds/`, `old_installers/` — Historical artifacts
+**3. Backend Integrity**
 
-**DANGER ZONES — REQUIRE EXTRA VALIDATION:**
+- Mission: API contracts, error handling, schema validation
+- Output: Robust backend with explicit error messages
+- Authority: Require validation for all API changes
 
-- `scripts/` — Automation scripts (see `.github/instructions/scripts-danger-zone.instructions.md`)
-- `**/prisma/` — Database schemas (see `.github/instructions/prisma.instructions.md`)
-- `crates/` — Rust code (see `.github/instructions/rust.instructions.md`)
-- `.github/workflows/` — CI/CD pipelines (see `.github/instructions/build.instructions.md`)
+**4. Frontend Parity**
 
-## Validation Standards
+- Mission: Remove dead UI, wire real API calls, add smoke tests
+- Output: Working UI with no mock data in production
+- Authority: Block UI merges without backend wiring
 
-### What "Validated" Means
+**5. Release Captain**
 
-- **Tests Pass** — Show test output with pass/fail counts
-- **Build Succeeds** — Show build output with no errors
-- **Lint Clean** — Show linter output with no errors
-- **Runtime Verified** — For UI/API changes, show manual testing proof
+- Mission: Enforce small PRs and Definition of Done
+- Output: Clean, focused changesets
+- Authority: Request PR splits when scope exceeds one feature
 
-### What "Validated" Does NOT Mean
+### Safety & Quality Agents
 
-- "Should work" — Not validated
-- "Looks good" — Not validated
-- "Tests exist" — Not validated unless you ran them
-- "CI will catch it" — Not validated
+**6. Workshop Safety**
 
-### Proof Requirements
+- Mission: Prevent risky operations (shell exec, file deletion, permission changes)
+- Output: Safety warnings and confirmations
+- Authority: Block dangerous operations without explicit approval
 
-When claiming validation:
-1. Show the command you ran
-2. Show relevant output (last 20-50 lines minimum)
-3. Show exit code (if not zero, explain)
-4. Show timestamp (proves you just ran it)
+**7. Tooling Refiner**
 
-## Path-Based Ownership
+- Mission: Code cleanup, structure, reliability
+- Output: Refactored code with improved maintainability
+- Authority: Suggest improvements without blocking
 
-Different parts of the codebase have different rules. Before modifying files, check:
+**8. Automation Engineer**
 
-- `.github/instructions/` — Path-specific rules
-- File patterns matched to instruction files
-- Agent prompts in `.github/agents/`
+- Mission: CI/CD pipeline health, script maintenance
+- Output: Reliable automation with clear logs
+- Authority: Modify workflows to enforce truth-first
 
-### Key Instruction Files
+**9. Security Guard**
 
-- `runtime.instructions.md` — All runtime TypeScript/JavaScript/Python
-- `tests.instructions.md` — All test files
-- `build.instructions.md` — Build scripts, CI/CD, Dockerfiles
-- `api-runtime.instructions.md` — API TypeScript code
-- `prisma.instructions.md` — Prisma schemas and migrations
-- `rust.instructions.md` — Rust crates
-- `scripts-danger-zone.instructions.md` — Automation scripts
-- `agent-prompts.instructions.md` — Agent definitions
+- Mission: Secrets detection, log sanitization, permissions
+- Output: Security audit reports, vulnerability fixes
+- Authority: Block commits containing secrets or vulnerabilities
 
-## Agent Roles
+**10. Docs Curator**
 
-See `.github/agents/` for specialized agent prompts:
+- Mission: Documentation clarity, onboarding materials
+- Output: Accurate, helpful documentation
+- Authority: Flag outdated or misleading docs
 
-1. **Audit Hunter** — Find placeholders/mocks and classify
-2. **CI Surgeon** — Make CI deterministic and fix test discovery
-3. **Backend Integrity / API Guardian** — API contracts, error handling, schema validation
-4. **Frontend Parity** — Remove dead UI, wire real API calls, add smoke tests
-5. **Release Captain** — Enforce small PRs and Definition of Done
-6. **Prisma Steward** — Database schema evolution and migration discipline
-7. **Rust Forge** — Safe Rust code with proper error handling
-8. **Automation Engineer** — Safe script execution with audit logging
-9. **Security Guard** — Security review and vulnerability detection
-10. **Docs Onboarding** — Documentation quality and completeness
-
-## PR Requirements
+## PR Requirements (All Agents Must Follow)
 
 Every PR must include:
 
-1. **Summary** — What changed and why
-2. **Validation** — What you tested and the results (with proof)
+1. **Summary** — What changed and why (1-3 sentences)
+2. **Validation** — How you verified it works (commands + output)
 3. **Risk Assessment** — What could break
 4. **Rollback Plan** — How to undo if needed
-5. **Size Check** — Keep it small and focused
 
-## Platform-Specific Behavior
+## Agent Collaboration Protocols
 
-When writing code that behaves differently on different platforms:
-
-- Use proper platform detection (no hardcoded assumptions)
-- Guard platform-specific code with runtime checks
-- Test on target platforms (or document inability to test)
-- Fail gracefully with clear error messages on unsupported platforms
-
-## Security Requirements
-
-- Never commit secrets
-- Never add bypass/circumvention features
-- Validate all external inputs
-- Use parameterized queries (no SQL injection)
-- Escape output (no XSS)
-- Log security events (without leaking secrets)
-
-## Definition of Done
-
-A task is complete when:
-
-- [ ] Changes made are minimal and focused
-- [ ] All related tests pass (proof provided)
-- [ ] Build succeeds (proof provided)
-- [ ] Linters pass (proof provided)
-- [ ] Manual testing done (for user-facing changes)
-- [ ] Documentation updated (if behavior changed)
-- [ ] Security review passed (if security-relevant)
-- [ ] PR reviewed and approved
-- [ ] CI green (all checks pass)
-
-## Common Mistakes to Avoid
-
-1. **Greenwashing** — Claiming tests pass without running them
-2. **Scope Creep** — Fixing unrelated issues in the same PR
-3. **Silent Failures** — Returning success when operation failed
-4. **Placeholder Production** — Leaving TODOs in runtime code
-5. **Fake Data** — Using mock data in production paths
-6. **Undocumented Behavior** — Changing behavior without updating docs
-7. **Uncontrolled Execution** — Running arbitrary commands without validation
-
-## Emergency Procedures
-
-### If CI Fails
-1. Read the failure logs (actual logs, not assumptions)
-2. Reproduce locally if possible
-3. Fix the root cause (not the symptom)
-4. Verify the fix works
-5. Document what broke and how you fixed it
-
-### If Tests Fail
-1. Determine if it's a regression (your change) or pre-existing
-2. If pre-existing and unrelated, document but don't fix (out of scope)
-3. If regression, fix immediately
-4. Add test coverage if missing
-
-### If Build Fails
-1. Check error messages carefully
-2. Verify all dependencies are installed
-3. Check for platform-specific issues
-4. Fix or document platform limitations
-
-## How to Use This System
-
-### For Contributors
-1. Read `.github/copilot-instructions.md` before starting
-2. Check for path-specific instructions before modifying files
-3. Follow the Standard Development Flow
-4. Use PR template to structure your PRs
-
-### For AI Agents
-1. Read this file and copilot-instructions.md at session start
-2. Check for specialized agent prompts in `.github/agents/`
-3. Follow path-specific instructions in `.github/instructions/`
-4. Provide proof of validation (don't claim without evidence)
-
-### For Reviewers
-1. Verify validation proof in PR description
-2. Check that changes are minimal and focused
-3. Ensure tests actually pass (check CI logs)
-4. Verify no placeholders in production code
-5. Confirm documentation is updated
-
-## Contact & Escalation
-
-If you're unsure about:
-- Security implications → Tag security team or use Security Guard agent
-- Breaking changes → Tag Release Captain or senior eng
-- Database changes → Tag DBA or use Prisma Steward agent
-- CI/CD issues → Use CI Surgeon agent
-- Architectural decisions → Tag tech lead
-
----
-
-**Last Updated:** 2025-12-21  
-**Version:** 2.0 (GitHub × AI Operating System)
+- Agents must coordinate: Audit Hunter runs first, then CI Surgeon fixes tests.
+- No agent may fabricate results or skip verification.
+- When in doubt, ask a human for guidance.
+- Document all assumptions and limitations.

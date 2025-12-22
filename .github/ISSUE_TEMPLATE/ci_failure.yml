@@ -1,194 +1,246 @@
 name: 🔴 CI/Build Failure
-description: Report a failing CI/CD pipeline or build issue
-title: "[CI Failure]: "
+description: Report a failing CI pipeline or build issue
+title: "[CI] "
 labels: ["ci", "build", "needs-investigation"]
+assignees: []
+
 body:
   - type: markdown
     attributes:
       value: |
         ## CI/Build Failure Report
         
-        This template helps diagnose and fix CI/CD failures quickly.
-        
-        **Prime Rule:** Attach actual logs. No summaries or guesses.
-
-  - type: textarea
-    id: summary
-    attributes:
-      label: Failure Summary
-      description: One-line description of the failure
-      placeholder: "Build fails on Windows with 'cargo: command not found'"
-    validations:
-      required: true
+        This template helps AI agents (especially Automation Engineer and CI Surgeon)
+        diagnose and fix CI/build failures quickly.
 
   - type: dropdown
-    id: failure_type
+    id: failure-type
     attributes:
       label: Failure Type
-      description: What type of failure is this?
+      description: What's failing?
       options:
-        - "Build failure"
-        - "Test failure"
-        - "Lint failure"
-        - "Deployment failure"
-        - "Workflow configuration error"
-        - "Timeout"
-        - "Other"
+        - Build (compilation/bundling)
+        - Tests (unit/integration/e2e)
+        - Linting (ESLint/Prettier)
+        - Type checking (TypeScript)
+        - Security scan (secrets/vulnerabilities)
+        - Deployment
+        - Other
     validations:
       required: true
 
   - type: input
-    id: workflow
+    id: workflow-run
     attributes:
-      label: Workflow Name
-      description: Which workflow failed?
-      placeholder: "CI Guardrails / node-python-ci"
+      label: Failed Workflow Run URL
+      description: Link to failed GitHub Actions run
+      placeholder: "https://github.com/Bboy9090/Bobbys-Workshop-/actions/runs/12345"
     validations:
       required: true
 
   - type: input
-    id: run_url
+    id: pr-or-commit
     attributes:
-      label: Workflow Run URL
-      description: Link to the failed workflow run
-      placeholder: "https://github.com/Bboy9090/Bobbys-Workshop-/actions/runs/123456789"
-    validations:
-      required: true
-
-  - type: input
-    id: commit
-    attributes:
-      label: Commit SHA
-      description: Which commit triggered the failure?
-      placeholder: "abc1234567890def"
-    validations:
-      required: true
-
-  - type: dropdown
-    id: reproducible
-    attributes:
-      label: Reproducible Locally?
-      description: Can you reproduce this failure on your local machine?
-      options:
-        - "Yes - Fails locally too"
-        - "No - Only fails in CI"
-        - "Unknown - Haven't tested locally"
-    validations:
-      required: true
+      label: Pull Request or Commit
+      description: PR number or commit SHA where failure occurred
+      placeholder: "#123 or abc1234"
 
   - type: textarea
-    id: error_logs
+    id: error-message
     attributes:
-      label: Error Logs
-      description: Paste the relevant error logs from the failed workflow
+      label: Error Message
+      description: Copy the relevant error from CI logs
       placeholder: |
+        Paste error here:
         ```
-        Run cargo build --release
-        /bin/sh: 1: cargo: not found
-        Error: Process completed with exit code 127.
+        Error: Cannot find module 'some-package'
         ```
       render: shell
     validations:
       required: true
 
   - type: textarea
-    id: full_logs
+    id: full-logs
     attributes:
-      label: Full Logs (if error logs not sufficient)
-      description: If error isn't clear, paste full step output
-      placeholder: "Paste full output here or attach as file"
+      label: Full Logs (if relevant)
+      description: Additional context from logs
+      placeholder: |
+        Paste relevant log sections:
+        ```
+        [Build output...]
+        ```
       render: shell
 
   - type: dropdown
-    id: when_started
+    id: consistency
     attributes:
-      label: When Did This Start Failing?
-      description: Has this always failed or recently started?
+      label: Failure Consistency
+      description: Does this fail every time?
       options:
-        - "Always failed (new workflow/job)"
-        - "Started failing recently"
-        - "Intermittent (flaky)"
-        - "First time running"
+        - Always fails (deterministic)
+        - Fails sometimes (flaky/intermittent)
+        - First time seeing this
     validations:
       required: true
 
-  - type: input
-    id: last_success
+  - type: dropdown
+    id: scope
     attributes:
-      label: Last Successful Run (if regression)
-      description: Link to last successful workflow run
-      placeholder: "https://github.com/Bboy9090/Bobbys-Workshop-/actions/runs/123456788"
+      label: Failure Scope
+      description: Where does this fail?
+      options:
+        - All branches
+        - Main branch only
+        - PR branches only
+        - Specific OS (specify below)
+        - Specific Node version (specify below)
+    validations:
+      required: true
 
   - type: textarea
-    id: recent_changes
+    id: scope-details
+    attributes:
+      label: Scope Details
+      description: Additional details about where it fails
+      placeholder: |
+        - Fails on: Windows only
+        - Works on: macOS, Linux
+        - Node version: 20.x
+
+  - type: dropdown
+    id: local-behavior
+    attributes:
+      label: Does it work locally?
+      description: Can you reproduce locally?
+      options:
+        - Yes, works locally (CI-specific issue)
+        - No, fails locally too (not CI-specific)
+        - Not tested locally yet
+    validations:
+      required: true
+
+  - type: textarea
+    id: local-commands
+    attributes:
+      label: Local Reproduction Commands
+      description: Commands to reproduce locally
+      placeholder: |
+        ```bash
+        npm ci
+        npm run build
+        npm test
+        ```
+      render: shell
+
+  - type: textarea
+    id: recent-changes
     attributes:
       label: Recent Changes
-      description: What changed recently that might have caused this?
+      description: What changed before this started failing?
       placeholder: |
-        - Added Rust build step in PR #123
-        - Updated Node.js version in workflow
-        - Added new dependency: cargo-audit
-
-  - type: textarea
-    id: attempted_fixes
-    attributes:
-      label: Attempted Fixes
-      description: What have you tried to fix this?
-      placeholder: |
-        - Tried running `cargo --version` first (not found)
-        - Checked Rust installation step (missing!)
-        - Added setup-rust action but still fails
-
-  - type: dropdown
-    id: blocking
-    attributes:
-      label: Is This Blocking?
-      description: Does this prevent PRs from being merged?
-      options:
-        - "Yes - Blocking all PRs"
-        - "Yes - Blocking specific PRs"
-        - "No - Optional check"
-    validations:
-      required: true
-
-  - type: textarea
-    id: impact
-    attributes:
-      label: Impact
-      description: What is the impact of this failure?
-      placeholder: |
-        - All PRs are blocked from merging
-        - Windows builds are not being tested
-        - Rust code changes are not being validated
+        - Added new dependency: react-query
+        - Updated Node version in workflow
+        - Modified webpack config
+        - Merged PR #120
 
   - type: checkboxes
     id: investigation
     attributes:
       label: Investigation Checklist
-      description: What have you checked?
+      description: Troubleshooting already done
       options:
-        - label: I have reviewed the full error logs
-        - label: I have checked if this is a known issue
-        - label: I have tried to reproduce locally
-        - label: I have identified recent changes that might have caused this
-        - label: I have checked workflow file for configuration errors
+        - label: Checked if dependencies are installed correctly
+        - label: Verified workflow YAML syntax is valid
+        - label: Compared with last successful run
+        - label: Tested locally with same Node version
+        - label: Checked for environment variable issues
+        - label: Reviewed recent commits for breaking changes
 
   - type: textarea
-    id: proposed_fix
+    id: agent-hints
     attributes:
-      label: Proposed Fix (if known)
-      description: Do you know how to fix this?
+      label: Agent Investigation Hints
+      description: Guidance for AI agents
       placeholder: |
-        Add Rust installation step before cargo build:
-        ```yaml
-        - uses: actions-rust-lang/setup-rust-toolchain@v1
-          with:
-            toolchain: stable
-        ```
+        **Likely Causes:**
+        - New dependency not compatible with Node 18
+        - Test timeout too short for slow CI runners
+        - Missing environment variable in workflow
+        
+        **Files to Check:**
+        - .github/workflows/ci.yml
+        - package.json
+        - vitest.config.ts
 
   - type: textarea
-    id: additional
+    id: workaround
     attributes:
-      label: Additional Context
-      description: Any other relevant information
-      placeholder: "This only fails on Windows runners, Linux and macOS are fine."
+      label: Temporary Workaround (if any)
+      description: How are you working around this?
+      placeholder: |
+        - Temporarily disabled test
+        - Using older dependency version
+        - Running workflow manually
+
+  - type: dropdown
+    id: blocking
+    attributes:
+      label: Is this blocking development?
+      description: Severity/urgency
+      options:
+        - Critical (all PRs blocked)
+        - High (some workflows blocked)
+        - Medium (workaround exists)
+        - Low (minor inconvenience)
+    validations:
+      required: true
+
+  - type: textarea
+    id: related-issues
+    attributes:
+      label: Related Issues/PRs
+      description: Links to related problems
+      placeholder: |
+        - Similar to #45 (fixed last month)
+        - Introduced by PR #98
+        - Discussed in #67
+
+  - type: checkboxes
+    id: workflow-files
+    attributes:
+      label: Affected Workflows
+      description: Which workflows are failing?
+      options:
+        - label: .github/workflows/ci.yml
+        - label: .github/workflows/ci-guardrails.yml
+        - label: .github/workflows/build.yml
+        - label: .github/workflows/test.yml
+        - label: .github/workflows/lint.yml
+        - label: .github/workflows/security.yml
+        - label: .github/workflows/ci-cd.yml
+        - label: Other (specify in notes)
+
+  - type: textarea
+    id: proposed-fix
+    attributes:
+      label: Proposed Fix (Optional)
+      description: Your idea for fixing this
+      placeholder: |
+        - Update Node version to 20.x in workflow
+        - Increase test timeout from 5s to 30s
+        - Add missing environment variable to workflow
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Submission Checklist
+      description: Ensure complete report
+      options:
+        - label: I've included the workflow run URL
+          required: true
+        - label: I've copied the error message
+          required: true
+        - label: I've checked if it reproduces locally
+          required: true
+        - label: I've searched for similar issues
+          required: true
