@@ -20,14 +20,12 @@ This comprehensive testing framework validates **every connection detection meth
 ## 🚀 Quick Start (3 Steps)
 
 ### Step 1: Run Automated Tests
-
 ```powershell
 # Validates lint, types, unit tests, build
 .\RUN_COMPREHENSIVE_TESTS.ps1
 ```
 
 **What it checks**:
-
 - ✅ Dependencies installed
 - ✅ Lint passes (ESLint)
 - ✅ Types valid (TypeScript)
@@ -42,7 +40,6 @@ This comprehensive testing framework validates **every connection detection meth
 ---
 
 ### Step 2: Test Backend APIs (Optional)
-
 ```bash
 # Terminal 1: Start backend
 npm run server:dev
@@ -54,7 +51,6 @@ npm run server:dev
 ```
 
 **What it checks**:
-
 - ✅ Backend health
 - ✅ System tools detection
 - ✅ Android device detection (ADB + Fastboot)
@@ -67,14 +63,12 @@ npm run server:dev
 ---
 
 ### Step 3: Manual UI Testing
-
 ```bash
 npm run dev
 # Open: http://localhost:5000
 ```
 
 **Test Scenarios**:
-
 1. **Backend OFF**: Demo mode should activate
 2. **Backend ON, no devices**: Empty states should show
 3. **Device connected**: Real detection should work
@@ -84,14 +78,12 @@ npm run dev
 ## 📊 What Gets Tested
 
 ### Connection Detection ✅
-
 - **Android (ADB)**: Real device detection via backend API
 - **Android (Fastboot)**: Bootloader mode detection
 - **USB (WebUSB)**: Browser-based real-time hotplug
 - **iOS**: DFU/Recovery mode detection (needs libimobiledevice)
 
 ### Truth-First Compliance ✅
-
 - No fake device data in production
 - Clear demo mode indication
 - Empty states shown correctly
@@ -99,7 +91,6 @@ npm run dev
 - Backend unavailability handled
 
 ### Features ✅
-
 - Multi-brand flash dashboard
 - Pandora Codex control room
 - Security lock education
@@ -112,12 +103,10 @@ npm run dev
 ## 📁 File Guide
 
 ### For Quick Testing
-
 - `RUN_COMPREHENSIVE_TESTS.ps1` - Run this first
 - `TEST_BACKEND_API.ps1` - Test backend (requires server running)
 
 ### For Reference
-
 - `COMPREHENSIVE_TEST_PLAN.md` - Full test specifications
 - `INTEGRATION_CHECKLIST.md` - Manual validation checklist
 - `TESTING_EXECUTION_SUMMARY.md` - Detailed guide
@@ -128,14 +117,12 @@ npm run dev
 ## ✅ Success Criteria
 
 ### Must Pass
-
 - ✅ All unit tests passing
 - ✅ No fake device data
 - ✅ Demo mode working
 - ✅ Empty/error states correct
 
 ### Should Pass
-
 - ⚠️ Integration tests (requires backend)
 - ⚠️ Build with no warnings
 - ⚠️ Lint with no errors
@@ -145,28 +132,24 @@ npm run dev
 ## 🎯 Common Issues & Solutions
 
 ### "npm not found"
-
 ```bash
 # Install Node.js first
 # Download from: https://nodejs.org/
 ```
 
 ### "Dependencies not installed"
-
 ```bash
 npm install
 cd server && npm install
 ```
 
 ### "Backend not running"
-
 ```bash
 # Start it:
 npm run server:dev
 ```
 
 ### "Tests failing"
-
 ```bash
 # Check specific test output
 npm run test -- --reporter=verbose
@@ -177,14 +160,12 @@ npm run test -- --reporter=verbose
 ## 📈 Results Export
 
 Both scripts export JSON results:
-
 ```
 test-results-YYYY-MM-DD-HHMMSS.json
 api-test-results-YYYY-MM-DD-HHMMSS.json
 ```
 
 Use these for:
-
 - Bug reports
 - Progress tracking
 - CI/CD integration
@@ -195,21 +176,18 @@ Use these for:
 ## 🔍 What's Being Validated
 
 ### Code Quality
-
 - TypeScript types correct
 - ESLint rules followed
 - No unused imports
 - No hardcoded secrets
 
 ### Functionality
-
 - Device detection works (ADB, Fastboot, USB)
 - Backend APIs respond correctly
 - WebSocket connections stable
 - Error handling robust
 
 ### User Experience
-
 - Demo mode clearly indicated
 - Empty states helpful
 - Error messages actionable
@@ -220,19 +198,16 @@ Use these for:
 ## 📞 Need Help?
 
 ### Test Script Failed?
-
 1. Check Node.js installed: `node --version`
 2. Install dependencies: `npm install`
 3. Review error output in JSON file
 
 ### API Tests Failed?
-
 1. Check backend running: `http://localhost:3001/api/health`
 2. Install system tools: ADB, Fastboot
 3. Check firewall/CORS settings
 
 ### Manual Testing Issues?
-
 1. Clear browser cache
 2. Check browser console for errors
 3. Verify backend connection
@@ -242,19 +217,16 @@ Use these for:
 ## 🎓 Learn More
 
 ### Full Documentation
-
 - Read `COMPREHENSIVE_TEST_PLAN.md` for complete test specifications
 - Read `INTEGRATION_CHECKLIST.md` for manual validation steps
 - Read `FINAL_TESTING_SUMMARY.md` for session overview
 
 ### Connection Detection Details
-
 - Android: `src/hooks/use-android-devices.ts`
 - USB: `src/hooks/use-device-detection.ts`
 - Unified: `src/lib/probeDevice.ts`
 
 ### Truth-First Implementation
-
 - Guide: `TRUTH_FIRST_GUIDE.md`
 - Status: `TRUTH_FIRST_STATUS.md`
 - Audit: `TRUTH_FIRST_AUDIT.md`
@@ -266,19 +238,16 @@ Use these for:
 ### After Running Tests
 
 **Good Status** (75-89% pass rate):
-
 - Most tests passing
 - Minor issues to address
 - Build successful
 
 **Excellent Status** (90%+ pass rate):
-
 - All critical tests passing
 - No blocking issues
 - Production ready
 
 **Needs Work** (<75% pass rate):
-
 - Critical issues found
 - Review failures carefully
 - Fix before proceeding
@@ -288,18 +257,15 @@ Use these for:
 ## 📅 Recommended Schedule
 
 ### Daily
-
 - Run `RUN_COMPREHENSIVE_TESTS.ps1` before commits
 - Fix any new failures immediately
 
 ### After Changes
-
 - Run tests after every feature
 - Validate connection detection still works
 - Check demo mode still correct
 
 ### Weekly
-
 - Full manual UI testing
 - Cross-browser testing
 - Performance benchmarking
@@ -309,19 +275,16 @@ Use these for:
 ## 🚀 Next Steps After Testing
 
 1. **Review Results**
-
    - Check pass rate
    - Read JSON exports
    - Document failures
 
 2. **Fix Critical Issues**
-
    - Lint errors (priority 1)
    - Type errors (priority 1)
    - Test failures (priority 1)
 
 3. **Update Documentation**
-
    - TRUTH_FIRST_STATUS.md
    - README.md
    - GitHub issues
@@ -368,7 +331,6 @@ npx tsc --noEmit            # Type check only
 ## ✨ Summary
 
 **You now have**:
-
 - ✅ Comprehensive test plan
 - ✅ Automated test scripts
 - ✅ Backend API validation

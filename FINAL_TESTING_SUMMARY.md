@@ -170,14 +170,14 @@ npm run server:dev
 ```typescript
 // Hook provides:
 const {
-  devices, // Array of real devices
-  loading, // Loading state
-  error, // Error message or null
-  refresh, // Manual refresh function
-  adbAvailable, // true if ADB installed
+  devices,        // Array of real devices
+  loading,        // Loading state
+  error,          // Error message or null
+  refresh,        // Manual refresh function
+  adbAvailable,   // true if ADB installed
   fastbootAvailable, // true if Fastboot installed
-  adbCount, // Number of ADB devices
-  fastbootCount, // Number of Fastboot devices
+  adbCount,       // Number of ADB devices
+  fastbootCount   // Number of Fastboot devices
 } = useAndroidDevices();
 ```
 
@@ -212,13 +212,13 @@ const {
 ```typescript
 // Hook provides:
 const {
-  devices, // Array of real USB devices
-  loading, // Loading state
-  error, // Error message or null
-  supported, // true if browser supports WebUSB
-  isMonitoring, // true if hotplug monitoring active
-  refresh, // Manual refresh
-  requestDevice, // Prompt user to select device
+  devices,        // Array of real USB devices
+  loading,        // Loading state
+  error,          // Error message or null
+  supported,      // true if browser supports WebUSB
+  isMonitoring,   // true if hotplug monitoring active
+  refresh,        // Manual refresh
+  requestDevice   // Prompt user to select device
 } = useUSBDevices();
 ```
 
@@ -319,21 +319,18 @@ const {
 #### Pandora Codex Panels
 
 1. **PandoraFlashPanel** ✅
-
    - EmptyState: "No operations queued"
    - Demo data labeled `[DEMO]`
    - Real operations disabled in demo mode
    - Error handling for API failures
 
 2. **PandoraTestsPanel** ✅
-
    - EmptyState: "No test results yet"
    - Demo tests labeled `[DEMO]`
    - Disabled when backend unavailable
    - Clear distinction between real and demo
 
 3. **PandoraMonitorPanel** ✅
-
    - EmptyState: "Not monitoring"
    - Real metrics when active
    - Proper loading states
@@ -364,36 +361,36 @@ Components requiring Truth-First updates:
 
 ### ✅ Fully Implemented & Validated
 
-| Feature                | Component               | Backend API              | Status      |
-| ---------------------- | ----------------------- | ------------------------ | ----------- |
-| ADB Device Detection   | use-android-devices.ts  | /api/android-devices/all | ✅ Ready    |
-| Fastboot Detection     | use-android-devices.ts  | /api/fastboot/devices    | ✅ Ready    |
-| WebUSB Detection       | use-device-detection.ts | Browser API              | ✅ Ready    |
-| Unified Device Probing | probeDevice.ts          | Multiple APIs            | ✅ Ready    |
-| Demo Mode System       | app-context.tsx         | N/A                      | ✅ Complete |
-| Demo Mode Banner       | DemoModeBanner.tsx      | N/A                      | ✅ Complete |
-| Empty State Components | EmptyState.tsx          | N/A                      | ✅ Complete |
-| Error State Components | ErrorState.tsx          | N/A                      | ✅ Complete |
-| Backend Health Check   | backend-health.ts       | /api/health              | ✅ Complete |
+| Feature | Component | Backend API | Status |
+|---------|-----------|-------------|--------|
+| ADB Device Detection | use-android-devices.ts | /api/android-devices/all | ✅ Ready |
+| Fastboot Detection | use-android-devices.ts | /api/fastboot/devices | ✅ Ready |
+| WebUSB Detection | use-device-detection.ts | Browser API | ✅ Ready |
+| Unified Device Probing | probeDevice.ts | Multiple APIs | ✅ Ready |
+| Demo Mode System | app-context.tsx | N/A | ✅ Complete |
+| Demo Mode Banner | DemoModeBanner.tsx | N/A | ✅ Complete |
+| Empty State Components | EmptyState.tsx | N/A | ✅ Complete |
+| Error State Components | ErrorState.tsx | N/A | ✅ Complete |
+| Backend Health Check | backend-health.ts | /api/health | ✅ Complete |
 
 ### ⚠️ Requires Backend Running
 
-| Feature              | Backend Required | Status               |
-| -------------------- | ---------------- | -------------------- |
-| iOS Device Detection | libimobiledevice | ⚠️ Needs tool        |
-| Flash Operations     | Flash API        | ⚠️ Needs backend     |
-| WebSocket Progress   | WebSocket server | ⚠️ Needs backend     |
-| BootForge USB        | Rust binary      | ⚠️ Needs compilation |
-| Trapdoor Workflows   | Backend API      | ⚠️ Needs backend     |
+| Feature | Backend Required | Status |
+|---------|------------------|--------|
+| iOS Device Detection | libimobiledevice | ⚠️ Needs tool |
+| Flash Operations | Flash API | ⚠️ Needs backend |
+| WebSocket Progress | WebSocket server | ⚠️ Needs backend |
+| BootForge USB | Rust binary | ⚠️ Needs compilation |
+| Trapdoor Workflows | Backend API | ⚠️ Needs backend |
 
 ### 🚧 Partially Implemented
 
-| Feature                        | What's Missing         | Priority |
-| ------------------------------ | ---------------------- | -------- |
-| Empty States (some components) | Update 6 components    | Medium   |
-| API Documentation              | OpenAPI spec           | Low      |
-| E2E Tests                      | Automated E2E suite    | Medium   |
-| Cross-Platform Testing         | macOS/Linux validation | Low      |
+| Feature | What's Missing | Priority |
+|---------|----------------|----------|
+| Empty States (some components) | Update 6 components | Medium |
+| API Documentation | OpenAPI spec | Low |
+| E2E Tests | Automated E2E suite | Medium |
+| Cross-Platform Testing | macOS/Linux validation | Low |
 
 ---
 
@@ -529,14 +526,12 @@ npm run dev
 ### Phase 4: Documentation Update (15 minutes)
 
 1. **Update TRUTH_FIRST_STATUS.md**
-
    - [ ] Add test execution date
    - [ ] Update pass rates
    - [ ] Document any failures
    - [ ] Mark completed items
 
 2. **Create GitHub Issues** (if needed)
-
    - [ ] Failed tests
    - [ ] Missing features
    - [ ] Bugs found
@@ -667,13 +662,11 @@ npm run dev
 ### 🟢 **THIS WEEK** (Next Few Days)
 
 6. **Complete Empty State Updates**
-
    - Update remaining 6 components
    - Add [DEMO] labels
    - Test each component
 
 7. **Integration Testing**
-
    - Test device detection end-to-end
    - Verify WebSocket connections
    - Test flash operation workflow

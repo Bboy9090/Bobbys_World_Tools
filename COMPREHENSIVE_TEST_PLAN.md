@@ -4,10 +4,6 @@
 
 ## Test Objectives
 
-# <<<<<<< Updated upstream
-
-> > > > > > > Stashed changes
-
 1. Verify all connection detection methods work correctly
 2. Test every feature end-to-end
 3. Validate API integrations
@@ -20,16 +16,12 @@
 
 ### 1.1 Android Device Detection
 
-# <<<<<<< Updated upstream
-
-> > > > > > > Stashed changes
-
 - [ ] **ADB Detection** (`use-android-devices.ts`)
   - Endpoint: `GET /api/android-devices/all`
   - Expected: Real devices or empty array (no mock data)
   - Error handling: Backend unavailable shows clear message
+  
 - [ ] **Fastboot Detection** (`use-android-devices.ts`)
-
   - Endpoint: `GET /api/fastboot/devices`
   - Expected: Real bootloader devices or empty
   - No fake "Connected" states
@@ -41,14 +33,11 @@
 
 ### 1.2 USB Device Detection
 
-# <<<<<<< Updated upstream
-
-> > > > > > > Stashed changes
-
 - [ ] **WebUSB Detection** (`use-device-detection.ts`)
   - Uses browser WebUSB API
   - Real-time connect/disconnect events
   - Vendor identification (Google, Samsung, etc.)
+  
 - [ ] **Enhanced USB Classification** (`usbClassDetection.ts`)
   - USB class detection (MTP, PTP, ADB, Mass Storage)
   - Mobile device identification
@@ -56,20 +45,12 @@
 
 ### 1.3 iOS Device Detection
 
-# <<<<<<< Updated upstream
-
-> > > > > > > Stashed changes
-
 - [ ] **libimobiledevice Integration**
   - Endpoint: `GET /api/ios/scan`
   - Detect DFU, Recovery, Normal modes
   - Real detection or empty state
 
 ### 1.4 Multi-Protocol Probing (`probeDevice.ts`)
-
-# <<<<<<< Updated upstream
-
-> > > > > > > Stashed changes
 
 - [ ] **Unified Device Probing**
   - Correlate devices across ADB/Fastboot/USB/WebUSB
@@ -82,10 +63,6 @@
 
 ### 2.1 System Tools Check
 
-# <<<<<<< Updated upstream
-
-> > > > > > > Stashed changes
-
 - [ ] **Tool Availability** (`/api/system-tools`)
   - Detect: ADB, Fastboot, libimobiledevice, Rust, Node, Python
   - Return version numbers if installed
@@ -93,35 +70,31 @@
 
 ### 2.2 Device Endpoints
 
-# <<<<<<< Updated upstream
-
-> > > > > > > Stashed changes
-
 - [ ] **Android Devices** (`/api/android-devices/all`)
   - Returns: `{ devices: [...], sources: { adb: {...}, fastboot: {...} } }`
   - Empty devices array if none connected
+  
 - [ ] **iOS Devices** (`/api/ios/scan`)
   - Returns: Array of iOS devices with mode information
   - Empty if no devices
+  
 - [ ] **USB Devices** (WebUSB - browser API, no backend needed)
   - Direct browser API access
   - Permission-based access
 
 ### 2.3 Flash Operation Endpoints
 
-# <<<<<<< Updated upstream
-
-> > > > > > > Stashed changes
-
 - [ ] **Flash History** (`/api/flash/history`)
   - Real operation log or empty array
   - No fake operations
+  
 - [ ] **Start Flash** (`POST /api/flash/start`)
   - Requires real device
   - Returns operation ID
   - Fails gracefully if tools missing
 
 ### 2.4 WebSocket Endpoints
+
 - [ ] **Flash Progress** (`ws://localhost:3001/ws/flash`)
   - Real-time progress streaming
   - Connection status clearly shown
@@ -140,55 +113,51 @@
 
 ### 3.1 Multi-Brand Flash Dashboard
 
-# <<<<<<< Updated upstream
-
-> > > > > > > Stashed changes
-
 - [ ] **Samsung Odin**
   - Detect Download Mode
   - Real flash or disabled if no device
+  
 - [ ] **Xiaomi EDL**
   - Detect EDL mode (Qualcomm 9008)
   - No fake device connections
+  
 - [ ] **Universal Fastboot**
   - Support: Google, OnePlus, Motorola, ASUS
   - Real device detection via `fastboot devices`
+  
 - [ ] **iOS DFU**
   - checkra1n/palera1n integration
   - Real DFU mode detection
+  
 - [ ] **MediaTek SP Flash Tool**
   - Preloader/VCOM detection
   - Scatter file validation
 
 ### 3.2 Pandora Codex Control Room
 
-# <<<<<<< Updated upstream
-
-> > > > > > > Stashed changes
-
 - [ ] **Flash Operations Monitor**
   - Real operation queue or empty state
   - No hardcoded operations
+  
 - [ ] **Performance Monitor**
   - Shows "Not monitoring" when inactive
   - Real metrics when active
+  
 - [ ] **Automated Testing**
   - Runs real tests or shows empty
   - No fake test results
+  
 - [ ] **Hotplug Monitor**
   - WebSocket-based event stream
   - Shows "No events recorded" when empty
 
 ### 3.3 Security Lock Education
 
-# <<<<<<< Updated upstream
-
-> > > > > > > Stashed changes
-
 - [ ] **FRP Detection** (`POST /api/frp/detect`)
   - Real ADB-based detection
   - Confidence scoring based on evidence
   - Educational resources (not bypass tools)
+  
 - [ ] **MDM Detection** (`POST /api/mdm/detect`)
   - Enterprise profile detection
   - Shows legitimate removal procedures
@@ -196,18 +165,16 @@
 
 ### 3.4 Trapdoor Module (Bobby's Secret Workshop)
 
-# <<<<<<< Updated upstream
-
-> > > > > > > Stashed changes
-
 - [ ] **Workflow System**
   - JSON-defined workflows
   - Real execution or disabled
   - Admin authorization required
+  
 - [ ] **Shadow Logging**
   - AES-256 encrypted audit logs
   - Append-only for compliance
   - No fake log entries
+  
 - [ ] **Trapdoor API** (`/api/trapdoor/*`)
   - Secured endpoints (admin only)
   - Real tool execution or error
@@ -215,35 +182,32 @@
 
 ### 3.5 Device Diagnostics
 
-# <<<<<<< Updated upstream
-
-> > > > > > > Stashed changes
-
 - [ ] **Battery Health**
   - Real ADB query or unavailable
   - No fake battery percentages
+  
 - [ ] **Storage Health**
   - SMART data from real devices
   - Empty if not available
+  
 - [ ] **Thermal Monitoring**
   - Real temperature readings
   - Safety thresholds enforced
+  
 - [ ] **Sensor Testing**
   - Real sensor data or disabled
   - No simulated readings
 
 ### 3.6 BootForge USB (Rust Backend)
 
-# <<<<<<< Updated upstream
-
-> > > > > > > Stashed changes
-
 - [ ] **Imaging Engine**
   - Real disk imaging or unavailable
   - Progress tracking
+  
 - [ ] **USB Transport Layer**
   - Low-level USB communication
   - Vendor-specific protocols
+  
 - [ ] **Thermal Monitoring**
   - Hardware temperature sensors
   - Real-time tracking
@@ -254,14 +218,11 @@
 
 ### 4.1 Demo Mode Behavior
 
-# <<<<<<< Updated upstream
-
-> > > > > > > Stashed changes
-
 - [ ] **Demo Mode Banner**
   - Shows when backend unavailable
   - Dismissable but persistent
   - Clear "Connect Backend" action
+  
 - [ ] **Demo Data Labeling**
   - All simulated data has `[DEMO]` prefix
   - Clear visual distinction
@@ -269,37 +230,34 @@
 
 ### 4.2 Empty States
 
-# <<<<<<< Updated upstream
-
-> > > > > > > Stashed changes
-
 - [ ] **PandoraFlashPanel**
   - "No operations queued" when empty
   - EmptyState component used
+  
 - [ ] **PandoraTestsPanel**
   - "No test results yet" when empty
   - Tests labeled `[DEMO]` in demo mode
+  
 - [ ] **PandoraMonitorPanel**
   - "Not monitoring" when inactive
   - Real metrics when active
+  
 - [ ] **PandoraHotplugPanel**
   - "No events recorded" when empty
   - WebSocket connection status shown
 
 ### 4.3 Error States
 
-# <<<<<<< Updated upstream
-
-> > > > > > > Stashed changes
-
 - [ ] **Backend Connection Error**
   - Clear message when API unavailable
   - Retry option provided
   - No silent failures
+  
 - [ ] **Tool Not Installed**
   - Specific error: "ADB not installed"
   - Installation instructions
   - No fake success
+  
 - [ ] **Device Authorization Required**
   - Clear prompt to authorize device
   - "Unauthorized" state shown
@@ -307,14 +265,11 @@
 
 ### 4.4 Loading States
 
-# <<<<<<< Updated upstream
-
-> > > > > > > Stashed changes
-
 - [ ] **Device Scanning**
   - Loading indicator shown
   - Timeout after reasonable duration
   - Clear completion message
+  
 - [ ] **Flash Progress**
   - Real-time progress bar
   - Percentage and transfer speed
@@ -326,20 +281,12 @@
 
 ### 5.1 Never Show Fake Data
 
-# <<<<<<< Updated upstream
-
-> > > > > > > Stashed changes
-
 - [ ] No hardcoded device lists in production
 - [ ] No fake "Connected" states without evidence
 - [ ] No simulated test results
 - [ ] No placeholder success messages
 
 ### 5.2 Clear Demo Mode Indication
-
-# <<<<<<< Updated upstream
-
-> > > > > > > Stashed changes
 
 - [ ] Demo mode banner persistent
 - [ ] All demo data labeled `[DEMO]`
@@ -348,16 +295,13 @@
 
 ### 5.3 Evidence-Based States
 
-# <<<<<<< Updated upstream
-
-> > > > > > > Stashed changes
-
 - [ ] Device states from real tool output
 - [ ] Confidence scoring based on evidence
 - [ ] Audit logging for state changes
 - [ ] No automatic state promotion
 
 ### 5.4 Error Transparency
+
 - [ ] Backend errors shown to user
 - [ ] Tool installation status clear
 - [ ] Device authorization status clear
@@ -368,22 +312,20 @@
 ## 6. INTEGRATION TESTS
 
 ### 6.1 Frontend + Backend
+
 - [ ] Frontend handles backend unavailable
 - [ ] API contract adherence
 - [ ] WebSocket reconnection logic
 - [ ] CORS and security headers
 
 ### 6.2 Multi-Component Coordination
+
 - [ ] DeviceSidebar updates on detection
 - [ ] Flash panel shows real operations
 - [ ] Hotplug events trigger UI updates
 - [ ] Correlation tracking works across components
 
 ### 6.3 Workflow Execution
-
-# <<<<<<< Updated upstream
-
-> > > > > > > Stashed changes
 
 - [ ] Trapdoor workflows execute correctly
 - [ ] Progress tracking accurate
@@ -396,12 +338,9 @@
 
 ### 7.1 Build Process
 
-
 ```bash
 npm run build
 ```
-
-> > > > > > > Stashed changes
 
 - [ ] TypeScript compilation succeeds
 - [ ] Vite build completes
@@ -410,21 +349,15 @@ npm run build
 
 ### 7.2 Linting
 
-
 ```bash
 npm run lint
 ```
-
-> > > > > > > Stashed changes
 
 - [ ] ESLint passes
 - [ ] No unused imports
 - [ ] Code style consistent
 
 ### 7.3 Unit Tests
-```bash
-npm run test
-```
 
 ```bash
 npm run test
@@ -436,9 +369,6 @@ npm run test
 - [ ] Fastboot library tests pass
 
 ### 7.4 Integration Tests
-```bash
-npm run test:integration
-```
 
 ```bash
 npm run test:integration
@@ -450,12 +380,9 @@ npm run test:integration
 
 ### 7.5 E2E Tests
 
-
 ```bash
 npm run test:e2e
 ```
-
-> > > > > > > Stashed changes
 
 - [ ] Workflow execution E2E test
 - [ ] Device detection E2E test
@@ -467,20 +394,12 @@ npm run test:e2e
 
 ### 8.1 Authorization Checks
 
-# <<<<<<< Updated upstream
-
-> > > > > > > Stashed changes
-
 - [ ] Trapdoor requires admin auth
 - [ ] Shadow logs admin-only access
 - [ ] Sensitive operations logged
 - [ ] Authorization bypass prevention
 
 ### 8.2 Data Encryption
-
-# <<<<<<< Updated upstream
-
-> > > > > > > Stashed changes
 
 - [ ] Shadow logs AES-256 encrypted
 - [ ] No secrets in code
@@ -489,20 +408,12 @@ npm run test:e2e
 
 ### 8.3 Audit Logging
 
-# <<<<<<< Updated upstream
-
-> > > > > > > Stashed changes
-
 - [ ] All sensitive operations logged
 - [ ] Logs are append-only
 - [ ] 90-day retention enforced
 - [ ] Export functionality works
 
 ### 8.4 Sandbox Isolation (Trapdoor)
-
-# <<<<<<< Updated upstream
-
-> > > > > > > Stashed changes
 
 - [ ] Firejail sandboxing active
 - [ ] No network access from tools
@@ -515,10 +426,6 @@ npm run test:e2e
 
 ### 9.1 Device Detection Speed
 
-# <<<<<<< Updated upstream
-
-> > > > > > > Stashed changes
-
 - [ ] USB detection < 500ms
 - [ ] ADB scan < 2s
 - [ ] Fastboot scan < 2s
@@ -526,19 +433,11 @@ npm run test:e2e
 
 ### 9.2 WebSocket Latency
 
-# <<<<<<< Updated upstream
-
-> > > > > > > Stashed changes
-
 - [ ] Flash progress < 100ms latency
 - [ ] Hotplug events < 50ms latency
 - [ ] Correlation updates < 200ms latency
 
 ### 9.3 UI Responsiveness
-
-# <<<<<<< Updated upstream
-
-> > > > > > > Stashed changes
 
 - [ ] Tab switching < 100ms
 - [ ] Device list updates < 200ms
@@ -550,10 +449,6 @@ npm run test:e2e
 
 ### 10.1 Windows
 
-# <<<<<<< Updated upstream
-
-> > > > > > > Stashed changes
-
 - [ ] ADB/Fastboot detection works
 - [ ] USB device detection works
 - [ ] Backend server starts correctly
@@ -561,20 +456,12 @@ npm run test:e2e
 
 ### 10.2 macOS
 
-# <<<<<<< Updated upstream
-
-> > > > > > > Stashed changes
-
 - [ ] libimobiledevice integration
 - [ ] iOS device detection
 - [ ] Unix commands work
 - [ ] Build process completes
 
 ### 10.3 Linux
-
-# <<<<<<< Updated upstream
-
-> > > > > > > Stashed changes
 
 - [ ] All system tools detected
 - [ ] Firejail sandboxing works
@@ -587,20 +474,12 @@ npm run test:e2e
 
 ### Pre-Test Setup
 
-# <<<<<<< Updated upstream
-
-> > > > > > > Stashed changes
-
 - [ ] Install dependencies: `npm install`
 - [ ] Start backend: `npm run server:dev`
 - [ ] Start frontend: `npm run dev`
 - [ ] Connect test devices (if available)
 
 ### Test Execution
-
-# <<<<<<< Updated upstream
-
-> > > > > > > Stashed changes
 
 - [ ] Run unit tests: `npm run test`
 - [ ] Run integration tests: `npm run test:integration`
@@ -609,10 +488,6 @@ npm run test:e2e
 - [ ] Backend API endpoint testing
 
 ### Post-Test Verification
-
-# <<<<<<< Updated upstream
-
-> > > > > > > Stashed changes
 
 - [ ] Document test results
 - [ ] Capture screenshots of edge cases
@@ -625,10 +500,6 @@ npm run test:e2e
 
 ### Must Pass (Critical)
 
-# <<<<<<< Updated upstream
-
-> > > > > > > Stashed changes
-
 - ✅ All unit tests passing
 - ✅ No fake device data in production
 - ✅ Backend unavailable handled gracefully
@@ -638,20 +509,12 @@ npm run test:e2e
 
 ### Should Pass (High Priority)
 
-# <<<<<<< Updated upstream
-
-> > > > > > > Stashed changes
-
 - ⚠️ Integration tests passing
 - ⚠️ Build with no warnings
 - ⚠️ Lint with no errors
 - ⚠️ Performance targets met
 
 ### Nice to Have (Medium Priority)
-
-# <<<<<<< Updated upstream
-
-> > > > > > > Stashed changes
 
 - 💡 E2E tests automated
 - 💡 Cross-platform verified
@@ -663,19 +526,11 @@ npm run test:e2e
 
 ### Test Session
 
-# <<<<<<< Updated upstream
-
-> > > > > > > Stashed changes
-
 - **Date**: YYYY-MM-DD
 - **Tester**: Name
 - **Environment**: OS, Browser, Backend Version
 
 ### Results Summary
-
-# <<<<<<< Updated upstream
-
-> > > > > > > Stashed changes
 
 - **Total Tests**: X
 - **Passed**: Y
@@ -684,20 +539,12 @@ npm run test:e2e
 
 ### Failed Tests
 
-# <<<<<<< Updated upstream
-
-> > > > > > > Stashed changes
-
 1. **Test Name**: Description
    - **Expected**: ...
    - **Actual**: ...
    - **Reproduction Steps**: ...
 
 ### Notes
-
-# <<<<<<< Updated upstream
-
-> > > > > > > Stashed changes
 
 - Additional observations
 - Suggestions for improvement
