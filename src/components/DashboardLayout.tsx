@@ -18,6 +18,7 @@ import { LogsPanel } from "./LogsPanel";
 import { BackendStatusIndicator } from "./BackendStatusIndicator";
 import { useApp } from "@/lib/app-context";
 import { useAudioNotifications } from "@/hooks/use-audio-notifications";
+import { featureFlags } from "@/lib/featureFlags";
 import { 
     Cpu, 
     FileText, 
@@ -114,14 +115,16 @@ export function DashboardLayout() {
                                     <FileText weight="duotone" size={18} />
                                     <span className="font-medium">Reports</span>
                                 </TabsTrigger>
-                                <TabsTrigger 
-                                    value="toolbox" 
-                                    className="gap-1.5 px-4 data-[state=active]:btn-sneaker data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
-                                >
-                                    <Toolbox weight="duotone" size={18} />
-                                    <span className="font-medium">🛠️ Toolbox</span>
-                                    <Badge variant="secondary" className="ml-1.5 text-[10px] px-1.5 py-0 candy-shimmer">NEW</Badge>
-                                </TabsTrigger>
+                                {featureFlags.experimentalToolbox && (
+                                    <TabsTrigger 
+                                        value="toolbox" 
+                                        className="gap-1.5 px-4 data-[state=active]:btn-sneaker data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+                                    >
+                                        <Toolbox weight="duotone" size={18} />
+                                        <span className="font-medium">🛠️ Toolbox</span>
+                                        <Badge variant="secondary" className="ml-1.5 text-[10px] px-1.5 py-0 candy-shimmer">EXP</Badge>
+                                    </TabsTrigger>
+                                )}
                                 <TabsTrigger 
                                     value="tests" 
                                     className="gap-1.5 px-4 data-[state=active]:btn-sneaker data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
@@ -173,9 +176,11 @@ export function DashboardLayout() {
                                 <TabsContent value="reports" className="mt-0">
                                     <ReportsTab />
                                 </TabsContent>
-                                <TabsContent value="toolbox" className="mt-0">
-                                    <ToolboxTab />
-                                </TabsContent>
+                                {featureFlags.experimentalToolbox && (
+                                    <TabsContent value="toolbox" className="mt-0">
+                                        <ToolboxTab />
+                                    </TabsContent>
+                                )}
                                 <TabsContent value="tests" className="mt-0">
                                     <TestsTab />
                                 </TabsContent>

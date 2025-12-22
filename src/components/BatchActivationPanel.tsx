@@ -34,6 +34,16 @@ interface ActivationProgress {
   message: string;
 }
 
+type ScanDevice = {
+  device_uid: string;
+  display_name?: string;
+  evidence?: {
+    source?: string;
+    serial?: string;
+    state?: string;
+  };
+};
+
 export function BatchActivationPanel() {
   const { backendAvailable } = useApp();
   const [devices, setDevices] = useState<Device[]>([]);
@@ -41,33 +51,53 @@ export function BatchActivationPanel() {
   const [activating, setActivating] = useState(false);
   const [progressMap, setProgressMap] = useState<Map<string, ActivationProgress>>(new Map());
 
-  const mockDevices: Device[] = [
-    { id: 'dev1', name: 'iPhone 14 Pro', model: 'A2890', serialNumber: 'F17ABC123DEF', activationStatus: 'locked', selected: false },
-    { id: 'dev2', name: 'iPhone 13', model: 'A2482', serialNumber: 'C02XYZ789GHI', activationStatus: 'locked', selected: false },
-    { id: 'dev3', name: 'iPhone 12', model: 'A2172', serialNumber: 'D03MNO456JKL', activationStatus: 'unlocked', selected: false },
-    { id: 'dev4', name: 'iPad Pro', model: 'A2379', serialNumber: 'DMPQRS234TUV', activationStatus: 'locked', selected: false },
-    { id: 'dev5', name: 'iPhone SE', model: 'A2595', serialNumber: 'F18WXY567ABC', activationStatus: 'locked', selected: false },
-  ];
+  const API_BASE = import.meta.env.VITE_BOOTFORGE_API_URL || 'http://localhost:3001/api';
+
+  const mapScanDevices = (scanned: ScanDevice[]): Device[] => {
+    return scanned
+      .map((d) => {
+        const source = d.evidence?.source;
+        const serial = d.evidence?.serial;
+        const state = d.evidence?.state;
+
+        const activationStatus: Device['activationStatus'] =
+          source === 'adb' && state === 'device'
+            ? 'unlocked'
+            : source === 'adb' && state === 'unauthorized'
+              ? 'locked'
+              : 'unknown';
+
+        return {
+          id: d.device_uid,
+          name: d.display_name || serial || d.device_uid,
+          model: source ? String(source).toUpperCase() : 'UNKNOWN',
+          serialNumber: serial || d.device_uid,
+          activationStatus,
+          selected: false,
+        };
+      })
+      .filter((d) => Boolean(d.id));
+  };
 
   const handleScan = async () => {
     setScanning(true);
-    
-    if (!backendAvailable) {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      setDevices(mockDevices);
-      setScanning(false);
-      toast.success(`Found ${mockDevices.length} devices (demo data)`);
-      return;
-    }
 
     try {
-      const response = await fetch('http://localhost:3001/api/device/scan-multiple');
-      const data = await response.json();
-      setDevices(data.devices || mockDevices);
-      toast.success(`Found ${data.devices?.length || 0} devices`);
+      if (!backendAvailable) {
+        toast.error('Backend not available');
+        setDevices([]);
+        return;
+      }
+
+      const response = await fetch(`${API_BASE}/devices/scan`);
+      if (!response.ok) throw new Error('Scan failed');
+      const data = (await response.json()) as { devices?: ScanDevice[]; count?: number };
+      const mapped = mapScanDevices(data.devices || []);
+      setDevices(mapped);
+      toast.success(`Found ${mapped.length} device(s)`);
     } catch (error) {
-      setDevices(mockDevices);
-      toast.error('Scan failed - showing demo data');
+      setDevices([]);
+      toast.error('Scan failed');
     } finally {
       setScanning(false);
     }
@@ -82,7 +112,7 @@ export function BatchActivationPanel() {
     }
 
     if (!backendAvailable) {
-      toast.error('Backend required for activation');
+      toast.error('Backend required');
       return;
     }
 
@@ -100,55 +130,53 @@ export function BatchActivationPanel() {
     });
     setProgressMap(newProgressMap);
 
-    // Simulate activation process
     for (const device of selected) {
-      setProgressMap(prev => {
+      setProgressMap((prev) => {
         const next = new Map(prev);
         next.set(device.id, {
           deviceId: device.id,
-          progress: 0,
+          progress: 10,
           status: 'activating',
-          message: 'Activating device...'
+          message: 'Requesting authorization prompt...'
         });
         return next;
       });
 
-      // Simulate progress
-      for (let i = 0; i <= 100; i += 20) {
-        await new Promise(resolve => setTimeout(resolve, 300));
-        setProgressMap(prev => {
+      try {
+        const response = await fetch(`${API_BASE}/adb/trigger-auth`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ serial: device.serialNumber }),
+        });
+
+        const data = (await response.json()) as { success?: boolean; message?: string };
+
+        setProgressMap((prev) => {
           const next = new Map(prev);
-          const current = next.get(device.id);
-          if (current) {
-            next.set(device.id, {
-              ...current,
-              progress: i,
-              message: i < 100 ? `Activating... ${i}%` : 'Activation complete'
-            });
-          }
+          next.set(device.id, {
+            deviceId: device.id,
+            progress: 100,
+            status: data.success ? 'complete' : 'error',
+            message: data.message || (data.success ? 'Request sent' : 'Request failed'),
+          });
+          return next;
+        });
+      } catch (e) {
+        setProgressMap((prev) => {
+          const next = new Map(prev);
+          next.set(device.id, {
+            deviceId: device.id,
+            progress: 100,
+            status: 'error',
+            message: 'Request failed',
+          });
           return next;
         });
       }
-
-      setProgressMap(prev => {
-        const next = new Map(prev);
-        next.set(device.id, {
-          deviceId: device.id,
-          progress: 100,
-          status: 'complete',
-          message: 'Activated successfully'
-        });
-        return next;
-      });
-
-      // Update device status
-      setDevices(prevDevices => prevDevices.map(d =>
-        d.id === device.id ? { ...d, activationStatus: 'unlocked' as const } : d
-      ));
     }
 
     setActivating(false);
-    toast.success(`Activated ${selected.length} device(s)`);
+    toast.success(`Triggered ${selected.length} device(s)`);
   };
 
   const toggleDevice = (deviceId: string) => {
@@ -172,17 +200,16 @@ export function BatchActivationPanel() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-display text-primary mb-2">Batch Activation</h1>
+        <h1 className="text-3xl font-display text-primary mb-2">Batch ADB Authorization</h1>
         <p className="text-muted-foreground">
-          Activate multiple iOS devices simultaneously
+          Trigger the USB debugging authorization prompt on multiple Android devices
         </p>
       </div>
 
       <Alert>
         <Warning className="h-4 w-4" />
         <AlertDescription>
-          <strong>Legal Notice:</strong> Only activate devices you legally own or have authorization to activate.
-          Bypassing activation locks on stolen devices is illegal.
+          <strong>Legal Notice:</strong> Only run authorization actions on devices you legally own or have permission to service.
         </AlertDescription>
       </Alert>
 
@@ -301,7 +328,7 @@ export function BatchActivationPanel() {
                           onCheckedChange={() => toggleDevice(device.id)}
                           disabled={activating || device.activationStatus === 'unlocked'}
                         />
-                        <DeviceMobile className="w-8 h-8 text-primary flex-shrink-0" />
+                        <DeviceMobile className="w-8 h-8 text-primary shrink-0" />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
                             <span className="font-medium">{device.name}</span>
@@ -349,7 +376,7 @@ export function BatchActivationPanel() {
         <Alert>
           <Warning className="h-4 w-4" />
           <AlertDescription>
-            Backend API required for batch activation. Showing demo data only.
+            Backend API required for scanning and triggering authorization.
           </AlertDescription>
         </Alert>
       )}
