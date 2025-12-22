@@ -1,4 +1,4 @@
-# AGENTS.md — Bobby's Workshop Release Doctrine
+# AGENTS.md — Bobby's Workshop AI Operating System
 
 ## Workshop Discipline: The "No Illusion" Rule
 
@@ -20,15 +20,16 @@ Before making changes:
 4. **Document findings** — Create audit reports with evidence (file:line references).
 5. **Fix with proof** — Show before/after, actual test output, real build results.
 
-## Workflow
+1. **Never invent results** — If you didn't run it, don't claim it passed.
+2. **No placeholders/mocks in production paths** — Only in tests/.
+3. **No fake success** — All user-facing features must work end-to-end.
+4. **Small PRs only** — One focused change per PR.
+5. **No uncontrolled command execution** — Always validate commands before running.
+6. **Explicit validation required** — Show proof: build output, test results, lint output.
 
-1. Identify stack + real build/test commands from repo files.
-2. Run or truthfully inspect the pipeline.
-3. Fix the first failing step first.
-4. Add/adjust tests for behavior changes.
-5. Document only what is real.
+## Workflow Discipline
 
-## Do not touch unless asked
+### Standard Development Flow
 
 - dist/, build/, packaged artifacts (_.exe/_.pkg/\*.zip)
 - archive/old_builds/old_installers (if present)
