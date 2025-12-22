@@ -3,7 +3,7 @@
   "name": "iOS Device Restore Workflow",
   "description": "Comprehensive iOS device restore and recovery workflow",
   "platform": "ios",
-  "category": "restore",
+  "category": "recovery",
   "risk_level": "medium",
   "requires_authorization": false,
   "steps": [
@@ -74,9 +74,10 @@
     {
       "id": "restore-device",
       "name": "Restore Device Using iTunes/Finder",
-      "type": "manual",
+      "type": "prompt",
       "action": "user_restore_via_itunes",
-      "instructions": "Use iTunes (Windows/macOS Mojave or earlier) or Finder (macOS Catalina+) to restore the device. Click 'Restore iPhone' while holding Option (Mac) or Shift (Windows) to select custom IPSW.",
+      "prompt_text": "Use iTunes (Windows/macOS Mojave or earlier) or Finder (macOS Catalina+) to restore the device. Click 'Restore iPhone' while holding Option (Mac) or Shift (Windows) to select custom IPSW. Type 'CONTINUE' once you have started the restore.",
+      "required_input": "CONTINUE",
       "success_criteria": "user_confirms_completion",
       "on_failure": "continue"
     },
