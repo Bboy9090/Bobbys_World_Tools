@@ -16,6 +16,16 @@ const defaultTheme = {
   container: {
     center: true,
     padding: "2rem",
+    // Restrict container max-width breakpoints to numeric widths.
+    // This avoids invalid CSS when using raw media-query screens like
+    // (display-mode: standalone) or (pointer: coarse) in theme screens.
+    screens: {
+      sm: "640px",
+      md: "768px",
+      lg: "1024px",
+      xl: "1280px",
+      "2xl": "1536px",
+    },
   },
   extend: {
     screens: {
