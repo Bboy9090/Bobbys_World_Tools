@@ -16,6 +16,13 @@ class WorkflowValidator {
   static validate(workflow) {
     const errors = [];
 
+    if (!workflow || typeof workflow !== 'object') {
+      return {
+        valid: false,
+        errors: [{ field: 'workflow', message: 'Workflow must be an object' }]
+      };
+    }
+
     // Required top-level fields
     if (!workflow.id || typeof workflow.id !== 'string') {
       errors.push({ field: 'id', message: 'Workflow must have a string id' });
@@ -31,33 +38,33 @@ class WorkflowValidator {
 
     // Validate platform
     if (!workflow.platform || !VALID_PLATFORMS.includes(workflow.platform)) {
-      errors.push({ 
-        field: 'platform', 
-        message: `Platform must be one of: ${VALID_PLATFORMS.join(', ')}` 
+      errors.push({
+        field: 'platform',
+        message: `Platform must be one of: ${VALID_PLATFORMS.join(', ')}`
       });
     }
 
     // Validate category
     if (!workflow.category || !VALID_CATEGORIES.includes(workflow.category)) {
-      errors.push({ 
-        field: 'category', 
-        message: `Category must be one of: ${VALID_CATEGORIES.join(', ')}` 
+      errors.push({
+        field: 'category',
+        message: `Category must be one of: ${VALID_CATEGORIES.join(', ')}`
       });
     }
 
     // Validate risk_level
     if (!workflow.risk_level || !VALID_RISK_LEVELS.includes(workflow.risk_level)) {
-      errors.push({ 
-        field: 'risk_level', 
-        message: `Risk level must be one of: ${VALID_RISK_LEVELS.join(', ')}` 
+      errors.push({
+        field: 'risk_level',
+        message: `Risk level must be one of: ${VALID_RISK_LEVELS.join(', ')}`
       });
     }
 
     // Validate authorization requirements
     if (workflow.requires_authorization && !workflow.authorization_prompt) {
-      errors.push({ 
-        field: 'authorization_prompt', 
-        message: 'Authorization prompt is required when requires_authorization is true' 
+      errors.push({
+        field: 'authorization_prompt',
+        message: 'Authorization prompt is required when requires_authorization is true'
       });
     }
 
@@ -66,18 +73,18 @@ class WorkflowValidator {
       errors.push({ field: 'steps', message: 'Workflow must have a steps array' });
     } else {
       const stepIds = new Set();
-      
+
       workflow.steps.forEach((step, index) => {
         // Validate step id
         if (!step.id) {
-          errors.push({ 
-            field: `steps[${index}].id`, 
-            message: 'Step must have an id' 
+          errors.push({
+            field: `steps[${index}].id`,
+            message: 'Step must have an id'
           });
         } else if (stepIds.has(step.id)) {
-          errors.push({ 
-            field: `steps[${index}].id`, 
-            message: `Duplicate step id: ${step.id}` 
+          errors.push({
+            field: `steps[${index}].id`,
+            message: `Duplicate step id: ${step.id}`
           });
         } else {
           stepIds.add(step.id);
@@ -85,49 +92,49 @@ class WorkflowValidator {
 
         // Validate step name
         if (!step.name) {
-          errors.push({ 
-            field: `steps[${index}].name`, 
-            message: 'Step must have a name' 
+          errors.push({
+            field: `steps[${index}].name`,
+            message: 'Step must have a name'
           });
         }
 
         // Validate step type
         if (!step.type || !VALID_STEP_TYPES.includes(step.type)) {
-          errors.push({ 
-            field: `steps[${index}].type`, 
-            message: `Step type must be one of: ${VALID_STEP_TYPES.join(', ')}` 
+          errors.push({
+            field: `steps[${index}].type`,
+            message: `Step type must be one of: ${VALID_STEP_TYPES.join(', ')}`
           });
         }
 
         // Validate step action
         if (!step.action && step.type !== 'wait' && step.type !== 'log') {
-          errors.push({ 
-            field: `steps[${index}].action`, 
-            message: 'Step must have an action' 
+          errors.push({
+            field: `steps[${index}].action`,
+            message: 'Step must have an action'
           });
         }
 
         // Validate step description
         if (!step.description) {
-          errors.push({ 
-            field: `steps[${index}].description`, 
-            message: 'Step must have a description' 
+          errors.push({
+            field: `steps[${index}].description`,
+            message: 'Step must have a description'
           });
         }
 
         // Validate on_failure
         if (step.on_failure && !VALID_ON_FAILURE.includes(step.on_failure)) {
-          errors.push({ 
-            field: `steps[${index}].on_failure`, 
-            message: `on_failure must be one of: ${VALID_ON_FAILURE.join(', ')}` 
+          errors.push({
+            field: `steps[${index}].on_failure`,
+            message: `on_failure must be one of: ${VALID_ON_FAILURE.join(', ')}`
           });
         }
 
         // Validate success_criteria for command steps
         if (step.type === 'command' && !step.success_criteria) {
-          errors.push({ 
-            field: `steps[${index}].success_criteria`, 
-            message: 'Command steps must have success_criteria' 
+          errors.push({
+            field: `steps[${index}].success_criteria`,
+            message: 'Command steps must have success_criteria'
           });
         }
       });

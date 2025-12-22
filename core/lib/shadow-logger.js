@@ -250,6 +250,53 @@ class ShadowLogger {
       return { success: false, error: error.message };
     }
   }
+
+  /**
+   * Get log statistics
+   */
+  async getLogStats() {
+    try {
+      const shadowFiles = await fs.readdir(this.shadowLogsDir).catch(() => []);
+      const publicFiles = await fs.readdir(this.publicLogsDir).catch(() => []);
+
+      let totalShadowEntries = 0;
+      let totalPublicEntries = 0;
+
+      // Count shadow log entries
+      for (const file of shadowFiles) {
+        if (file.startsWith('shadow-') && file.endsWith('.log')) {
+          const filePath = path.join(this.shadowLogsDir, file);
+          const content = await fs.readFile(filePath, 'utf8').catch(() => '');
+          const lines = content.trim().split('\n').filter(line => line);
+          totalShadowEntries += lines.length;
+        }
+      }
+
+      // Count public log entries
+      for (const file of publicFiles) {
+        if (file.startsWith('public-') && file.endsWith('.log')) {
+          const filePath = path.join(this.publicLogsDir, file);
+          const content = await fs.readFile(filePath, 'utf8').catch(() => '');
+          const lines = content.trim().split('\n').filter(line => line);
+          totalPublicEntries += lines.length;
+        }
+      }
+
+      return {
+        success: true,
+        stats: {
+          shadowLogFiles: shadowFiles.filter(f => f.startsWith('shadow-')).length,
+          publicLogFiles: publicFiles.filter(f => f.startsWith('public-')).length,
+          totalShadowEntries,
+          totalPublicEntries,
+          retentionDays: this.retentionDays
+        }
+      };
+    } catch (error) {
+      console.error('Error getting log stats:', error);
+      return { success: false, error: error.message };
+    }
+  }
 }
 
 export default ShadowLogger;

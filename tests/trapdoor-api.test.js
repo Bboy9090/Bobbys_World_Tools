@@ -1,15 +1,43 @@
 // Test suite for Trapdoor API
 // Tests admin authentication, throttling, batch workflows, and monitoring
 
-import { describe, it, beforeEach, expect } from 'vitest';
+import { describe, it, beforeAll, afterAll } from 'vitest';
 import assert from 'node:assert';
+import express from 'express';
+import trapdoorRouter from '../core/api/trapdoor.js';
 
-const RUN_API_TESTS = process.env.RUN_TRAPDOOR_API_TESTS === 'true';
-const maybeDescribe = RUN_API_TESTS ? describe : describe.skip;
+// Test server setup
+let server;
+let API_BASE;
+const ADMIN_KEY = 'test-admin-key';
 
-maybeDescribe('Trapdoor API Tests', () => {
-  const API_BASE = 'http://localhost:3001/api/trapdoor';
-  const ADMIN_KEY = process.env.ADMIN_API_KEY || 'dev-admin-key';
+beforeAll(async () => {
+  // Set test environment variables
+  process.env.ADMIN_API_KEY = ADMIN_KEY;
+  process.env.SHADOW_LOG_KEY = 'deadbeef'.repeat(8); // 32 bytes for AES-256
+  
+  // Create test server
+  const app = express();
+  app.use(express.json());
+  app.use('/api/trapdoor', trapdoorRouter);
+  
+  // Start server on random available port
+  await new Promise((resolve) => {
+    server = app.listen(0, () => {
+      const port = server.address().port;
+      API_BASE = `http://localhost:${port}/api/trapdoor`;
+      resolve();
+    });
+  });
+});
+
+afterAll(async () => {
+  if (server) {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+describe('Trapdoor API Tests', () => {
 
   describe('Authentication', () => {
     it('should reject requests without API key', async () => {
@@ -31,26 +59,6 @@ maybeDescribe('Trapdoor API Tests', () => {
         headers: { 'x-api-key': ADMIN_KEY }
       });
       assert.ok(response.status === 200);
-    });
-  });
-
-  describe('Throttling', () => {
-    it('should enforce rate limits', async () => {
-      const requests = [];
-      
-      // Make 35 requests (exceeds 30/min limit)
-      for (let i = 0; i < 35; i++) {
-        requests.push(
-          fetch(`${API_BASE}/workflows`, {
-            headers: { 'x-api-key': ADMIN_KEY }
-          })
-        );
-      }
-
-      const responses = await Promise.all(requests);
-      const throttled = responses.filter(r => r.status === 429);
-      
-      assert.ok(throttled.length > 0, 'Should have throttled requests');
     });
   });
 
@@ -160,6 +168,25 @@ maybeDescribe('Trapdoor API Tests', () => {
       assert.ok(data.success);
     });
   });
-});
 
-console.log('✅ Trapdoor API tests defined');
+  // Run throttling test last since it triggers rate limiting
+  describe('Throttling', () => {
+    it('should enforce rate limits', async () => {
+      const requests = [];
+      
+      // Make 35 requests (exceeds 30/min limit)
+      for (let i = 0; i < 35; i++) {
+        requests.push(
+          fetch(`${API_BASE}/workflows`, {
+            headers: { 'x-api-key': ADMIN_KEY }
+          })
+        );
+      }
+
+      const responses = await Promise.all(requests);
+      const throttled = responses.filter(r => r.status === 429);
+      
+      assert.ok(throttled.length > 0, 'Should have throttled requests');
+    });
+  });
+});
