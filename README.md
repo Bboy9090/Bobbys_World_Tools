@@ -1,9 +1,37 @@
 # Bobby's World - Workshop Toolkit
 
 > **🔓 Now featuring Pandora's Room** - Advanced device management with The-Pandora-Codex integration  
-> **🔐 Bobby's Secret Workshop** - Modular workflows, Trapdoor API, and shadow logging
+> **🔐 Bobby's Secret Workshop** - Modular workflows, Trapdoor API, and shadow logging  
+> **📦 NEW: Standalone Installers** - One-click install for Windows & macOS!
 
 Professional repair diagnostic and flashing toolkit with comprehensive multi-brand support, educational security lock resources, real-time device monitoring, and the powerful **Trapdoor module** for advanced device operations.
+
+## 🚀 Quick Start - Two Ways to Use
+
+### Option 1: Standalone Installer (Recommended)
+
+**No setup, no building, just install and go!**
+
+Download the installer for your platform and double-click to install. Everything is bundled - frontend, backend, and all dependencies. The backend starts automatically when you open the app.
+
+- **Windows**: MSI or NSIS installer
+- **macOS**: DMG or APP bundle
+
+**[📥 Download Installer](INSTALLER_QUICKSTART.md)** | **[📖 Installation Guide](STANDALONE_INSTALLER_GUIDE.md)**
+
+### Option 2: Manual Development Setup
+
+For developers who want to contribute or customize:
+
+```bash
+git clone https://github.com/Bboy9090/Bobbys-Workshop-.git
+cd Bobbys-Workshop-
+npm install
+npm run build
+npm run server:start  # In separate terminal
+```
+
+See [QUICK_START.md](QUICK_START.md) for detailed manual setup instructions.
 
 ## 🎨 Industrial Operator UI Theme
 
