@@ -6,9 +6,11 @@ import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { EmptyState } from './EmptyState';
 import { ErrorState } from './ErrorState';
+import { DeviceStateGuide } from './DeviceStateGuide';
 import { DeviceMobile, Lightning, ArrowsClockwise, Warning, AppleLogo } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { useAudioNotifications } from '@/hooks/use-audio-notifications';
+import { getAPIUrl, getWSUrl } from '@/lib/apiConfig';
 
 interface IOSDevice {
   udid: string;
@@ -32,7 +34,7 @@ export function IOSDFUFlashPanel() {
     setLogs(prev => [...prev, '[SCAN] Starting iOS device scan...']);
     
     try {
-      const response = await fetch('http://localhost:3001/api/ios/scan');
+      const response = await fetch(getAPIUrl('/api/ios/scan'));
       const data = await response.json();
       
       if (data.devices && data.devices.length > 0) {
@@ -62,7 +64,7 @@ export function IOSDFUFlashPanel() {
     });
     
     try {
-      const response = await fetch('http://localhost:3001/api/ios/dfu/enter', {
+      const response = await fetch(getAPIUrl('/api/ios/dfu/enter'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ udid }),
@@ -95,7 +97,7 @@ export function IOSDFUFlashPanel() {
     handleJobStart(jobId);
     
     try {
-      const ws = new WebSocket('ws://localhost:3001/ws/flash');
+      const ws = new WebSocket(getWSUrl('/ws/flash'));
       
       ws.onopen = () => {
         ws.send(JSON.stringify({
@@ -193,6 +195,12 @@ export function IOSDFUFlashPanel() {
         </AlertDescription>
       </Alert>
 
+      <DeviceStateGuide
+        requiredState="dfu"
+        platform="ios"
+        deviceName={devices.find(d => d.udid === selectedDevice)?.name || 'Your iPhone/iPad'}
+      />
+
       <div className="grid gap-6 md:grid-cols-2">
         <Card className="bg-card border-border">
           <CardHeader>
@@ -246,7 +254,7 @@ export function IOSDFUFlashPanel() {
                         </p>
                       )}
                     </div>
-                    <Lightning className="text-primary flex-shrink-0" />
+                    <Lightning className="text-primary shrink-0" />
                   </div>
                   
                   {selectedDevice === device.udid && (

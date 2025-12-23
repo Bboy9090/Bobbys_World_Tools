@@ -42,6 +42,7 @@ The Device Flashing Dashboard provides comprehensive firmware flashing capabilit
 ### 5. Safety Features
 
 - **Device Mode Verification**: Ensure device is in fastboot mode before flashing
+- **On-Screen Device State Guide**: Each workflow shows required device mode (fastboot/download/edl/dfu/recovery) and entry steps in-panel
 - **Battery Check Reminder**: Warn users about device battery levels
 - **USB Stability Warning**: Alert about stable connection requirements
 - **Error Handling**: Graceful error recovery with detailed error messages
@@ -89,7 +90,7 @@ Real-time progress display component with animated visualizations.
 
 **Hooks:**
 
-- `useFlashProgressSimulator()`: Simulates flash operations with realistic metrics
+- `useFlashProgressSimulator()`: Development-only progress simulation for UI work. Do not treat this as a real flash execution path.
 
 #### `FlashSpeedProfiler.tsx`
 
@@ -111,9 +112,9 @@ Device Selection & Validation
     ↓
 Create Flash Job
     ↓
-Start Progress Simulator
-    ↓
-Update Progress Every 100ms
+Start Backend Flash Operation
+   ↓
+Stream or Poll Progress From Backend
     ↓
 Real-Time UI Updates
     ↓
@@ -128,7 +129,7 @@ Update History & Metrics
 
 ### Backend Integration
 
-The dashboard is designed to work with a real backend API at `http://localhost:3001`:
+The frontend must not hardcode the backend host. API URLs are built via `getAPIUrl()` using `VITE_API_URL` (defaults to `http://localhost:3001`).
 
 #### Endpoints Used:
 
@@ -137,29 +138,36 @@ The dashboard is designed to work with a real backend API at `http://localhost:3
    - `GET /api/devices/scan`
    - Returns: `{ devices: Device[] }`
 
-2. **Flash Operation**
+2. **Fastboot workflows (Android)**
+
+   - `GET /api/fastboot/devices`
+   - `GET /api/fastboot/device-info?serial=...`
+   - `POST /api/fastboot/flash`
+
+3. **Samsung Download Mode (Odin) workflows (Android)**
+
+   - `GET /api/odin/scan`
+
+4. **Qualcomm EDL workflows (Android)**
+
+   - `GET /api/edl/scan`
+
+5. **Flash Operation (generic)**
 
    - `POST /api/flash/start`
    - Body: `{ deviceSerial, partition, imagePath }`
    - Returns: `{ jobId, status }`
 
-3. **Progress Monitoring**
+6. **Progress / status / cancellation (generic)**
 
-   - `GET /api/flash/progress/:jobId`
-   - Returns: `FlashProgress` object
+   - `GET /api/flash/status`
+   - `POST /api/flash/cancel`
 
-4. **Cancel Operation**
-   - `POST /api/flash/cancel/:jobId`
-   - Returns: `{ status: 'cancelled' }`
+If an endpoint is not available on the current platform/toolchain, the UI should surface an explicit error and keep the action disabled.
 
 ### Fallback Mode
 
-When backend is offline, the dashboard operates in **demo mode**:
-
-- Uses simulated devices
-- Progress simulation with realistic speed curves
-- All UI features remain functional
-- Data persists using `useKV` hooks
+Truth-first behavior: when the backend is offline or a required tool is missing, the UI shows an explicit error state and does not simulate a successful flash.
 
 ## Usage
 
@@ -318,8 +326,8 @@ Data survives page refreshes and is user-specific.
 3. **Backend Offline**
 
    - Detection: Fetch error on API calls
-   - Action: Switch to demo mode
-   - User Guidance: Toast notification about offline mode
+   - Action: Show an offline error state; disable flash start
+   - User Guidance: Toast/banner indicating backend is unreachable and which API base URL is configured
 
 4. **Flash Operation Failed**
    - Detection: progress.status === 'error'
@@ -505,4 +513,4 @@ interface FlashProgress {
 
 ## Conclusion
 
-The Device Flashing Dashboard provides a complete, professional-grade solution for firmware flashing with enterprise-level monitoring and tracking capabilities. It's designed to work seamlessly with real backend systems while providing a fully functional demo mode for development and testing.
+The flashing UI is designed to work with real backend endpoints and real device/tool detection. Development-only simulators can exist for UI work, but production UX must remain truth-first: no fake success, no simulated flashing when the backend/tools are unavailable.

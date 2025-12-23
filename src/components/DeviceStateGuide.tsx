@@ -4,7 +4,7 @@
  * Platform-specific instructions for iOS, Android, etc.
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -18,13 +18,15 @@ import {
   Monitor
 } from 'lucide-react';
 
-export type DeviceState = 'dfu' | 'fastboot' | 'recovery' | 'adb' | 'normal';
+export type DeviceState = 'dfu' | 'fastboot' | 'recovery' | 'adb' | 'normal' | 'download' | 'edl';
 export type Platform = 'ios' | 'android';
 
 interface DeviceStateGuideProps {
   requiredState: DeviceState;
   platform: Platform;
   deviceName?: string;
+  defaultExpanded?: boolean;
+  alwaysExpanded?: boolean;
 }
 
 const STATE_INSTRUCTIONS: Record<DeviceState, Record<Platform, { title: string; steps: string[] }>> = {
@@ -44,14 +46,45 @@ const STATE_INSTRUCTIONS: Record<DeviceState, Record<Platform, { title: string; 
       ]
     },
     android: {
-      title: 'Enter Download Mode (Equivalent to DFU for Samsung)',
+      title: 'Enter Download Mode (Samsung only)',
       steps: [
         '1. Power off the device completely',
-        '2. Hold Volume Down + Home + Power buttons simultaneously',
-        '3. When download mode screen appears, press Volume Up to confirm',
-        '✓ Device will show Odin-compatible download mode',
-      ]
+        '2. Use the Download Mode steps shown under DOWNLOAD state (varies by model)',
+        '✓ Device should show Download/Odin screen',
+      ],
     }
+  },
+  download: {
+    ios: {
+      title: 'Download Mode is not applicable to iOS',
+      steps: ['Use Recovery mode or DFU mode instead.'],
+    },
+    android: {
+      title: 'Enter Download Mode (Samsung / Odin)',
+      steps: [
+        '1. Power off the device completely',
+        '2. Common method (many newer models): hold Volume Up + Volume Down, then plug USB into the computer',
+        '3. If prompted, press Volume Up to continue into Download Mode',
+        '4. Connect via USB and keep the screen on the Download/Odin screen',
+        '✓ Device should be detected by Odin/Download scanners',
+      ],
+    },
+  },
+  edl: {
+    ios: {
+      title: 'EDL is not applicable to iOS',
+      steps: ['Use Recovery mode or DFU mode instead.'],
+    },
+    android: {
+      title: 'Enter EDL Mode (Qualcomm Emergency Download)',
+      steps: [
+        '1. Ensure you are authorized to service this device and have OEM/service documentation for this specific model',
+        '2. Power off the device and connect via USB when instructed by the service procedure',
+        '3. Install the correct USB drivers for Qualcomm interfaces on your computer',
+        '4. Put the device into EDL using an approved/service method for your model (varies by OEM and device)',
+        '✓ Device should enumerate as a Qualcomm interface / EDL device in Device Manager',
+      ],
+    },
   },
   fastboot: {
     ios: {
@@ -144,31 +177,41 @@ const STATE_BADGES: Record<DeviceState, { color: string; icon: React.ReactNode }
   recovery: { color: 'secondary', icon: <AlertTriangle className="h-4 w-4" /> },
   adb: { color: 'default', icon: <Smartphone className="h-4 w-4" /> },
   normal: { color: 'outline', icon: <Smartphone className="h-4 w-4" /> },
+  download: { color: 'outline', icon: <Monitor className="h-4 w-4" /> },
+  edl: { color: 'destructive', icon: <AlertTriangle className="h-4 w-4" /> },
 };
 
 export const DeviceStateGuide: React.FC<DeviceStateGuideProps> = ({ 
   requiredState, 
   platform,
-  deviceName = 'Your Device'
+  deviceName = 'Your Device',
+  defaultExpanded = true,
+  alwaysExpanded = true,
 }) => {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(defaultExpanded);
   const instructions = STATE_INSTRUCTIONS[requiredState][platform];
   const stateInfo = STATE_BADGES[requiredState];
 
+  useEffect(() => {
+    if (alwaysExpanded) setExpanded(true);
+  }, [alwaysExpanded]);
+
   return (
     <div className="space-y-3">
-      <Button
-        onClick={() => setExpanded(!expanded)}
-        variant="outline"
-        className="w-full justify-between"
-      >
-        <div className="flex items-center gap-2">
-          {stateInfo.icon}
-          <span className="font-mono uppercase">{requiredState}</span>
-          <span className="text-sm text-muted-foreground">Mode Required</span>
-        </div>
-        {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-      </Button>
+      {!alwaysExpanded && (
+        <Button
+          onClick={() => setExpanded(!expanded)}
+          variant="outline"
+          className="w-full justify-between"
+        >
+          <div className="flex items-center gap-2">
+            {stateInfo.icon}
+            <span className="font-mono uppercase">{requiredState}</span>
+            <span className="text-sm text-muted-foreground">Mode Required</span>
+          </div>
+          {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </Button>
+      )}
 
       {expanded && (
         <Card className="border-border bg-muted/30">

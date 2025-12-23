@@ -32,6 +32,8 @@ import { toast } from 'sonner';
 import { useKV } from '@github/spark/hooks';
 import type { AndroidDevice } from '@/types/android-devices';
 import { useAudioNotifications } from '@/hooks/use-audio-notifications';
+import { API_CONFIG, getAPIUrl } from '@/lib/apiConfig';
+import { DeviceStateGuide } from './DeviceStateGuide';
 
 interface PartitionInfo {
   name: string;
@@ -95,7 +97,7 @@ export function FastbootFlashingPanel() {
 
   const fetchDevices = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/fastboot/devices');
+      const response = await fetch(getAPIUrl(API_CONFIG.ENDPOINTS.FASTBOOT_DEVICES));
       if (response.ok) {
         const data = await response.json();
         setDevices(data.devices.map((d: any) => ({
@@ -111,7 +113,7 @@ export function FastbootFlashingPanel() {
 
   const fetchDeviceInfo = async (serial: string) => {
     try {
-      const response = await fetch(`http://localhost:3001/api/fastboot/device-info?serial=${serial}`);
+      const response = await fetch(`${getAPIUrl(API_CONFIG.ENDPOINTS.FASTBOOT_DEVICE_INFO)}?serial=${serial}`);
       if (response.ok) {
         const data = await response.json();
         setDeviceInfo(data);
@@ -234,7 +236,7 @@ export function FastbootFlashingPanel() {
       formData.append('partition', selectedPartition);
       formData.append('file', selectedFile);
 
-      const response = await fetch('http://localhost:3001/api/fastboot/flash', {
+      const response = await fetch(getAPIUrl(API_CONFIG.ENDPOINTS.FASTBOOT_FLASH), {
         method: 'POST',
         body: formData
       });
@@ -446,6 +448,13 @@ export function FastbootFlashingPanel() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+        <div className="mb-4">
+          <DeviceStateGuide
+            requiredState="fastboot"
+            platform="android"
+            deviceName={devices.find(d => d.serial === selectedDevice)?.model || selectedDevice || 'Your Android device'}
+          />
+        </div>
         <Tabs defaultValue="flash" className="w-full">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="flash">

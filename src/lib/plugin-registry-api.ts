@@ -41,87 +41,15 @@ let currentSyncStatus: RegistrySyncStatus = {
   pluginsRemoved: 0
 };
 
-// Mock registry data for development/testing
-const mockPlugins: RegistryPlugin[] = [
-  {
-    id: 'bobby.diagnostics.battery-health',
-    name: 'Battery Health Analyzer',
-    version: '1.0.0',
-    author: 'Bobby\'s Workshop',
-    description: 'Comprehensive battery health analysis for Android and iOS devices',
-    category: 'diagnostic',
-    platform: 'cross-platform',
-    certified: true,
-    signatureHash: 'sha256:abc123...',
-    downloadUrl: '/plugins/battery-health-1.0.0.zip',
-    dependencies: [],
-    permissions: ['diagnostics:read', 'device:read'],
-    lastUpdated: new Date().toISOString(),
-    downloads: 15420,
-    rating: 4.8,
-    reviews: 342,
-    checksum: 'sha256:def456...',
-    size: 45678,
-    verifiedPublisher: true,
-    securityScan: {
-      status: 'passed',
-      scannedAt: new Date().toISOString(),
-      issues: []
-    }
-  },
-  {
-    id: 'bobby.diagnostics.storage-analyzer',
-    name: 'Storage Health Analyzer',
-    version: '1.0.0',
-    author: 'Bobby\'s Workshop',
-    description: 'Comprehensive storage health analysis with wear level detection',
-    category: 'diagnostic',
-    platform: 'cross-platform',
-    certified: true,
-    signatureHash: 'sha256:ghi789...',
-    downloadUrl: '/plugins/storage-analyzer-1.0.0.zip',
-    dependencies: [],
-    permissions: ['diagnostics:read', 'device:read'],
-    lastUpdated: new Date().toISOString(),
-    downloads: 12350,
-    rating: 4.7,
-    reviews: 287,
-    checksum: 'sha256:jkl012...',
-    size: 52340,
-    verifiedPublisher: true,
-    securityScan: {
-      status: 'passed',
-      scannedAt: new Date().toISOString(),
-      issues: []
-    }
-  },
-  {
-    id: 'bobby.diagnostics.thermal-monitor',
-    name: 'Thermal Monitor',
-    version: '1.0.0',
-    author: 'Bobby\'s Workshop',
-    description: 'Real-time thermal monitoring and health analysis for mobile devices',
-    category: 'diagnostic',
-    platform: 'cross-platform',
-    certified: true,
-    signatureHash: 'sha256:mno345...',
-    downloadUrl: '/plugins/thermal-monitor-1.0.0.zip',
-    dependencies: [],
-    permissions: ['diagnostics:read', 'device:read'],
-    lastUpdated: new Date().toISOString(),
-    downloads: 8920,
-    rating: 4.6,
-    reviews: 198,
-    checksum: 'sha256:pqr678...',
-    size: 38900,
-    verifiedPublisher: true,
-    securityScan: {
-      status: 'passed',
-      scannedAt: new Date().toISOString(),
-      issues: []
-    }
+async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(url, init);
+  if (!response.ok) {
+    const body = await response.text().catch(() => '');
+    const detail = body ? ` - ${body.slice(0, 300)}` : '';
+    throw new Error(`Request failed (${response.status}) ${response.statusText}${detail}`);
   }
-];
+  return (await response.json()) as T;
+}
 
 const pluginRegistry: PluginRegistryAPI = {
   config: { ...DEFAULT_CONFIG },
@@ -134,9 +62,6 @@ const pluginRegistry: PluginRegistryAPI = {
     currentSyncStatus = { ...currentSyncStatus, status: 'syncing' };
 
     try {
-      // In production, this would fetch from the actual registry API
-      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
-
       const manifest = await this.fetchManifest();
       
       currentSyncStatus = {
@@ -167,25 +92,7 @@ const pluginRegistry: PluginRegistryAPI = {
     }
 
     try {
-      // In production, fetch from API
-      // const response = await fetch(`${this.config.apiUrl}/manifest`);
-      // const data = await response.json();
-
-      // For development, use mock data
-      const manifest: RegistryManifest = {
-        version: '1.0.0',
-        generatedAt: new Date().toISOString(),
-        plugins: mockPlugins,
-        categories: {
-          diagnostic: mockPlugins.filter(p => p.category === 'diagnostic').length,
-          flash: 0,
-          utility: 0,
-          security: 0,
-          repair: 0
-        },
-        totalDownloads: mockPlugins.reduce((sum, p) => sum + p.downloads, 0)
-      };
-
+      const manifest = await fetchJson<RegistryManifest>(`${this.config.apiUrl}/manifest`);
       manifestCache = { data: manifest, timestamp: now };
       return manifest;
     } catch (error) {
@@ -203,19 +110,14 @@ const pluginRegistry: PluginRegistryAPI = {
     }
 
     try {
-      // In production, fetch from API
-      // const response = await fetch(`${this.config.apiUrl}/plugins/${pluginId}`);
-      // const data = await response.json();
-
-      // For development, find in mock data
-      const plugin = mockPlugins.find(p => p.id === pluginId) || null;
-      
-      if (plugin) {
-        pluginCache.set(pluginId, { data: plugin, timestamp: now });
-      }
-
+      const plugin = await fetchJson<RegistryPlugin>(`${this.config.apiUrl}/plugins/${encodeURIComponent(pluginId)}`);
+      pluginCache.set(pluginId, { data: plugin, timestamp: now });
       return plugin;
     } catch (error) {
+      // If backend returns 404, treat as not found (not an exception for the UI).
+      if (error instanceof Error && /\(404\)/.test(error.message)) {
+        return null;
+      }
       console.error(`[PluginRegistry] Failed to fetch plugin ${pluginId}:`, error);
       throw error;
     }
@@ -300,29 +202,56 @@ const pluginRegistry: PluginRegistryAPI = {
       throw new Error(`Plugin not found: ${pluginId}`);
     }
 
-    // Simulate download progress
-    for (let i = 0; i <= 100; i += 10) {
-      onProgress?.(i);
-      await new Promise(resolve => setTimeout(resolve, 100));
+    onProgress?.(0);
+
+    const downloadUrl = (() => {
+      try {
+        return new URL(plugin.downloadUrl).toString();
+      } catch {
+        return new URL(plugin.downloadUrl, `${this.config.apiUrl}/`).toString();
+      }
+    })();
+
+    const response = await fetch(downloadUrl);
+    if (!response.ok) {
+      const body = await response.text().catch(() => '');
+      const detail = body ? ` - ${body.slice(0, 300)}` : '';
+      throw new Error(`Download failed (${response.status}) ${response.statusText}${detail}`);
     }
 
-    // In production, this would actually download the plugin
-    // const response = await fetch(plugin.downloadUrl);
-    // return await response.blob();
+    const totalBytesHeader = response.headers.get('content-length');
+    const totalBytes = totalBytesHeader ? Number(totalBytesHeader) : undefined;
+    const bodyStream = response.body;
 
-    // For development, return empty blob
-    return new Blob(['mock plugin content'], { type: 'application/zip' });
+    if (!bodyStream || !totalBytes || Number.isNaN(totalBytes)) {
+      const blob = await response.blob();
+      onProgress?.(100);
+      return blob;
+    }
+
+    const reader = bodyStream.getReader();
+    const chunks: Uint8Array[] = [];
+    let bytesRead = 0;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value) {
+        chunks.push(value);
+        bytesRead += value.byteLength;
+        onProgress?.(Math.min(100, (bytesRead / totalBytes) * 100));
+      }
+    }
+
+    onProgress?.(100);
+    return new Blob(chunks, { type: 'application/zip' });
   },
 
   async verifyPluginSignature(pluginId: string, signatureHash: string): Promise<boolean> {
-    const plugin = await this.fetchPluginDetails(pluginId);
-    
-    if (!plugin) {
-      return false;
-    }
-
-    // In production, this would verify the cryptographic signature
-    return plugin.signatureHash === signatureHash;
+    // Cryptographic verification must be done by the registry/backend.
+    const url = `${this.config.apiUrl}/plugins/${encodeURIComponent(pluginId)}/verify?signatureHash=${encodeURIComponent(signatureHash)}`;
+    const result = await fetchJson<{ valid: boolean }>(url);
+    return result.valid;
   },
 
   async getDependencies(pluginId: string): Promise<RegistryPlugin[]> {

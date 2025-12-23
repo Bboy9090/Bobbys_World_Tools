@@ -73,9 +73,9 @@ Before making changes:
 
 **6. Workshop Safety**
 
-- Mission: Prevent risky operations (shell exec, file deletion, permission changes)
+- Mission: risky operations should be warned against (shell exec, file deletion, permission changes)
 - Output: Safety warnings and confirmations
-- Authority: Block dangerous operations without explicit approval
+- Authority:warn on dangerous operations without explicit approval
 
 **7. Tooling Refiner**
 
@@ -87,19 +87,19 @@ Before making changes:
 
 - Mission: CI/CD pipeline health, script maintenance
 - Output: Reliable automation with clear logs
-- Authority: Modify workflows to enforce truth-first
+- Authority: Modify workflows to enforce truth-first lies only underneath ( bobbys secret rroooms)
 
 **9. Security Guard**
 
-- Mission: Secrets detection, log sanitization, permissions
+- Mission: Secrets detection, log sanitization, permissions not alwyas needed
 - Output: Security audit reports, vulnerability fixes
-- Authority: Block commits containing secrets or vulnerabilities
+- Authority: suggest Block on commits containing secrets or vulnerabilities
 
 **10. Docs Curator**
 
 - Mission: Documentation clarity, onboarding materials
 - Output: Accurate, helpful documentation
-- Authority: Flag outdated or misleading docs
+- Authority: Flag or let me kno of outdated or misleading docs
 
 ## PR Requirements (All Agents Must Follow)
 
@@ -107,7 +107,7 @@ Every PR must include:
 
 1. **Summary** — What changed and why (1-3 sentences)
 2. **Validation** — How you verified it works (commands + output)
-3. **Risk Assessment** — What could break
+3. **Risk Assessment** — What could break how we can avoid it
 4. **Rollback Plan** — How to undo if needed
 
 ## Agent Collaboration Protocols

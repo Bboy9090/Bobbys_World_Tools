@@ -370,8 +370,13 @@ export function useBootForgeFlash(options: UseBootForgeFlashOptions = {}) {
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          
-          if (data.type === 'device_connected' || data.type === 'device_disconnected') {
+
+          if (
+            data?.type === 'connected' ||
+            data?.type === 'disconnected' ||
+            data?.type === 'device_connected' ||
+            data?.type === 'device_disconnected'
+          ) {
             scanDevices();
           }
         } catch (error) {

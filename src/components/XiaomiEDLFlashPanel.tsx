@@ -12,7 +12,9 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { EmptyState } from './EmptyState';
 import { ErrorState } from './ErrorState';
+import { DeviceStateGuide } from './DeviceStateGuide';
 import { useApp } from '@/lib/app-context';
+import { getAPIUrl } from '@/lib/apiConfig';
 import {
   DeviceMobile,
   Lightning,
@@ -85,7 +87,7 @@ export function XiaomiEDLFlashPanel() {
     setIsScanning(true);
     setError(null);
     try {
-      const response = await fetch('http://localhost:3001/api/edl/scan');
+      const response = await fetch(getAPIUrl('/api/edl/scan'));
       if (response.ok) {
         const data = await response.json();
         if (data.devices && data.devices.length > 0) {
@@ -438,6 +440,12 @@ export function XiaomiEDLFlashPanel() {
               and have proper backup before proceeding.
             </AlertDescription>
           </Alert>
+
+          <DeviceStateGuide
+            requiredState="edl"
+            platform="android"
+            deviceName={selectedDeviceData?.model || selectedDeviceData?.serial || 'Your Xiaomi device'}
+          />
 
           <div className="flex items-center justify-between">
             <div className="space-y-1">

@@ -9,124 +9,43 @@ import type {
   FirmwareVersion 
 } from '../types/firmware';
 
-const API_BASE = 'http://localhost:3001/api/firmware';
+import { getAPIUrl } from './apiConfig';
 
-// Mock firmware database for development
-const mockFirmwareDb: FirmwareDatabase[] = [
-  {
-    brand: 'Samsung',
-    model: 'Galaxy S24',
-    versions: [
-      { version: 'S928BXXS3AXE1', buildNumber: 'AXE1', buildDate: '2024-05-01', securityPatch: '2024-05-01' },
-      { version: 'S928BXXS3AXD1', buildNumber: 'AXD1', buildDate: '2024-04-01', securityPatch: '2024-04-01' },
-    ],
-    latestVersion: 'S928BXXS3AXE1',
-    latestBuildDate: '2024-05-01',
-    officialDownloadUrl: 'https://www.sammobile.com/firmwares/',
-  },
-  {
-    brand: 'Google',
-    model: 'Pixel 8',
-    versions: [
-      { version: 'AP2A.240605.024', buildNumber: '11867885', buildDate: '2024-06-05', securityPatch: '2024-06-05' },
-      { version: 'AP1A.240505.005', buildNumber: '11762143', buildDate: '2024-05-05', securityPatch: '2024-05-05' },
-    ],
-    latestVersion: 'AP2A.240605.024',
-    latestBuildDate: '2024-06-05',
-    officialDownloadUrl: 'https://developers.google.com/android/images',
-  },
-  {
-    brand: 'OnePlus',
-    model: 'OnePlus 12',
-    versions: [
-      { version: 'CPH2573_14.0.0.700', buildNumber: '700', buildDate: '2024-05-15', securityPatch: '2024-05-01' },
-    ],
-    latestVersion: 'CPH2573_14.0.0.700',
-    latestBuildDate: '2024-05-15',
-    officialDownloadUrl: 'https://www.oneplus.com/support/softwareupgrade',
-  },
-];
+const API_BASE = getAPIUrl('/api/firmware');
+
+async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(url, init);
+  if (!response.ok) {
+    const body = await response.text().catch(() => '');
+    const detail = body ? ` - ${body.slice(0, 300)}` : '';
+    throw new Error(`Request failed (${response.status}) ${response.statusText}${detail}`);
+  }
+  return (await response.json()) as T;
+}
 
 export async function getAllBrandsWithFirmware(): Promise<string[]> {
-  try {
-    const response = await fetch(`${API_BASE}/brands`);
-    if (response.ok) {
-      return await response.json();
-    }
-  } catch {
-    // Fallback to mock
-  }
-  
-  return [...new Set(mockFirmwareDb.map(f => f.brand))];
+  return await fetchJson<string[]>(`${API_BASE}/brands`);
 }
 
 export async function getBrandFirmwareList(brand: string): Promise<BrandFirmwareList> {
-  try {
-    const response = await fetch(`${API_BASE}/brands/${encodeURIComponent(brand)}`);
-    if (response.ok) {
-      return await response.json();
-    }
-  } catch {
-    // Fallback to mock
-  }
-  
-  const brandFirmware = mockFirmwareDb.filter(f => f.brand.toLowerCase() === brand.toLowerCase());
-  
-  return {
-    brand,
-    models: brandFirmware.map(f => ({
-      model: f.model,
-      versions: f.versions,
-      latestVersion: f.latestVersion,
-      downloadUrls: f.officialDownloadUrl ? [f.officialDownloadUrl] : []
-    }))
-  };
+  return await fetchJson<BrandFirmwareList>(`${API_BASE}/brands/${encodeURIComponent(brand)}`);
 }
 
 export async function searchFirmware(query: string): Promise<FirmwareDatabase[]> {
-  try {
-    const response = await fetch(`${API_BASE}/search?q=${encodeURIComponent(query)}`);
-    if (response.ok) {
-      return await response.json();
-    }
-  } catch {
-    // Fallback to mock
-  }
-  
-  const lowerQuery = query.toLowerCase();
-  return mockFirmwareDb.filter(f => 
-    f.brand.toLowerCase().includes(lowerQuery) ||
-    f.model.toLowerCase().includes(lowerQuery) ||
-    f.latestVersion.toLowerCase().includes(lowerQuery)
-  );
+  return await fetchJson<FirmwareDatabase[]>(`${API_BASE}/search?q=${encodeURIComponent(query)}`);
 }
 
 export async function checkDeviceFirmware(deviceSerial: string): Promise<FirmwareCheckResult> {
   try {
-    const response = await fetch(`${API_BASE}/check/${encodeURIComponent(deviceSerial)}`);
-    if (response.ok) {
-      return await response.json();
-    }
-  } catch {
-    // Fallback
-  }
-  
-  // Return mock result
-  return {
-    deviceSerial,
-    success: true,
-    firmware: {
+    return await fetchJson<FirmwareCheckResult>(`${API_BASE}/check/${encodeURIComponent(deviceSerial)}`);
+  } catch (error) {
+    return {
       deviceSerial,
-      deviceModel: 'Unknown Device',
-      current: {
-        version: 'Unknown',
-      },
-      updateAvailable: false,
-      securityStatus: 'unknown',
-      lastChecked: Date.now()
-    },
-    timestamp: Date.now()
-  };
+      success: false,
+      error: error instanceof Error ? error.message : 'Firmware check failed',
+      timestamp: Date.now(),
+    };
+  }
 }
 
 export async function checkMultipleDevicesFirmware(
@@ -144,20 +63,15 @@ export async function checkMultipleDevicesFirmware(
 
 export async function getFirmwareInfo(brand: string, model: string): Promise<FirmwareDatabase | null> {
   try {
-    const response = await fetch(
+    return await fetchJson<FirmwareDatabase>(
       `${API_BASE}/info/${encodeURIComponent(brand)}/${encodeURIComponent(model)}`
     );
-    if (response.ok) {
-      return await response.json();
+  } catch (error) {
+    if (error instanceof Error && /\(404\)/.test(error.message)) {
+      return null;
     }
-  } catch {
-    // Fallback
+    throw error;
   }
-  
-  return mockFirmwareDb.find(
-    f => f.brand.toLowerCase() === brand.toLowerCase() && 
-         f.model.toLowerCase() === model.toLowerCase()
-  ) || null;
 }
 
 export async function downloadFirmware(
@@ -166,12 +80,40 @@ export async function downloadFirmware(
   version: string,
   onProgress?: (progress: number) => void
 ): Promise<Blob | null> {
-  // Simulate download progress
-  for (let i = 0; i <= 100; i += 10) {
-    onProgress?.(i);
-    await new Promise(resolve => setTimeout(resolve, 200));
+  onProgress?.(0);
+  const url = `${API_BASE}/download?brand=${encodeURIComponent(brand)}&model=${encodeURIComponent(model)}&version=${encodeURIComponent(version)}`;
+
+  const response = await fetch(url);
+  if (!response.ok) {
+    const body = await response.text().catch(() => '');
+    const detail = body ? ` - ${body.slice(0, 300)}` : '';
+    throw new Error(`Firmware download failed (${response.status}) ${response.statusText}${detail}`);
   }
-  
-  // In production, this would actually download the firmware
-  return new Blob(['mock firmware data'], { type: 'application/octet-stream' });
+
+  const totalBytesHeader = response.headers.get('content-length');
+  const totalBytes = totalBytesHeader ? Number(totalBytesHeader) : undefined;
+  const bodyStream = response.body;
+
+  if (!bodyStream || !totalBytes || Number.isNaN(totalBytes)) {
+    const blob = await response.blob();
+    onProgress?.(100);
+    return blob;
+  }
+
+  const reader = bodyStream.getReader();
+  const chunks: Uint8Array[] = [];
+  let bytesRead = 0;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (value) {
+      chunks.push(value);
+      bytesRead += value.byteLength;
+      onProgress?.(Math.min(100, (bytesRead / totalBytes) * 100));
+    }
+  }
+
+  onProgress?.(100);
+  return new Blob(chunks, { type: 'application/octet-stream' });
 }

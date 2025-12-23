@@ -1,6 +1,8 @@
 import { PluginMarketplace } from "../PluginMarketplace";
 import { PluginManager } from "../PluginManager";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { featureFlags } from "@/lib/featureFlags";
 import { 
     Storefront, 
     Package, 
@@ -9,6 +11,35 @@ import {
 } from '@phosphor-icons/react';
 
 export function PluginsTab() {
+    if (!featureFlags.experimentalToolbox) {
+        return (
+            <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded bg-primary/10 flex items-center justify-center">
+                        <Plug weight="duotone" className="text-primary" size={20} />
+                    </div>
+                    <div>
+                        <h2 className="text-xl font-semibold text-foreground">
+                            Plugins
+                        </h2>
+                        <p className="text-xs text-muted-foreground">
+                            Marketplace and plugin execution are disabled by default.
+                        </p>
+                    </div>
+                </div>
+
+                <Alert>
+                    <Plug className="h-4 w-4" />
+                    <AlertTitle>Disabled</AlertTitle>
+                    <AlertDescription>
+                        Plugin marketplace and management are gated behind the experimental toolbox flag
+                        and require a real backend registry to be available.
+                    </AlertDescription>
+                </Alert>
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-4">
             <div className="flex items-center gap-3">
@@ -35,10 +66,6 @@ export function PluginsTab() {
                         <Package weight="duotone" size={16} />
                         Installed
                     </TabsTrigger>
-                    <TabsTrigger value="submit" className="gap-1.5 text-xs">
-                        <CloudArrowUp weight="duotone" size={16} />
-                        Submit
-                    </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="marketplace" className="mt-4">
@@ -47,21 +74,6 @@ export function PluginsTab() {
 
                 <TabsContent value="installed" className="mt-4">
                     <PluginManager onNavigate={() => {}} />
-                </TabsContent>
-
-                <TabsContent value="submit" className="mt-4">
-                    <div className="p-8 text-center">
-                        <CloudArrowUp className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-                        <h3 className="text-lg font-semibold text-foreground mb-2">
-                            Submit Your Plugin
-                        </h3>
-                        <p className="text-sm text-muted-foreground mb-4">
-                            Share your tools with the community. All plugins are automatically tested for security and quality.
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                            Submission portal coming soon
-                        </p>
-                    </div>
                 </TabsContent>
             </Tabs>
         </div>

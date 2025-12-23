@@ -12,7 +12,9 @@ import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { EmptyState } from './EmptyState';
 import { ErrorState } from './ErrorState';
+import { DeviceStateGuide } from './DeviceStateGuide';
 import { useApp } from '@/lib/app-context';
+import { getAPIUrl } from '@/lib/apiConfig';
 import {
   DeviceMobile,
   Lightning,
@@ -88,7 +90,7 @@ export function SamsungOdinFlashPanel() {
     setIsScanning(true);
     setError(null);
     try {
-      const response = await fetch('http://localhost:3001/api/odin/scan');
+      const response = await fetch(getAPIUrl('/api/odin/scan'));
       if (response.ok) {
         const data = await response.json();
         if (data.devices && data.devices.length > 0) {
@@ -351,6 +353,12 @@ export function SamsungOdinFlashPanel() {
               This cannot be reversed and affects warranty status, Samsung Pay, and some banking apps.
             </AlertDescription>
           </Alert>
+
+          <DeviceStateGuide
+            requiredState="download"
+            platform="android"
+            deviceName={selectedDeviceData?.model || selectedDeviceData?.serial || 'Your Samsung device'}
+          />
 
           <div className="flex items-center justify-between">
             <div className="space-y-1">

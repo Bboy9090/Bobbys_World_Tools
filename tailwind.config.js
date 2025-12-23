@@ -1,4 +1,5 @@
 import fs from "fs";
+import plugin from "tailwindcss/plugin";
 
 /** @type {import('tailwindcss').Config} */
 
@@ -28,11 +29,6 @@ const defaultTheme = {
     },
   },
   extend: {
-    screens: {
-      coarse: { raw: "(pointer: coarse)" },
-      fine: { raw: "(pointer: fine)" },
-      pwa: { raw: "(display-mode: standalone)" },
-    },
     colors: {
       neutral: {
         1: "var(--color-neutral-1)",
@@ -154,4 +150,11 @@ const defaultTheme = {
 export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: { ...defaultTheme, ...theme },
+  plugins: [
+    plugin(({ addVariant }) => {
+      addVariant("coarse", "@media (pointer: coarse)");
+      addVariant("fine", "@media (pointer: fine)");
+      addVariant("pwa", "@media (display-mode: standalone)");
+    }),
+  ],
 };
