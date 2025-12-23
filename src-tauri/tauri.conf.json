@@ -4,28 +4,53 @@
     "distDir": "../dist",
     "devPath": "http://localhost:5173",
     "beforeDevCommand": "npm run dev",
-    "beforeBuildCommand": "npm run build"
+    "beforeBuildCommand": "npm run build && npm run server:install"
   },
   "package": {
-    "productName": "Bobbys-Workshop",
-    "version": "0.1.0"
+    "productName": "Bobby's Workshop",
+    "version": "1.0.0"
   },
   "tauri": {
+    "allowlist": {
+      "all": false,
+      "shell": {
+        "all": false,
+        "execute": true,
+        "sidecar": true,
+        "open": true
+      },
+      "path": {
+        "all": true
+      },
+      "fs": {
+        "all": true,
+        "scope": ["$RESOURCE/**", "$APPDATA/**", "$APPDATA/BobbysWorkshop/**"]
+      },
+      "http": {
+        "all": false,
+        "request": true,
+        "scope": ["http://localhost:3001/*", "http://localhost:3001/**"]
+      }
+    },
     "windows": [
       {
-        "title": "Bobbys-Workshop",
-        "width": 800,
-        "height": 600,
+        "title": "Bobby's Workshop - Device Management Platform",
+        "width": 1400,
+        "height": 900,
+        "minWidth": 1024,
+        "minHeight": 768,
         "resizable": true,
-        "fullscreen": false
+        "fullscreen": false,
+        "decorations": true,
+        "center": true
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; connect-src 'self' http://localhost:3001 ws://localhost:3001; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:"
     },
     "bundle": {
       "active": true,
-      "targets": "all",
+      "targets": ["msi", "nsis", "dmg", "app"],
       "identifier": "com.bboy9090.bobbysworkshop",
       "icon": [
         "icons/32x32.png",
@@ -33,7 +58,44 @@
         "icons/128x128@2x.png",
         "icons/icon.icns",
         "icons/icon.ico"
-      ]
+      ],
+      "resources": [
+        "../server/**/*",
+        "../core/**/*",
+        "../workflows/**/*",
+        "../runtime/**/*"
+      ],
+      "externalBin": [],
+      "copyright": "Copyright © 2024 Bobby's Workshop Team",
+      "category": "DeveloperTool",
+      "shortDescription": "Professional Device Management Platform",
+      "longDescription": "Bobby's Workshop is a comprehensive device management, flashing, and diagnostic toolkit for Android and iOS devices.",
+      "deb": {
+        "depends": []
+      },
+      "macOS": {
+        "frameworks": [],
+        "minimumSystemVersion": "10.13",
+        "entitlements": null,
+        "exceptionDomain": "",
+        "signingIdentity": null,
+        "providerShortName": null
+      },
+      "windows": {
+        "certificateThumbprint": null,
+        "digestAlgorithm": "sha256",
+        "timestampUrl": "",
+        "wix": {
+          "language": "en-US"
+        },
+        "nsis": {
+          "installerIcon": "icons/icon.ico",
+          "installMode": "currentUser",
+          "languages": ["en-US"],
+          "displayLanguageSelector": false,
+          "license": "../LICENSE"
+        }
+      }
     }
   }
 }
