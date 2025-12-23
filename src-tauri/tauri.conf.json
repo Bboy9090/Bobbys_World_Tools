@@ -4,7 +4,7 @@
     "distDir": "../dist",
     "devPath": "http://localhost:5173",
     "beforeDevCommand": "npm run dev",
-    "beforeBuildCommand": "npm run build && npm run server:install"
+    "beforeBuildCommand": "npm run build"
   },
   "package": {
     "productName": "Bobby's Workshop",

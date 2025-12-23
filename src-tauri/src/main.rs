@@ -90,11 +90,9 @@ fn start_backend_server(app_handle: &AppHandle) -> Result<Child, std::io::Error>
     let node_exe = match find_node_executable() {
         Some(exe) => exe,
         None => {
-            eprintln!("[Tauri] ERROR: Node.js not found!");
-            eprintln!("[Tauri] Please install Node.js from https://nodejs.org/");
             return Err(std::io::Error::new(
                 std::io::ErrorKind::NotFound,
-                "Node.js executable not found"
+                "Node.js executable not found. Please install Node.js from https://nodejs.org/"
             ));
         }
     };
@@ -112,14 +110,13 @@ fn start_backend_server(app_handle: &AppHandle) -> Result<Child, std::io::Error>
     println!("[Tauri] Server path: {:?}", server_path);
     
     if !server_path.exists() {
-        eprintln!("[Tauri] ERROR: Server file not found at {:?}", server_path);
         return Err(std::io::Error::new(
             std::io::ErrorKind::NotFound,
-            "Server files not found in bundle"
+            format!("Server files not found in bundle at {:?}", server_path)
         ));
     }
     
-    // Check if port 3001 is available
+    // Use port 3001 for the backend server
     let port = 3001;
     
     // Start the Node.js server

@@ -127,7 +127,8 @@ function installDependencies() {
   }
 
   // Install server dependencies
-  if (!execCommand('cd server && npm install')) {
+  const serverDir = path.join(ROOT_DIR, 'server');
+  if (!execCommand('npm install', { cwd: serverDir })) {
     log('❌ Failed to install server dependencies', 'red');
     process.exit(1);
   }
