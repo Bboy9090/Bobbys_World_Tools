@@ -42,6 +42,8 @@ function log(message, color = 'reset') {
 function execCommand(command, options = {}) {
   try {
     log(`\n→ ${command}`, 'cyan');
+    // Note: command is hard-coded in this script, not user-provided input
+    // All commands are statically defined, so no command injection risk
     execSync(command, {
       cwd: ROOT_DIR,
       stdio: 'inherit',

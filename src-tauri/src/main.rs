@@ -131,7 +131,10 @@ fn start_backend_server(app_handle: &AppHandle) -> Result<Child, std::io::Error>
     println!("[Tauri] Backend API server started on http://localhost:{}", port);
     println!("[Tauri] Server PID: {}", child.id());
     
-    // Give the server a moment to start
+    // Give the server a moment to start up and bind to the port
+    // This is a simple synchronous wait that ensures the server is ready
+    // before the frontend attempts to connect. For production, consider
+    // implementing a health check poll loop instead.
     std::thread::sleep(std::time::Duration::from_secs(2));
     
     Ok(child)
