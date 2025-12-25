@@ -503,6 +503,14 @@ cargo build --release --bin trapdoor_cli
 - [macOS Build and Distribution Guide](./MACOS_BUILD_GUIDE.md) - **NEW** - Complete guide for building .app bundles
 - [Tauri Build Guide](./TAURI_BUILD_GUIDE.md) - General Tauri build instructions
 
+### Research & Compliance
+
+- [iOS Tooling Ecosystem Research](./docs/research/) - **NEW** - Comprehensive analysis of iOS tooling patterns
+  - [Full Analysis](./docs/research/IOS_TOOLING_ECOSYSTEM_ANALYSIS.md) - Complete research findings
+  - [Comparison Matrix](./docs/research/COMPARISON_MATRIX.md) - Quick reference guide
+  - [Design Principles](./docs/research/DESIGN_PRINCIPLES.md) - Compliant implementation patterns
+  - [Implementation Roadmap](./docs/research/IMPLEMENTATION_ROADMAP.md) - Phased development plan
+
 ### Trapdoor / Pandora's Room Documentation
 
 - [Trapdoor CLI Usage Guide](./TRAPDOOR_CLI_USAGE.md) - Command-line interface
