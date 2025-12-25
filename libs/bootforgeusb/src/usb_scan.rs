@@ -1,6 +1,5 @@
 use crate::model::{UsbEvidence, InterfaceHint};
-use rusb::{Context, Device, DeviceDescriptor, UsbContext};
-use std::time::Duration;
+use rusb::{Context, Device, UsbContext};
 
 pub fn scan_usb_devices() -> Result<Vec<UsbEvidence>, Box<dyn std::error::Error>> {
     let context = Context::new()?;
@@ -26,19 +25,18 @@ fn extract_usb_evidence<T: UsbContext>(device: &Device<T>) -> Result<UsbEvidence
     let pid = format!("{:04x}", device_desc.product_id());
     
     let handle = device.open();
-    let timeout = Duration::from_secs(1);
     
     let manufacturer = handle.as_ref()
         .ok()
-        .and_then(|h| h.read_manufacturer_string_ascii(&device_desc, timeout).ok());
+        .and_then(|h| h.read_manufacturer_string_ascii(&device_desc).ok());
     
     let product = handle.as_ref()
         .ok()
-        .and_then(|h| h.read_product_string_ascii(&device_desc, timeout).ok());
+        .and_then(|h| h.read_product_string_ascii(&device_desc).ok());
     
     let serial = handle.as_ref()
         .ok()
-        .and_then(|h| h.read_serial_number_string_ascii(&device_desc, timeout).ok());
+        .and_then(|h| h.read_serial_number_string_ascii(&device_desc).ok());
     
     let (interface_class, interface_hints) = get_interface_info(device);
     

@@ -3,7 +3,7 @@ pub mod usb_scan;
 pub mod classify;
 pub mod tools;
 
-use model::{DeviceRecord, Evidence, ToolEvidence};
+use model::{DeviceRecord, Evidence};
 use std::collections::HashMap;
 
 pub fn scan() -> Result<Vec<DeviceRecord>, Box<dyn std::error::Error>> {

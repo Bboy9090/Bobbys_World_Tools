@@ -7,7 +7,7 @@
     "beforeBuildCommand": "npm run build"
   },
   "package": {
-    "productName": "Bobby's Workshop",
+    "productName": "Bobbys Workshop",
     "version": "1.0.0"
   },
   "tauri": {
@@ -91,7 +91,7 @@
         "nsis": {
           "installerIcon": "icons/icon.ico",
           "installMode": "currentUser",
-          "languages": ["en-US"],
+          "languages": ["English"],
           "displayLanguageSelector": false,
           "license": "../LICENSE"
         }

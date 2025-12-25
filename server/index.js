@@ -1,11 +1,12 @@
 import express from 'express';
-import { execSync } from 'child_process';
+import { execSync, spawn } from 'child_process';
+import { randomUUID } from 'crypto';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { Readable } from 'stream';
 import cors from 'cors';
-import { WebSocketServer } from 'ws';
+import WebSocket, { WebSocketServer } from 'ws';
 import { createServer } from 'http';
 import { AuthorizationTriggers } from './authorization-triggers.js';
 import trapdoorRouter from '../core/api/trapdoor.js';
@@ -20,6 +21,14 @@ app.use(express.json());
 const authTriggers = new AuthorizationTriggers();
 
 const server = createServer(app);
+
+// Track open HTTP sockets so we can force-close them during shutdown.
+const httpSockets = new Set();
+server.on('connection', (socket) => {
+  httpSockets.add(socket);
+  socket.on('close', () => httpSockets.delete(socket));
+});
+
 const wss = new WebSocketServer({ server, path: '/ws/device-events' });
 const wssCorrelation = new WebSocketServer({ server, path: '/ws/correlation' });
 const wssAnalytics = new WebSocketServer({ server, path: '/ws/analytics' });
@@ -1894,25 +1903,68 @@ function getDiskUsedPercent() {
 
 const wssFlashProgress = new WebSocketServer({ server, path: '/ws/flash-progress' });
 const flashProgressClients = new Map();
+const flashProgressMonitorClients = new Set();
 
 wssFlashProgress.on('connection', (ws, req) => {
-  const pathParts = req.url.split('/');
-  const jobId = pathParts[pathParts.length - 1];
-  
-  if (!jobId || jobId === 'flash-progress') {
-    console.log('[Flash WS] Client connected without job ID');
-    ws.close();
+  const rawUrl = req.url || '';
+  const parts = rawUrl.split('/').filter(Boolean);
+  const maybeJobId = parts.length ? parts[parts.length - 1] : null;
+
+  // Two supported patterns:
+  // - /ws/flash-progress            -> monitor (all jobs)
+  // - /ws/flash-progress/{jobId}    -> job-specific
+  const isMonitor = !maybeJobId || maybeJobId === 'flash-progress';
+
+  if (isMonitor) {
+    console.log('[Flash WS] Monitor client connected');
+    flashProgressMonitorClients.add(ws);
+
+    ws.on('message', (data) => {
+      try {
+        const text = typeof data === 'string' ? data : data.toString();
+        const message = JSON.parse(text);
+        if (message?.type === 'ping') {
+          ws.send(JSON.stringify({ type: 'pong', timestamp: Date.now() }));
+        }
+      } catch {
+        // ignore
+      }
+    });
+
+    ws.on('close', () => {
+      console.log('[Flash WS] Monitor client disconnected');
+      flashProgressMonitorClients.delete(ws);
+    });
+
+    ws.on('error', (error) => {
+      console.error('[Flash WS] Monitor error:', error);
+      flashProgressMonitorClients.delete(ws);
+    });
+
     return;
   }
-  
+
+  const jobId = maybeJobId;
   console.log(`[Flash WS] Client connected for job ${jobId}`);
   flashProgressClients.set(jobId, ws);
-  
+
+  ws.on('message', (data) => {
+    try {
+      const text = typeof data === 'string' ? data : data.toString();
+      const message = JSON.parse(text);
+      if (message?.type === 'ping') {
+        ws.send(JSON.stringify({ type: 'pong', timestamp: Date.now() }));
+      }
+    } catch {
+      // ignore
+    }
+  });
+
   ws.on('close', () => {
     console.log(`[Flash WS] Client disconnected for job ${jobId}`);
     flashProgressClients.delete(jobId);
   });
-  
+
   ws.on('error', (error) => {
     console.error(`[Flash WS] Error for job ${jobId}:`, error);
     flashProgressClients.delete(jobId);
@@ -1920,10 +1972,241 @@ wssFlashProgress.on('connection', (ws, req) => {
 });
 
 function broadcastFlashProgress(jobId, data) {
+  const payload = JSON.stringify(data);
+
   const ws = flashProgressClients.get(jobId);
-  if (ws && ws.readyState === ws.OPEN) {
-    ws.send(JSON.stringify(data));
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(payload);
   }
+
+  for (const client of flashProgressMonitorClients) {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(payload);
+    }
+  }
+}
+
+// -----------------------------
+// Flash execution (truth-first)
+// -----------------------------
+
+// In-memory job registry. This is intentionally ephemeral (dev-tool workflow).
+const flashJobs = new Map();
+const flashHistory = [];
+
+function nowIso() {
+  return new Date().toISOString();
+}
+
+function safePartitionName(name) {
+  return typeof name === 'string' && /^[a-zA-Z0-9._-]{1,32}$/.test(name);
+}
+
+function emitFlashUpdate(jobId, type, data) {
+  broadcastFlashProgress(jobId, {
+    type,
+    jobId,
+    timestamp: Date.now(),
+    data,
+  });
+}
+
+function pushFlashLog(job, message) {
+  const line = `[${new Date().toLocaleTimeString()}] ${message}`;
+  job.logs.push(line);
+  emitFlashUpdate(job.id, 'log', { message });
+}
+
+function setFlashStatus(job, status, stage) {
+  job.progress.status = status;
+  if (typeof stage === 'string') job.progress.currentStage = stage;
+  emitFlashUpdate(job.id, 'status', { status });
+}
+
+function finalizeJob(job, status, errorMessage) {
+  job.progress.status = status;
+  job.progress.completedAt = Date.now();
+  if (errorMessage) job.progress.error = errorMessage;
+  emitFlashUpdate(job.id, 'status', { status });
+
+  // Move to history and remove from active map.
+  flashJobs.delete(job.id);
+  flashHistory.unshift({
+    id: job.id,
+    jobConfig: job.jobConfig,
+    progress: job.progress,
+    logs: job.logs,
+    endedAt: nowIso(),
+  });
+  if (flashHistory.length > 200) flashHistory.length = 200;
+}
+
+function getFastbootCmd() {
+  // Prefer managed tool path if available.
+  return getToolCommand('fastboot') || 'fastboot';
+}
+
+async function runFastbootJob(job) {
+  const { deviceSerial, partitions, autoReboot, wipeUserData } = job.jobConfig;
+  const fastbootCmd = getFastbootCmd();
+
+  setFlashStatus(job, 'preparing', 'Preparing fastboot session');
+  pushFlashLog(job, `Starting fastboot flash job for ${deviceSerial}`);
+
+  // Basic sanity check: device present in fastboot list.
+  const fastbootList = safeExec(`${fastbootCmd} devices`);
+  if (!fastbootList || !fastbootList.includes(deviceSerial)) {
+    const msg = `Device ${deviceSerial} not detected by fastboot. Ensure the device is in fastboot/bootloader mode.`;
+    pushFlashLog(job, msg);
+    finalizeJob(job, 'failed', msg);
+    return;
+  }
+
+  setFlashStatus(job, 'flashing', 'Flashing partitions');
+
+  for (let i = 0; i < partitions.length; i++) {
+    if (job.cancelRequested) {
+      pushFlashLog(job, 'Cancel requested. Stopping before next partition.');
+      finalizeJob(job, 'cancelled');
+      return;
+    }
+
+    const part = partitions[i];
+    job.progress.currentPartition = part.name;
+    job.progress.currentStage = `Flashing ${part.name}`;
+
+    pushFlashLog(job, `Flashing partition '${part.name}' from ${part.imagePath}`);
+
+    const args = ['-s', deviceSerial, 'flash', part.name, part.imagePath];
+    const child = spawn(fastbootCmd, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    job.activeChild = child;
+
+    child.stdout.on('data', (buf) => {
+      const text = buf.toString();
+      text
+        .split(/\r?\n/)
+        .map((l) => l.trim())
+        .filter(Boolean)
+        .forEach((line) => pushFlashLog(job, `[fastboot] ${line}`));
+    });
+    child.stderr.on('data', (buf) => {
+      const text = buf.toString();
+      text
+        .split(/\r?\n/)
+        .map((l) => l.trim())
+        .filter(Boolean)
+        .forEach((line) => pushFlashLog(job, `[fastboot:err] ${line}`));
+    });
+
+    const exitCode = await new Promise((resolve) => {
+      child.on('close', (code) => resolve(typeof code === 'number' ? code : 1));
+      child.on('error', () => resolve(1));
+    });
+
+    job.activeChild = null;
+
+    if (job.cancelRequested) {
+      pushFlashLog(job, 'Cancel requested. Marking job cancelled.');
+      finalizeJob(job, 'cancelled');
+      return;
+    }
+
+    if (exitCode !== 0) {
+      const msg = `Fastboot flash failed for partition '${part.name}' (exit ${exitCode}).`;
+      pushFlashLog(job, msg);
+      finalizeJob(job, 'failed', msg);
+      return;
+    }
+
+    const overall = Math.round(((i + 1) / partitions.length) * 100);
+    job.progress.overallProgress = overall;
+    job.progress.partitionProgress = 100;
+    emitFlashUpdate(job.id, 'progress', { progress: overall });
+  }
+
+  if (wipeUserData) {
+    if (job.cancelRequested) {
+      pushFlashLog(job, 'Cancel requested before wipe. Skipping wipe.');
+      finalizeJob(job, 'cancelled');
+      return;
+    }
+    job.progress.currentStage = 'Wiping user data (-w)';
+    pushFlashLog(job, 'Running fastboot wipe (-w)');
+
+    const wipeArgs = ['-s', deviceSerial, '-w'];
+    const wipe = spawn(fastbootCmd, wipeArgs, { stdio: ['ignore', 'pipe', 'pipe'] });
+    job.activeChild = wipe;
+    wipe.stdout.on('data', (buf) => {
+      const text = buf.toString();
+      text
+        .split(/\r?\n/)
+        .map((l) => l.trim())
+        .filter(Boolean)
+        .forEach((line) => pushFlashLog(job, `[fastboot] ${line}`));
+    });
+    wipe.stderr.on('data', (buf) => {
+      const text = buf.toString();
+      text
+        .split(/\r?\n/)
+        .map((l) => l.trim())
+        .filter(Boolean)
+        .forEach((line) => pushFlashLog(job, `[fastboot:err] ${line}`));
+    });
+
+    const wipeExit = await new Promise((resolve) => {
+      wipe.on('close', (code) => resolve(typeof code === 'number' ? code : 1));
+      wipe.on('error', () => resolve(1));
+    });
+    job.activeChild = null;
+
+    if (wipeExit !== 0) {
+      const msg = `Fastboot wipe failed (exit ${wipeExit}).`;
+      pushFlashLog(job, msg);
+      finalizeJob(job, 'failed', msg);
+      return;
+    }
+  }
+
+  if (autoReboot) {
+    if (job.cancelRequested) {
+      pushFlashLog(job, 'Cancel requested before reboot. Skipping reboot.');
+      finalizeJob(job, 'cancelled');
+      return;
+    }
+    job.progress.currentStage = 'Rebooting device';
+    pushFlashLog(job, 'Rebooting via fastboot reboot');
+
+    const rebootArgs = ['-s', deviceSerial, 'reboot'];
+    const reboot = spawn(fastbootCmd, rebootArgs, { stdio: ['ignore', 'pipe', 'pipe'] });
+    job.activeChild = reboot;
+    reboot.stdout.on('data', (buf) => {
+      const text = buf.toString();
+      text
+        .split(/\r?\n/)
+        .map((l) => l.trim())
+        .filter(Boolean)
+        .forEach((line) => pushFlashLog(job, `[fastboot] ${line}`));
+    });
+    reboot.stderr.on('data', (buf) => {
+      const text = buf.toString();
+      text
+        .split(/\r?\n/)
+        .map((l) => l.trim())
+        .filter(Boolean)
+        .forEach((line) => pushFlashLog(job, `[fastboot:err] ${line}`));
+    });
+
+    await new Promise((resolve) => {
+      reboot.on('close', () => resolve(true));
+      reboot.on('error', () => resolve(true));
+    });
+    job.activeChild = null;
+  }
+
+  job.progress.currentStage = 'Completed';
+  job.progress.overallProgress = 100;
+  emitFlashUpdate(job.id, 'progress', { progress: 100 });
+  finalizeJob(job, 'completed');
 }
 
 app.get('/api/flash/devices', async (req, res) => {
@@ -2107,6 +2390,26 @@ app.get('/api/flash/devices/:serial/partitions', async (req, res) => {
   }
 });
 
+app.get('/api/flash/capabilities', (req, res) => {
+  const adbAvailable = commandExists('adb');
+  const fastbootAvailable = commandExists('fastboot');
+
+  const supportedMethods = [];
+  if (fastbootAvailable) supportedMethods.push('fastboot');
+  if (adbAvailable) supportedMethods.push('adb-sideload');
+
+  res.json({
+    success: true,
+    enabled: fastbootAvailable,
+    supportedMethods,
+    requirements: {
+      fastboot: fastbootAvailable ? 'available' : 'missing',
+      adb: adbAvailable ? 'available' : 'missing',
+    },
+    timestamp: nowIso(),
+  });
+});
+
 app.post('/api/flash/validate-image', async (req, res) => {
   const { filePath } = req.body;
   
@@ -2154,51 +2457,202 @@ app.post('/api/flash/validate-image', async (req, res) => {
 });
 
 app.post('/api/flash/start', async (req, res) => {
-  res.status(501).json({
-    success: false,
-    error: 'Flashing is disabled: real flashing backend not implemented',
-    message: 'Device scanning is available, but flash execution is intentionally disabled until backed by real tooling.',
-  });
+  try {
+    const config = req.body;
+    const deviceSerial = typeof config?.deviceSerial === 'string' ? config.deviceSerial : '';
+    const flashMethod = config?.flashMethod;
+    const partitions = Array.isArray(config?.partitions) ? config.partitions : [];
+
+    if (!deviceSerial) {
+      return res.status(400).json({
+        success: false,
+        error: 'deviceSerial is required',
+      });
+    }
+
+    if (flashMethod !== 'fastboot') {
+      return res.status(501).json({
+        success: false,
+        error: `Flash method '${flashMethod}' is not supported yet`,
+        supportedMethods: ['fastboot'],
+      });
+    }
+
+    if (!commandExists('fastboot')) {
+      return res.status(412).json({
+        success: false,
+        error: 'fastboot not available',
+        message: 'Install Android platform-tools (fastboot) and ensure it is available in PATH.',
+      });
+    }
+
+    if (!partitions.length) {
+      return res.status(400).json({
+        success: false,
+        error: 'At least one partition is required',
+      });
+    }
+
+    for (const p of partitions) {
+      if (!safePartitionName(p?.name)) {
+        return res.status(400).json({
+          success: false,
+          error: `Invalid partition name: ${String(p?.name)}`,
+        });
+      }
+      if (typeof p?.imagePath !== 'string' || !p.imagePath) {
+        return res.status(400).json({
+          success: false,
+          error: `Missing imagePath for partition '${p?.name}'`,
+        });
+      }
+      if (!fs.existsSync(p.imagePath)) {
+        return res.status(400).json({
+          success: false,
+          error: `Image file not found: ${p.imagePath}`,
+        });
+      }
+    }
+
+    const jobId = randomUUID();
+
+    const job = {
+      id: jobId,
+      jobConfig: config,
+      createdAt: Date.now(),
+      cancelRequested: false,
+      activeChild: null,
+      logs: [],
+      progress: {
+        jobId,
+        deviceSerial,
+        deviceBrand: config?.deviceBrand || 'unknown',
+        status: 'preparing',
+        currentPartition: undefined,
+        overallProgress: 0,
+        partitionProgress: 0,
+        bytesTransferred: 0,
+        totalBytes: 0,
+        transferSpeed: 0,
+        estimatedTimeRemaining: 0,
+        currentStage: 'Queued',
+        startedAt: Date.now(),
+        warnings: [],
+      },
+    };
+
+    flashJobs.set(jobId, job);
+
+    // Respond immediately so the UI can connect job-specific WS.
+    res.json({ jobId });
+
+    // Fire and forget.
+    runFastbootJob(job).catch((error) => {
+      const msg = error instanceof Error ? error.message : 'Unknown flash error';
+      pushFlashLog(job, `Unhandled error: ${msg}`);
+      finalizeJob(job, 'failed', msg);
+    });
+  } catch (error) {
+    console.error('[Flash API] Start failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to start flash operation',
+    });
+  }
 });
 app.post('/api/flash/pause/:jobId', async (req, res) => {
   res.status(501).json({
     success: false,
-    error: 'Flashing is disabled: pause not available',
+    error: 'Pause is not supported for fastboot flashing',
   });
 });
 
 app.post('/api/flash/resume/:jobId', async (req, res) => {
   res.status(501).json({
     success: false,
-    error: 'Flashing is disabled: resume not available',
+    error: 'Resume is not supported for fastboot flashing',
   });
 });
 
 app.post('/api/flash/cancel/:jobId', async (req, res) => {
-  res.status(501).json({
-    success: false,
-    error: 'Flashing is disabled: cancel not available',
-  });
+  const { jobId } = req.params;
+  const job = flashJobs.get(jobId);
+
+  if (!job) {
+    return res.status(404).json({
+      success: false,
+      error: 'Job not found',
+      jobId,
+    });
+  }
+
+  job.cancelRequested = true;
+  pushFlashLog(job, 'Cancel requested via API');
+
+  try {
+    if (job.activeChild && typeof job.activeChild.kill === 'function') {
+      job.activeChild.kill('SIGTERM');
+    }
+  } catch {
+    // best-effort
+  }
+
+  // If the runner is between partitions it will finalize as cancelled.
+  // If the child exits non-zero due to kill, runner will mark failed; we prefer cancelled.
+  job.progress.status = 'cancelled';
+  emitFlashUpdate(jobId, 'status', { status: 'cancelled' });
+
+  return res.json({ success: true, jobId, message: 'Cancel requested' });
 });
 
 app.get('/api/flash/status/:jobId', async (req, res) => {
-  res.status(501).json({
-    success: false,
-    error: 'Flashing is disabled: status not available',
+  const { jobId } = req.params;
+  const job = flashJobs.get(jobId);
+  if (!job) {
+    return res.status(404).json({
+      success: false,
+      error: 'Job not found',
+      jobId,
+    });
+  }
+
+  res.json({
+    success: true,
+    jobId,
+    progress: job.progress,
+    logs: job.logs,
+    timestamp: nowIso(),
   });
 });
 
 app.get('/api/flash/operations/active', async (req, res) => {
-  res.status(501).json({
-    success: false,
-    error: 'Flashing is disabled: active operations not available',
+  const operations = Array.from(flashJobs.values()).map((job) => ({
+    id: job.id,
+    jobConfig: job.jobConfig,
+    progress: job.progress,
+    logs: job.logs,
+    canPause: false,
+    canResume: false,
+    canCancel: true,
+  }));
+
+  res.json({
+    success: true,
+    operations,
+    count: operations.length,
+    timestamp: nowIso(),
   });
 });
 
 app.get('/api/flash/history', (req, res) => {
-  res.status(501).json({
-    success: false,
-    error: 'Flashing is disabled: history not available',
+  const limitRaw = req.query?.limit;
+  const limit = Math.max(1, Math.min(200, Number(limitRaw) || 50));
+  const history = flashHistory.slice(0, limit);
+  res.json({
+    success: true,
+    history,
+    count: history.length,
+    timestamp: nowIso(),
   });
 });
 
@@ -2955,6 +3409,74 @@ app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ error: 'Internal server error' });
 });
+
+function closeWebSocketClients(clientSet) {
+  for (const client of clientSet) {
+    try {
+      if (client.readyState === WebSocket.OPEN) {
+        client.close(1001, 'server shutdown');
+      } else {
+        client.terminate?.();
+      }
+    } catch {
+      // ignore
+    }
+  }
+}
+
+let shuttingDown = false;
+function shutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`[Shutdown] ${signal} received; closing server...`);
+
+  // Stop accepting new WS connections.
+  try {
+    wss.close();
+    wssCorrelation.close();
+    wssAnalytics.close();
+    wssFlashProgress?.close?.();
+  } catch {
+    // ignore
+  }
+
+  // Close existing WS connections.
+  try {
+    closeWebSocketClients(clients);
+    closeWebSocketClients(correlationClients);
+    closeWebSocketClients(analyticsClients);
+    if (typeof flashProgressClients?.values === 'function') {
+      closeWebSocketClients(new Set(flashProgressClients.values()));
+    }
+    closeWebSocketClients(flashProgressMonitorClients ?? new Set());
+  } catch {
+    // ignore
+  }
+
+  // Stop accepting new HTTP connections.
+  server.close(() => {
+    console.log('[Shutdown] HTTP server closed');
+    process.exit(0);
+  });
+
+  // Force close any open keep-alive sockets so server.close() can finish.
+  for (const socket of httpSockets) {
+    try {
+      socket.destroy();
+    } catch {
+      // ignore
+    }
+  }
+
+  // Fallback: force exit if something is stuck.
+  setTimeout(() => {
+    console.error('[Shutdown] Force exiting after timeout');
+    process.exit(1);
+  }, 5000).unref();
+}
+
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
 
 server.listen(PORT, () => {
   console.log(`🔧 Pandora Codex API Server running on port ${PORT}`);

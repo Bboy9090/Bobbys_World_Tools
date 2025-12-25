@@ -1,7 +1,9 @@
 // BootForge API - Client wrapper used by the universal flash UI.
 // Truth-first: no mock devices, no fabricated flash jobs.
 
-import { API_CONFIG, getAPIUrl, getWSUrl } from '@/lib/apiConfig';
+import { API_CONFIG, getAPIUrl } from '@/lib/apiConfig';
+import { isTauri, tauriInvoke } from '@/lib/tauriBridge';
+import { connectDeviceEvents, connectFlashProgress, type RealtimeConnection } from '@/lib/realtime';
 import type {
   BootForgeDevice,
   FlashJobConfig,
@@ -83,12 +85,53 @@ export interface BootForgeAPI {
   pauseFlashOperation(jobId: string): Promise<{ success: boolean; message?: string }>;
   resumeFlashOperation(jobId: string): Promise<{ success: boolean; message?: string }>;
   cancelFlashOperation(jobId: string): Promise<{ success: boolean; message?: string }>;
-  createFlashWebSocket(jobId: string): WebSocket;
-  createDeviceMonitorWebSocket(): WebSocket;
+  createFlashWebSocket(jobId: string): RealtimeConnection;
+  createDeviceMonitorWebSocket(): RealtimeConnection;
 }
 
 export const bootForgeAPI: BootForgeAPI = {
   async scanDevices(): Promise<BootForgeDevice[]> {
+    if (isTauri()) {
+      const records = await tauriInvoke<any[]>('bootforgeusb_scan');
+      const devices = Array.isArray(records) ? records : [];
+
+      // Map BootForgeUSB records into BootForgeDevice shape as best-effort.
+      return devices.map((r: any) => {
+        const usb = r?.evidence?.usb;
+        const deviceSerial = typeof usb?.serial === 'string' && usb.serial.length > 0 ? usb.serial : (typeof r?.device_uid === 'string' ? r.device_uid : 'unknown');
+        const manufacturer = typeof usb?.manufacturer === 'string' ? usb.manufacturer : undefined;
+        const model = typeof usb?.product === 'string' ? usb.product : undefined;
+
+        const currentMode: BootForgeDevice['currentMode'] =
+          typeof r?.mode === 'string' && r.mode.includes('fastboot')
+            ? 'fastboot'
+            : typeof r?.mode === 'string' && r.mode.includes('recovery')
+              ? 'recovery'
+              : typeof r?.mode === 'string' && r.mode.includes('dfu')
+                ? 'dfu'
+                : typeof r?.mode === 'string' && r.mode.includes('edl')
+                  ? 'edl'
+                  : 'normal';
+
+        return {
+          serial: deviceSerial,
+          usbPath: typeof r?.device_uid === 'string' ? r.device_uid : 'unknown',
+          vendorId: typeof usb?.vid === 'string' ? usb.vid : 'unknown',
+          productId: typeof usb?.pid === 'string' ? usb.pid : 'unknown',
+          manufacturer,
+          model,
+          brand: 'unknown',
+          platform: typeof r?.platform_hint === 'string' && r.platform_hint === 'ios' ? 'ios' : 'android',
+          currentMode,
+          capabilities: {
+            ...DEVICE_BRAND_CAPABILITIES.unknown,
+          },
+          confidence: typeof r?.confidence === 'number' ? r.confidence : 0.7,
+          lastSeen: Date.now(),
+        } satisfies BootForgeDevice;
+      });
+    }
+
     const response = await fetch(getAPIUrl(API_CONFIG.ENDPOINTS.FLASH_DEVICES));
     if (!response.ok) {
       throw new Error(`Device scan failed: ${await readErrorBody(response)}`);
@@ -100,6 +143,11 @@ export const bootForgeAPI: BootForgeAPI = {
   },
 
   async getFlashHistory(limit: number = 50): Promise<FlashOperation[]> {
+    if (isTauri()) {
+      const hist = await tauriInvoke<FlashOperation[]>('bootforge_flash_history', { limit });
+      return Array.isArray(hist) ? hist : [];
+    }
+
     const url = getAPIUrl(`${API_CONFIG.ENDPOINTS.FLASH_HISTORY}?limit=${encodeURIComponent(String(limit))}`);
     const response = await fetch(url);
     if (!response.ok) {
@@ -113,6 +161,11 @@ export const bootForgeAPI: BootForgeAPI = {
   },
 
   async getActiveFlashOperations(): Promise<FlashOperation[]> {
+    if (isTauri()) {
+      const ops = await tauriInvoke<FlashOperation[]>('bootforge_flash_active');
+      return Array.isArray(ops) ? ops : [];
+    }
+
     const response = await fetch(getAPIUrl(API_CONFIG.ENDPOINTS.FLASH_ACTIVE_OPERATIONS));
     if (!response.ok) {
       throw new Error(`Active operations unavailable: ${await readErrorBody(response)}`);
@@ -125,17 +178,20 @@ export const bootForgeAPI: BootForgeAPI = {
   },
 
   async startFlashOperation(config: FlashJobConfig): Promise<FlashOperation> {
-    const response = await fetch(getAPIUrl(API_CONFIG.ENDPOINTS.FLASH_START), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(config),
-    });
+    const payload = isTauri()
+      ? await tauriInvoke<{ jobId: string }>('flash_start', { config })
+      : await (async () => {
+          const response = await fetch(getAPIUrl(API_CONFIG.ENDPOINTS.FLASH_START), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(config),
+          });
+          if (!response.ok) {
+            throw new Error(`Flash start failed: ${await readErrorBody(response)}`);
+          }
+          return (await response.json()) as any;
+        })();
 
-    if (!response.ok) {
-      throw new Error(`Flash start failed: ${await readErrorBody(response)}`);
-    }
-
-    const payload: any = await response.json();
     const jobId = typeof payload?.jobId === 'string' ? payload.jobId : null;
     if (!jobId) {
       throw new Error('Flash start failed: missing jobId in response');
@@ -171,6 +227,9 @@ export const bootForgeAPI: BootForgeAPI = {
   },
 
   async pauseFlashOperation(jobId: string): Promise<{ success: boolean; message?: string }> {
+    if (isTauri()) {
+      return { success: false, message: 'Pause not supported for in-process fastboot backend' };
+    }
     const response = await fetch(getAPIUrl(`${API_CONFIG.ENDPOINTS.FLASH_PAUSE}/${encodeURIComponent(jobId)}`), {
       method: 'POST',
     });
@@ -182,6 +241,9 @@ export const bootForgeAPI: BootForgeAPI = {
   },
 
   async resumeFlashOperation(jobId: string): Promise<{ success: boolean; message?: string }> {
+    if (isTauri()) {
+      return { success: false, message: 'Resume not supported for in-process fastboot backend' };
+    }
     const response = await fetch(getAPIUrl(`${API_CONFIG.ENDPOINTS.FLASH_RESUME}/${encodeURIComponent(jobId)}`), {
       method: 'POST',
     });
@@ -193,6 +255,10 @@ export const bootForgeAPI: BootForgeAPI = {
   },
 
   async cancelFlashOperation(jobId: string): Promise<{ success: boolean; message?: string }> {
+    if (isTauri()) {
+      await tauriInvoke<void>('flash_cancel', { jobId });
+      return { success: true, message: 'Cancel requested' };
+    }
     const response = await fetch(getAPIUrl(`${API_CONFIG.ENDPOINTS.FLASH_CANCEL}/${encodeURIComponent(jobId)}`), {
       method: 'POST',
     });
@@ -203,11 +269,11 @@ export const bootForgeAPI: BootForgeAPI = {
     return { success: true, message: data?.message };
   },
 
-  createFlashWebSocket(jobId: string): WebSocket {
-    return new WebSocket(getWSUrl(`/ws/flash-progress/${encodeURIComponent(jobId)}`));
+  createFlashWebSocket(jobId: string): RealtimeConnection {
+    return connectFlashProgress(jobId);
   },
 
-  createDeviceMonitorWebSocket(): WebSocket {
-    return new WebSocket(getWSUrl('/ws/device-events'));
+  createDeviceMonitorWebSocket(): RealtimeConnection {
+    return connectDeviceEvents();
   },
 };

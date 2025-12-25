@@ -89,19 +89,32 @@ if (-not $SkipBuild) {
   Write-Host "Skipping build; collecting existing artifacts only."
 }
 
-$releaseDir = Join-Path $repoRoot "src-tauri/target/release"
-$bundleDir = Join-Path $releaseDir "bundle"
+$releaseDirCandidates = @(
+  (Join-Path $repoRoot "src-tauri/target/x86_64-pc-windows-msvc/release"),
+  (Join-Path $repoRoot "src-tauri/target/release")
+)
 
-if (-not (Test-Path $releaseDir)) {
-  throw "No build outputs found at $releaseDir. Run: npm run tauri:build (or rerun this script without -SkipBuild)."
+$releaseDir = $null
+foreach ($candidate in $releaseDirCandidates) {
+  if (Test-Path (Join-Path $candidate "bundle")) {
+    $releaseDir = $candidate
+    break
+  }
 }
+
+if (-not $releaseDir) {
+  throw "No build outputs found. Tried: $($releaseDirCandidates -join ', '). Run this script without -SkipBuild to build first."
+}
+
+$bundleDir = Join-Path $releaseDir "bundle"
 
 $collected = @()
 
 # Installer artifacts
 $nsisDir = Join-Path $bundleDir "nsis"
 if (Test-Path $nsisDir) {
-  $nsisInstallers = Get-ChildItem -Path $nsisDir -Filter "*-setup.exe" -File -ErrorAction SilentlyContinue
+  $nsisInstallers = Get-ChildItem -Path $nsisDir -Filter "*-setup.exe" -File -ErrorAction SilentlyContinue |
+    Where-Object { $_.Name -like "$productName*" -and $_.Name -like "*$tauriVersion*" }
   foreach ($f in $nsisInstallers) {
     Copy-Item $f.FullName -Destination $outAbs -Force
     $collected += $f.FullName
@@ -110,7 +123,8 @@ if (Test-Path $nsisDir) {
 
 $msiDir = Join-Path $bundleDir "msi"
 if (Test-Path $msiDir) {
-  $msis = Get-ChildItem -Path $msiDir -Filter "*.msi" -File -ErrorAction SilentlyContinue
+  $msis = Get-ChildItem -Path $msiDir -Filter "*.msi" -File -ErrorAction SilentlyContinue |
+    Where-Object { $_.Name -like "$productName*" -and $_.Name -like "*$tauriVersion*" }
   foreach ($f in $msis) {
     Copy-Item $f.FullName -Destination $outAbs -Force
     $collected += $f.FullName
@@ -121,7 +135,8 @@ if (Test-Path $msiDir) {
 $appCandidates = @(
   (Join-Path $releaseDir "app.exe"),
   (Join-Path $releaseDir "bobbys-workshop.exe"),
-  (Join-Path $releaseDir ("{0}.exe" -f $productName))
+  (Join-Path $releaseDir ("{0}.exe" -f $productName)),
+  (Join-Path $releaseDir ("{0}.exe" -f ($productName -replace "\s+", "-")))
 )
 
 $appFound = $false

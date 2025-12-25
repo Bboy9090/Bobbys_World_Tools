@@ -1,7 +1,8 @@
 // Flash API - Backend client for flash operations.
 // Truth-first: no mock fallbacks, no fabricated IDs.
 
-import { API_CONFIG, getAPIUrl, getWSUrl } from '@/lib/apiConfig';
+import { API_CONFIG, getAPIUrl } from '@/lib/apiConfig';
+import { connectFlashProgress, type RealtimeConnection } from '@/lib/realtime';
 import type { FlashJobConfig as CanonicalFlashJobConfig } from '@/types/flash-operations';
 
 export interface FlashDevice {
@@ -100,19 +101,19 @@ export const flashAPI = {
     jobId: string,
     onMessage: (message: FlashProgressMessage) => void,
     onError?: (error: Event) => void,
-  ): WebSocket {
-    const ws = new WebSocket(getWSUrl(`/ws/flash-progress/${encodeURIComponent(jobId)}`));
+  ): RealtimeConnection {
+    const conn = connectFlashProgress(jobId);
 
-    ws.onmessage = (event) => {
+    conn.onmessage = (event) => {
       const parsed = JSON.parse(event.data) as FlashProgressMessage;
       onMessage(parsed);
     };
 
-    ws.onerror = (event) => {
-      onError?.(event);
+    conn.onerror = (event) => {
+      onError?.(event as Event);
     };
 
-    return ws;
+    return conn;
   },
 
   async pauseFlash(jobId: string): Promise<void> {
