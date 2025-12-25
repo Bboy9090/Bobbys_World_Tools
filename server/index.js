@@ -9,6 +9,9 @@ import { WebSocketServer } from 'ws';
 import { createServer } from 'http';
 import { AuthorizationTriggers } from './authorization-triggers.js';
 import trapdoorRouter from '../core/api/trapdoor.js';
+import catalogRouter from './catalog.js';
+import toolsInspectRouter from './tools-inspect.js';
+import operationsRouter from './operations.js';
 import { ensureManagedPlatformTools, getManagedPlatformToolsDir } from './platform-tools.js';
 
 const app = express();
@@ -2950,6 +2953,9 @@ app.get('/api/firmware/download', async (req, res) => {
 
 // Trapdoor API - Secure endpoints for sensitive operations (Bobby's Secret Workshop)
 app.use('/api/trapdoor', trapdoorRouter);
+app.use('/api/catalog', catalogRouter);
+app.use('/api/tools', toolsInspectRouter);
+app.use('/api/operations', operationsRouter);
 
 app.use((err, req, res, next) => {
   console.error(err.stack);
