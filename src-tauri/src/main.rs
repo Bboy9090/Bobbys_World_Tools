@@ -690,7 +690,7 @@ fn flash_start(app_handle: AppHandle, state: tauri::State<'_, AppState>, config:
             if hist.len() > 200 {
                 hist.truncate(200);
             }
-        }
+        };
     });
 
     Ok(FlashStartResponse { jobId: id })
