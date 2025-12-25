@@ -21,7 +21,7 @@ function Read-TauriConfig([string]$repoRoot) {
   return $json
 }
 
-function Ensure-Dir([string]$path) {
+function New-DirectoryIfNotExists([string]$path) {
   if (-not (Test-Path $path)) {
     New-Item -ItemType Directory -Path $path | Out-Null
   }
@@ -61,7 +61,7 @@ if (-not $productName) { $productName = "Bobbys-Workshop" }
 if (-not $tauriVersion) { $tauriVersion = "unknown" }
 
 $outAbs = Join-Path $repoRoot $OutDir
-Ensure-Dir $outAbs
+New-DirectoryIfNotExists $outAbs
 
 Write-Host "Repo: $repoRoot"
 Write-Host "Product: $productName"

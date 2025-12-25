@@ -4,8 +4,7 @@
  * Merged from The-Pandora-Codex Control Room (TITAN 2)
  */
 
-import React, { useState, useEffect } from 'react';
-import { Button } from '../ui/button';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Smartphone, Activity, Upload, FileText, Wrench, Shield, Lock } from 'lucide-react';
@@ -40,7 +39,7 @@ export const PandorasRoom: React.FC = () => {
         <header className="mb-8">
           <div className="flex items-center gap-3 mb-2">
             <Lock className="h-8 w-8 text-[#2FD3FF]" />
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-[#2FD3FF] to-[#FF6B9D] bg-clip-text text-transparent">
+            <h1 className="text-3xl font-bold bg-linear-to-r from-[#2FD3FF] to-[#FF6B9D] bg-clip-text text-transparent">
               Pandora's Room
             </h1>
           </div>

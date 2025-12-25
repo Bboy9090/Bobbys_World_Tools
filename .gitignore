@@ -16,6 +16,10 @@ dist-ssr
 # Collected release artifacts (do not commit)
 dist-artifacts/
 
+# Local installer output artifacts (do not commit)
+dist-installer/
+BobbysWorkshop-Portable-*.zip
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
