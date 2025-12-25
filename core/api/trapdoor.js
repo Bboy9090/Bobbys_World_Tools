@@ -27,8 +27,8 @@ function recordRequest(pathname) {
 
 const rateLimitState = new Map();
 function rateLimitAdmin(req, res, next) {
-  const apiKey = req.headers['x-api-key'];
-  const key = apiKey || req.ip;
+  // Rate-limit by IP to avoid using secrets as identifiers.
+  const key = req.ip;
 
   const now = Date.now();
   const state = rateLimitState.get(key) || { windowStart: now, count: 0 };
@@ -58,10 +58,24 @@ function rateLimitAdmin(req, res, next) {
  */
 function requireAdmin(req, res, next) {
   recordRequest(req.path);
-  const apiKey = req.headers['x-api-key'];
-  const adminKey = process.env.ADMIN_API_KEY || 'dev-admin-key';
+  const password = req.headers['x-admin-password'];
+  const configuredPassword = process.env.PANDORA_ROOM_PASSWORD || process.env.ADMIN_API_KEY;
 
-  if (!apiKey || apiKey !== adminKey) {
+  if (!configuredPassword) {
+    return res.status(503).json({
+      error: 'Admin authentication not configured',
+      message: 'Set PANDORA_ROOM_PASSWORD on the server to enable admin access'
+    });
+  }
+
+  if (!password) {
+    return res.status(401).json({
+      error: 'Unauthorized',
+      message: 'Admin password required'
+    });
+  }
+
+  if (password !== configuredPassword) {
     shadowLogger.logShadow({
       operation: 'unauthorized_access_attempt',
       deviceSerial: 'N/A',
@@ -76,8 +90,8 @@ function requireAdmin(req, res, next) {
     }).catch(err => console.error('Shadow log error:', err));
 
     return res.status(403).json({
-      error: 'Unauthorized',
-      message: 'Admin access required'
+      error: 'Forbidden',
+      message: 'Invalid admin password'
     });
   }
 

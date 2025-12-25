@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -52,27 +54,41 @@ export function WorkflowExecutionConsole() {
   const [executing, setExecuting] = useState(false);
   const [result, setResult] = useState<{ success: boolean; results: WorkflowStep[] } | null>(null);
   const [error, setError] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
 
   useEffect(() => {
-    fetchWorkflows();
+    // Intentionally do not auto-fetch: admin password is required.
   }, []);
 
   const fetchWorkflows = async () => {
+    if (!adminPassword) {
+      setError('Admin password is required');
+      return;
+    }
+
     setLoading(true);
+    setError('');
     try {
-      // Note: This endpoint requires admin auth in production
       const response = await fetch('http://localhost:3001/api/trapdoor/workflows', {
         headers: {
-          'X-API-Key': 'dev-admin-key' // In production, get this from auth context
+          'X-Admin-Password': adminPassword
         }
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        setWorkflows(data.workflows || []);
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setWorkflows([]);
+        setSelectedWorkflow(null);
+        setError(data?.message || data?.error || `Failed to fetch workflows (HTTP ${response.status})`);
+        return;
       }
+
+      setWorkflows(data.workflows || []);
     } catch (err) {
       console.error('Error fetching workflows:', err);
+      setWorkflows([]);
+      setSelectedWorkflow(null);
+      setError('Network error while fetching workflows');
     } finally {
       setLoading(false);
     }
@@ -131,7 +147,44 @@ export function WorkflowExecutionConsole() {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Lock className="h-5 w-5" />
+            Admin Authentication
+          </CardTitle>
+          <CardDescription>
+            Enter the admin password to list and execute workflows
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div>
+            <Label htmlFor="workflowAdminPassword">Admin Password</Label>
+            <Input
+              id="workflowAdminPassword"
+              type="password"
+              placeholder="Enter admin password"
+              value={adminPassword}
+              onChange={(e) => setAdminPassword(e.target.value)}
+            />
+          </div>
+          <Button
+            onClick={fetchWorkflows}
+            disabled={loading || !adminPassword}
+          >
+            {loading ? 'Loading...' : 'Load Workflows'}
+          </Button>
+          {error && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Workflow Browser */}
       <Card>
         <CardHeader>
@@ -331,7 +384,7 @@ export function WorkflowExecutionConsole() {
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium">{step.stepName}</p>
                               {step.output && (
-                                <pre className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap break-words">
+                                <pre className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap wrap-break-word">
                                   {step.output}
                                 </pre>
                               )}
@@ -374,6 +427,7 @@ export function WorkflowExecutionConsole() {
           )}
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }

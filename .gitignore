@@ -13,6 +13,9 @@ dist-ssr
 *-dist
 *.local
 
+# Collected release artifacts (do not commit)
+dist-artifacts/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

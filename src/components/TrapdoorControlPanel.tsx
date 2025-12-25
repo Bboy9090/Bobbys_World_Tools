@@ -20,7 +20,7 @@ interface WorkflowResult {
 export function TrapdoorControlPanel() {
   const [deviceSerial, setDeviceSerial] = useState('');
   const [authorizationInput, setAuthorizationInput] = useState('');
-  const [apiKey, setApiKey] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
   const [executing, setExecuting] = useState(false);
   const [result, setResult] = useState<WorkflowResult | null>(null);
   const [error, setError] = useState('');
@@ -31,8 +31,8 @@ export function TrapdoorControlPanel() {
       return;
     }
 
-    if (!apiKey) {
-      setError('Admin API key is required');
+    if (!adminPassword) {
+      setError('Admin password is required');
       return;
     }
 
@@ -50,7 +50,7 @@ export function TrapdoorControlPanel() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-API-Key': apiKey
+          'X-Admin-Password': adminPassword
         },
         body: JSON.stringify({
           deviceSerial,
@@ -96,24 +96,24 @@ export function TrapdoorControlPanel() {
             Admin Authentication
           </CardTitle>
           <CardDescription>
-            Admin API key is required for all Trapdoor operations
+            Admin password is required for all Trapdoor operations
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="apiKey">Admin API Key</Label>
+              <Label htmlFor="adminPassword">Admin Password</Label>
               <Input
-                id="apiKey"
+                id="adminPassword"
                 type="password"
-                placeholder="Enter admin API key"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="Enter admin password"
+                value={adminPassword}
+                onChange={(e) => setAdminPassword(e.target.value)}
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Set via ADMIN_API_KEY environment variable (default: dev-admin-key for development)
+                Server config: set <code className="font-mono">PANDORA_ROOM_PASSWORD</code> (or legacy <code className="font-mono">ADMIN_API_KEY</code>)
                 <br />
-                <strong className="text-orange-500">⚠️ Production: Use JWT tokens instead of static API keys</strong>
+                <strong className="text-orange-500">⚠️ Never commit or share the password</strong>
               </p>
             </div>
 
@@ -173,7 +173,7 @@ export function TrapdoorControlPanel() {
 
               <Button
                 onClick={() => executeWorkflow('frp', 'I OWN THIS DEVICE')}
-                disabled={executing || !deviceSerial || !apiKey}
+                disabled={executing || !deviceSerial || !adminPassword}
                 className="w-full"
                 variant="destructive"
               >
@@ -219,7 +219,7 @@ export function TrapdoorControlPanel() {
 
               <Button
                 onClick={() => executeWorkflow('unlock', 'UNLOCK')}
-                disabled={executing || !deviceSerial || !apiKey}
+                disabled={executing || !deviceSerial || !adminPassword}
                 className="w-full"
                 variant="destructive"
               >

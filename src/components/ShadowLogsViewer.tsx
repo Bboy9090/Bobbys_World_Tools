@@ -22,15 +22,15 @@ interface ShadowLogEntry {
 }
 
 export function ShadowLogsViewer() {
-  const [apiKey, setApiKey] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [logs, setLogs] = useState<ShadowLogEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const fetchLogs = async () => {
-    if (!apiKey) {
-      setError('Admin API key is required');
+    if (!adminPassword) {
+      setError('Admin password is required');
       return;
     }
 
@@ -42,7 +42,7 @@ export function ShadowLogsViewer() {
         `http://localhost:3001/api/trapdoor/logs/shadow?date=${date}`,
         {
           headers: {
-            'X-API-Key': apiKey
+            'X-Admin-Password': adminPassword
           }
         }
       );
@@ -104,13 +104,13 @@ export function ShadowLogsViewer() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <Label htmlFor="apiKey">Admin API Key</Label>
+            <Label htmlFor="adminPassword">Admin Password</Label>
             <Input
-              id="apiKey"
+              id="adminPassword"
               type="password"
-              placeholder="Enter admin API key"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
+              placeholder="Enter admin password"
+              value={adminPassword}
+              onChange={(e) => setAdminPassword(e.target.value)}
             />
           </div>
 
@@ -129,7 +129,7 @@ export function ShadowLogsViewer() {
 
           <Button
             onClick={fetchLogs}
-            disabled={loading || !apiKey}
+            disabled={loading || !adminPassword}
             className="w-full"
           >
             {loading ? 'Loading...' : (

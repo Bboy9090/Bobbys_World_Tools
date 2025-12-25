@@ -1,4 +1,4 @@
-# 🔥 Bobby's Workshop - Standalone EXE Builder
+﻿# ðŸ”¥ Bobby's Workshop - Standalone EXE Builder
 # Creates a single .exe installer with everything bundled
 
 # Configuration
@@ -7,7 +7,7 @@ $VERSION = "1.0.0"
 $OUTPUT_DIR = "dist-installer"
 $INSTALLER_NAME = "BobbysWorkshop-Setup-v$VERSION.exe"
 
-Write-Host "🔥 Bobby's Workshop - Standalone EXE Builder" -ForegroundColor Cyan
+Write-Host "ðŸ”¥ Bobby's Workshop - Standalone EXE Builder" -ForegroundColor Cyan
 Write-Host "=============================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -23,35 +23,35 @@ if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
 }
 
 if ($needsTools.Count -gt 0) {
-    Write-Host "❌ Missing required tools: $($needsTools -join ', ')" -ForegroundColor Red
+    Write-Host "âŒ Missing required tools: $($needsTools -join ', ')" -ForegroundColor Red
     Write-Host "Install Node.js from: https://nodejs.org/" -ForegroundColor Yellow
     exit 1
 }
 
-Write-Host "✅ Node.js and npm found" -ForegroundColor Green
+Write-Host "âœ… Node.js and npm found" -ForegroundColor Green
 Write-Host ""
 
 # Step 1: Build the frontend
-Write-Host "📦 Building frontend..." -ForegroundColor Yellow
+Write-Host "ðŸ“¦ Building frontend..." -ForegroundColor Yellow
 npm run build
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "❌ Frontend build failed!" -ForegroundColor Red
+    Write-Host "âŒ Frontend build failed!" -ForegroundColor Red
     exit 1
 }
-Write-Host "✅ Frontend built" -ForegroundColor Green
+Write-Host "âœ… Frontend built" -ForegroundColor Green
 Write-Host ""
 
 # Step 2: Create output directory
-Write-Host "🔧 Creating output directory..." -ForegroundColor Yellow
+Write-Host "ðŸ”§ Creating output directory..." -ForegroundColor Yellow
 if (Test-Path $OUTPUT_DIR) {
     Remove-Item -Recurse -Force $OUTPUT_DIR
 }
 New-Item -ItemType Directory -Path $OUTPUT_DIR -Force | Out-Null
-Write-Host "✅ Output directory created" -ForegroundColor Green
+Write-Host "âœ… Output directory created" -ForegroundColor Green
 Write-Host ""
 
 # Step 3: Copy files
-Write-Host "📁 Copying files..." -ForegroundColor Yellow
+Write-Host "ðŸ“ Copying files..." -ForegroundColor Yellow
 
 # Copy built frontend
 if (Test-Path "dist") {
@@ -72,13 +72,13 @@ if (Test-Path "data") {
 Copy-Item -Path "package.json" -Destination "$OUTPUT_DIR\" -Force
 Copy-Item -Path "README.md" -Destination "$OUTPUT_DIR\" -Force -ErrorAction SilentlyContinue
 
-Write-Host "✅ Files copied" -ForegroundColor Green
+Write-Host "âœ… Files copied" -ForegroundColor Green
 Write-Host ""
 
 # Step 4: Create installer script
-Write-Host "📝 Creating installer script..." -ForegroundColor Yellow
+Write-Host "ðŸ“ Creating installer script..." -ForegroundColor Yellow
 
-$installerScript = @"
+$installerScript = @'
 @echo off
 cls
 echo ==========================================
@@ -142,15 +142,15 @@ echo 2. Double-click desktop shortcut to launch
 echo.
 echo Press any key to exit...
 pause >nul
-"@
+'@
 
 Set-Content -Path "$OUTPUT_DIR\INSTALL.bat" -Value $installerScript -Encoding ASCII
 Write-Host "Created INSTALL.bat" -ForegroundColor Green
 
 # Step 5: Create uninstaller script
-Write-Host "📝 Creating uninstaller script..." -ForegroundColor Yellow
+Write-Host "ðŸ“ Creating uninstaller script..." -ForegroundColor Yellow
 
-$uninstallerScript = @"
+$uninstallerScript = @'
 @echo off
 cls
 echo ==========================================
@@ -198,13 +198,13 @@ echo Bobby's Workshop has been removed from your computer.
 echo.
 echo Press any key to exit...
 pause >nul
-"@
+'@
 
 Set-Content -Path "$OUTPUT_DIR\UNINSTALL.bat" -Value $uninstallerScript -Encoding ASCII
-Write-Host "✅ UNINSTALL.bat created" -ForegroundColor Green
+Write-Host "âœ… UNINSTALL.bat created" -ForegroundColor Green
 
 # Step 6: Create portable launcher
-Write-Host "📝 Creating portable launcher..." -ForegroundColor Yellow
+Write-Host "ðŸ“ Creating portable launcher..." -ForegroundColor Yellow
 
 $portableLauncher = @'
 @echo off
@@ -308,11 +308,11 @@ This installer contains everything you need to run Bobby's Workshop:
 - Complete web application (frontend + backend)
 - All server APIs and routes
 - Device management tools
-- ✅ Firmware library
-- ✅ Automation framework
-- ✅ All features unlocked!
+- âœ… Firmware library
+- âœ… Automation framework
+- âœ… All features unlocked!
 
-## 🚀 Installation
+## ðŸš€ Installation
 
 ### Step 1: Run Installer
 
@@ -329,23 +329,23 @@ Double-click `INSTALL.bat` and follow the prompts.
 
 **Option 1:** Double-click "Bobby's Workshop" on your desktop
 
-**Option 2:** Start Menu → Bobby's Workshop
+**Option 2:** Start Menu â†’ Bobby's Workshop
 
 **Option 3:** Run ``START.bat`` in the installation folder
 
 The application will open in your browser at: http://localhost:3001
 
-## 📍 Installation Location
+## ðŸ“ Installation Location
 
 Default: ``%LOCALAPPDATA%\BobbysWorkshop``
 
 Typically: ``C:\Users\YourName\AppData\Local\BobbysWorkshop``
 
-## 🗑️ Uninstallation
+## ðŸ—‘ï¸ Uninstallation
 
 Run ``UNINSTALL.bat`` to completely remove Bobby's Workshop
 
-## 🔧 What Gets Installed
+## ðŸ”§ What Gets Installed
 
 ### Frontend (dist/)
 - React-based web UI
@@ -366,52 +366,52 @@ Run ``UNINSTALL.bat`` to completely remove Bobby's Workshop
 - FFmpeg (media conversion)
 - Additional utilities
 
-## ✅ Features
+## âœ… Features
 
 ### Device Management
-- ✅ Android device detection (ADB/Fastboot)
-- ✅ iOS device detection (libimobiledevice)
-- ✅ USB device correlation
-- ✅ Real-time device monitoring
+- âœ… Android device detection (ADB/Fastboot)
+- âœ… iOS device detection (libimobiledevice)
+- âœ… USB device correlation
+- âœ… Real-time device monitoring
 
 ### Android Features
-- ✅ Screen mirroring (scrcpy)
-- ✅ ADB shell access
-- ✅ Fastboot operations
-- ✅ Recovery mode access
-- ✅ Bootloader operations
+- âœ… Screen mirroring (scrcpy)
+- âœ… ADB shell access
+- âœ… Fastboot operations
+- âœ… Recovery mode access
+- âœ… Bootloader operations
 
 ### iOS Features
-- ✅ Device backup/restore
-- ✅ DFU mode detection
-- ✅ Recovery mode access
-- ✅ Firmware restore
+- âœ… Device backup/restore
+- âœ… DFU mode detection
+- âœ… Recovery mode access
+- âœ… Firmware restore
 
 ### Firmware Library
-- ✅ Apple IPSW downloads
-- ✅ Firmware version checking
-- ✅ Direct download integration
-- ✅ Firmware validation
+- âœ… Apple IPSW downloads
+- âœ… Firmware version checking
+- âœ… Direct download integration
+- âœ… Firmware validation
 
 ### Media Studio
-- ✅ Video conversion (FFmpeg)
-- ✅ Audio extraction
-- ✅ GIF creation
-- ✅ Batch processing
+- âœ… Video conversion (FFmpeg)
+- âœ… Audio extraction
+- âœ… GIF creation
+- âœ… Batch processing
 
 ### Debloater
-- ✅ 53 common bloatware apps
-- ✅ Safe removal
-- ✅ Batch uninstall
-- ✅ Backup before removal
+- âœ… 53 common bloatware apps
+- âœ… Safe removal
+- âœ… Batch uninstall
+- âœ… Backup before removal
 
 ### Developer Tools
-- ✅ Authorization triggers (27 endpoints)
-- ✅ Secure operations API
-- ✅ Audit logging
-- ✅ RBAC system
+- âœ… Authorization triggers (27 endpoints)
+- âœ… Secure operations API
+- âœ… Audit logging
+- âœ… RBAC system
 
-## 🎮 Portable Mode
+## ðŸŽ® Portable Mode
 
 Don't want to install? Use portable mode!
 
@@ -419,7 +419,7 @@ Don't want to install? Use portable mode!
 2. Run ``RUN_PORTABLE.bat``
 3. No installation required!
 
-## 🔧 Troubleshooting
+## ðŸ”§ Troubleshooting
 
 ### Server won't start
 - Check Node.js is installed: ``node --version``
@@ -435,21 +435,21 @@ Don't want to install? Use portable mode!
 - Check QUICK_START.md in installation folder
 - View README.md for detailed documentation
 
-## 🎉 Enjoy Bobby's Workshop!
+## ðŸŽ‰ Enjoy Bobby's Workshop!
 
 You now have a complete, professional device management platform!
 
 **Version:** 1.0.0
 **Platform:** Windows 10/11
 **License:** MIT
-"@
+'@
 
 Set-Content -Path "$OUTPUT_DIR\INSTALLER_README.md" -Value $installerReadme -Encoding UTF8
-Write-Host "✅ INSTALLER_README.md created" -ForegroundColor Green
+Write-Host "âœ… INSTALLER_README.md created" -ForegroundColor Green
 Write-Host ""
 
 # Step 10: Package installer
-Write-Host "📦 Creating distribution package..." -ForegroundColor Yellow
+Write-Host "ðŸ“¦ Creating distribution package..." -ForegroundColor Yellow
 
 $sevenZip = $null
 $sevenZipPaths = @(
@@ -472,44 +472,45 @@ if ($sevenZip) {
     & $sevenZip a -sfx7z.sfx "$INSTALLER_NAME" "$OUTPUT_DIR\*" -y
     
     if ($LASTEXITCODE -eq 0) {
-        Write-Host "✅ Self-extracting EXE created: $INSTALLER_NAME" -ForegroundColor Green
+        Write-Host "âœ… Self-extracting EXE created: $INSTALLER_NAME" -ForegroundColor Green
     } else {
-        Write-Host "⚠️  7-Zip packaging failed, creating ZIP instead..." -ForegroundColor Yellow
+        Write-Host "âš ï¸  7-Zip packaging failed, creating ZIP instead..." -ForegroundColor Yellow
         Compress-Archive -Path "$OUTPUT_DIR\*" -DestinationPath "BobbysWorkshop-Portable-v$VERSION.zip" -Force
-        Write-Host "✅ ZIP package created: BobbysWorkshop-Portable-v$VERSION.zip" -ForegroundColor Green
+        Write-Host "âœ… ZIP package created: BobbysWorkshop-Portable-v$VERSION.zip" -ForegroundColor Green
     }
 } else {
     Write-Host "7-Zip not found, creating ZIP package..." -ForegroundColor Yellow
     Compress-Archive -Path "$OUTPUT_DIR\*" -DestinationPath "BobbysWorkshop-Portable-v$VERSION.zip" -Force
-    Write-Host "✅ ZIP package created: BobbysWorkshop-Portable-v$VERSION.zip" -ForegroundColor Green
+    Write-Host "âœ… ZIP package created: BobbysWorkshop-Portable-v$VERSION.zip" -ForegroundColor Green
     Write-Host "" -ForegroundColor Yellow
-    Write-Host "💡 Install 7-Zip to create self-extracting .exe installer" -ForegroundColor Yellow
+    Write-Host "ðŸ’¡ Install 7-Zip to create self-extracting .exe installer" -ForegroundColor Yellow
     Write-Host "   Download from: https://www.7-zip.org/" -ForegroundColor Cyan
 }
 
 Write-Host ""
 Write-Host "=============================================" -ForegroundColor Cyan
-Write-Host "✅ BUILD COMPLETE!" -ForegroundColor Green
+Write-Host "âœ… BUILD COMPLETE!" -ForegroundColor Green
 Write-Host "=============================================" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "📦 Distribution files created:" -ForegroundColor Cyan
+Write-Host "ðŸ“¦ Distribution files created:" -ForegroundColor Cyan
 Write-Host "   - $OUTPUT_DIR\ (installer folder)" -ForegroundColor White
 Write-Host "   - BobbysWorkshop-Portable-v$VERSION.zip (portable package)" -ForegroundColor White
 Write-Host ""
-Write-Host "📋 Files included:" -ForegroundColor Cyan
-Write-Host "   ✅ INSTALL.bat (installer)" -ForegroundColor Green
-Write-Host "   ✅ UNINSTALL.bat (uninstaller)" -ForegroundColor Green
-Write-Host "   ✅ RUN_PORTABLE.bat (portable mode)" -ForegroundColor Green
-Write-Host "   ✅ START.bat (launcher)" -ForegroundColor Green
-Write-Host "   ✅ install.ps1 (system tools installer)" -ForegroundColor Green
-Write-Host "   ✅ dist/ (built frontend)" -ForegroundColor Green
-Write-Host "   ✅ server/ (backend)" -ForegroundColor Green
-Write-Host "   ✅ INSTALLER_README.md (user guide)" -ForegroundColor Green
+Write-Host "ðŸ“‹ Files included:" -ForegroundColor Cyan
+Write-Host "   âœ… INSTALL.bat (installer)" -ForegroundColor Green
+Write-Host "   âœ… UNINSTALL.bat (uninstaller)" -ForegroundColor Green
+Write-Host "   âœ… RUN_PORTABLE.bat (portable mode)" -ForegroundColor Green
+Write-Host "   âœ… START.bat (launcher)" -ForegroundColor Green
+Write-Host "   âœ… install.ps1 (system tools installer)" -ForegroundColor Green
+Write-Host "   âœ… dist/ (built frontend)" -ForegroundColor Green
+Write-Host "   âœ… server/ (backend)" -ForegroundColor Green
+Write-Host "   âœ… INSTALLER_README.md (user guide)" -ForegroundColor Green
 Write-Host ""
-Write-Host "🎁 Ready to distribute!" -ForegroundColor Green
+Write-Host "ðŸŽ Ready to distribute!" -ForegroundColor Green
 Write-Host ""
 Write-Host "Next steps:" -ForegroundColor Yellow
 Write-Host "1. Test: Run $OUTPUT_DIR\INSTALL.bat" -ForegroundColor White
 Write-Host "2. Share: Upload BobbysWorkshop-Portable-v$VERSION.zip" -ForegroundColor White
 Write-Host "3. Or create EXE: Install 7-Zip and run script again" -ForegroundColor White
 Write-Host ""
+
