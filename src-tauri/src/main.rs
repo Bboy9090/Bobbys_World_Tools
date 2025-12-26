@@ -357,7 +357,7 @@ fn get_backend_status(state: tauri::State<'_, AppState>) -> Result<String, Strin
         )
     } else {
         Ok(
-            "Backend server disabled (desktop uses in-process Tauri backend). Set BW_DISABLE_NODE_BACKEND=0 to enable the Node backend."
+            "Backend server disabled. To enable the Node backend, unset BW_DISABLE_NODE_BACKEND or set it to 0."
                 .to_string(),
         )
     }
