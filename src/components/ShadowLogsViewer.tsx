@@ -29,41 +29,38 @@ export function ShadowLogsViewer() {
       return 'BJ0990';
     }
   });
+  const [showPasscodeEditor, setShowPasscodeEditor] = useState(false);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [logs, setLogs] = useState<ShadowLogEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const fetchLogs = async () => {
-    if (!secretPasscode) {
+    setError('');
+    if (!secretPasscode?.trim()) {
       setError('Secret Room passcode is required');
+      setLogs([]);
       return;
     }
-
     setLoading(true);
-    setError('');
 
     try {
       const response = await fetch(
         `http://localhost:3001/api/trapdoor/logs/shadow?date=${date}`,
         {
           headers: {
-            'X-Secret-Room-Passcode': secretPasscode
-          }
-        }
+            'X-Secret-Room-Passcode': secretPasscode?.trim() || 'BJ0990',
+          },
+        },
       );
-
-      const data = await response.json();
-
       if (!response.ok) {
-        setError(data.error || data.message || 'Failed to fetch logs');
-        setLogs([]);
-        return;
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to fetch logs');
       }
-
+      const data = await response.json();
       setLogs(data.entries || []);
-    } catch (err: any) {
-      setError(err.message || 'Network error');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Unknown error');
       setLogs([]);
     } finally {
       setLoading(false);
@@ -143,7 +140,7 @@ export function ShadowLogsViewer() {
 
           <Button
             onClick={fetchLogs}
-            disabled={loading || !apiKey}
+            disabled={loading || !secretPasscode?.trim()}
             className="w-full"
           >
             {loading ? 'Loading...' : (
@@ -192,7 +189,8 @@ export function ShadowLogsViewer() {
                         </div>
 
                         <div className="space-y-1">
-                          <div className="flex items-center gap-2">
+                          <d
+                          iv className="flex items-center gap-2">
                             <strong className="text-sm">Operation:</strong>
                             <code className="text-sm bg-slate-100 px-2 py-0.5 rounded">
                               {log.operation}
@@ -240,7 +238,7 @@ export function ShadowLogsViewer() {
         </Card>
       )}
 
-      {!error && logs.length === 0 && apiKey && !loading && (
+      {!error && logs.length === 0 && secretPasscode?.trim() && !loading && (
         <Alert>
           <AlertDescription>
             No shadow logs found for {date}. This could mean:

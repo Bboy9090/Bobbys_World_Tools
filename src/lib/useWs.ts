@@ -50,9 +50,7 @@ export function useWs(options: UseWsOptions = {}): UseWsReturn {
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const connect = useCallback(() => {
-    if (wsRef.current?.readyState === 1) {
-      return;
-    }
+    if (wsRef.current?.readyState === 1) return;
 
     setConnecting(true);
     setError(null);
@@ -110,20 +108,33 @@ export function useWs(options: UseWsOptions = {}): UseWsReturn {
     }
   }, [url, reconnect, reconnectInterval, maxReconnectAttempts]);
 
-  const disconnect = useCallback(() => {
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-      reconnectTimeoutRef.current = null;
+  useEffect(() => {
+    const scheduleReconnect = () => {
+      reconnectTimeoutRef.current = setTimeout(() => {
+        reconnectAttemptsRef.current++;
+        connect();
+      }, reconnectInterval);
+    };
+
+    if (autoConnect) {
+      connect();
     }
 
-    if (wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
-    }
+    return () => {
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
 
-    setConnected(false);
-    setConnecting(false);
-  }, []);
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
+      }
+
+      setConnected(false);
+      setConnecting(false);
+    };
+  }, [connect, reconnectInterval]);
 
   const send = useCallback((message: WsMessage): boolean => {
     if (wsRef.current?.readyState === 1 && wsRef.current.send) {
@@ -133,16 +144,6 @@ export function useWs(options: UseWsOptions = {}): UseWsReturn {
     return false;
   }, []);
 
-  useEffect(() => {
-    if (autoConnect) {
-      connect();
-    }
-
-    return () => {
-      disconnect();
-    };
-  }, [autoConnect, connect, disconnect]);
-
   return {
     connected,
     connecting,
@@ -150,7 +151,20 @@ export function useWs(options: UseWsOptions = {}): UseWsReturn {
     lastMessage,
     bootforgeTail,
     connect,
-    disconnect,
+    disconnect: useCallback(() => {
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
+      }
+
+      setConnected(false);
+      setConnecting(false);
+    }, []),
     send,
   };
 }
