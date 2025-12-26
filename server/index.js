@@ -3678,6 +3678,122 @@ app.post('/api/mdm/detect', async (req, res) => {
   }
 });
 
+// FRP Detection Endpoint - Works even if device not in regular device list
+app.post('/api/frp/detect', async (req, res) => {
+  try {
+    // Get ADB devices first
+    const devicesResult = await ADBLibrary.listDevices();
+    
+    if (!devicesResult.success || devicesResult.devices.length === 0) {
+      return res.status(200).json({
+        detected: false,
+        confidence: 'unknown',
+        indicators: ['No ADB devices connected'],
+        error: 'No devices found via ADB. Connect device and enable USB debugging.',
+      });
+    }
+
+    // Check FRP on first available device (or specific serial if provided in req.body)
+    const targetSerial = req.body.serial || devicesResult.devices[0].serial;
+    const frpResult = await ADBLibrary.checkFRPStatus(targetSerial);
+    
+    if (!frpResult.success) {
+      return res.status(200).json({
+        detected: false,
+        confidence: 'unknown',
+        indicators: [],
+        error: frpResult.error || 'Unable to check FRP status'
+      });
+    }
+
+    // Get device info for enrichment
+    const deviceInfo = await ADBLibrary.getDeviceInfo(targetSerial);
+
+    res.json({
+      detected: frpResult.hasFRP,
+      confidence: frpResult.confidence,
+      indicators: frpResult.hasFRP 
+        ? [`Short android_id detected (${frpResult.androidId?.length || 0} chars)`, 'Likely Factory Reset Protection active']
+        : [`Normal android_id length (${frpResult.androidId?.length || 0} chars)`, 'FRP unlikely'],
+      androidId: frpResult.androidId,
+      deviceInfo: deviceInfo.success ? {
+        manufacturer: deviceInfo.manufacturer,
+        model: deviceInfo.model,
+        androidVersion: deviceInfo.androidVersion
+      } : undefined
+    });
+  } catch (error) {
+    console.error('[FRP Detection] Error:', error);
+    res.status(500).json({
+      detected: false,
+      confidence: 'unknown',
+      indicators: [],
+      error: 'FRP detection failed: ' + (error.message || 'Unknown error')
+    });
+  }
+});
+
+// MDM Detection Endpoint - Detect Mobile Device Management profiles
+app.post('/api/mdm/detect', async (req, res) => {
+  try {
+    // Get ADB devices first
+    const devicesResult = await ADBLibrary.listDevices();
+    
+    if (!devicesResult.success || devicesResult.devices.length === 0) {
+      return res.status(200).json({
+        detected: false,
+        restrictions: [],
+        error: 'No ADB devices connected. Connect device and enable USB debugging.',
+      });
+    }
+
+    // Check MDM on first available device (or specific serial if provided in req.body)
+    const targetSerial = req.body.serial || devicesResult.devices[0].serial;
+    
+    // Check for common MDM indicators
+    const packageCheck = await ADBLibrary.shell(targetSerial, 'pm list packages | grep -E "mdm|airwatch|mobileiron|intune|workspace|kandji"');
+    const deviceOwner = await ADBLibrary.shell(targetSerial, 'dumpsys device_policy | grep "Device Owner"');
+    const profileOwner = await ADBLibrary.shell(targetSerial, 'dumpsys device_policy | grep "Profile Owner"');
+    
+    const hasMDMPackages = packageCheck.success && packageCheck.stdout?.trim().length > 0;
+    const hasDeviceOwner = deviceOwner.success && deviceOwner.stdout?.includes('Device Owner');
+    const hasProfileOwner = profileOwner.success && profileOwner.stdout?.includes('Profile Owner');
+    
+    const detected = hasMDMPackages || hasDeviceOwner || hasProfileOwner;
+    const restrictions = [];
+    
+    if (hasMDMPackages) restrictions.push('MDM management packages detected');
+    if (hasDeviceOwner) restrictions.push('Device Owner policy active');
+    if (hasProfileOwner) restrictions.push('Profile Owner policy active');
+    
+    // Try to extract organization info if available
+    let organization = undefined;
+    let profileName = undefined;
+    if (detected) {
+      const orgCheck = await ADBLibrary.shell(targetSerial, 'dumpsys device_policy | grep -A 5 "Device Owner\\|Profile Owner"');
+      if (orgCheck.success && orgCheck.stdout) {
+        const orgMatch = orgCheck.stdout.match(/name="([^"]+)"/);
+        if (orgMatch) profileName = orgMatch[1];
+      }
+    }
+
+    res.json({
+      detected,
+      profileName,
+      organization,
+      restrictions,
+      mdmPackages: hasMDMPackages ? packageCheck.stdout?.split('\n').filter(Boolean) : []
+    });
+  } catch (error) {
+    console.error('[MDM Detection] Error:', error);
+    res.status(500).json({
+      detected: false,
+      restrictions: [],
+      error: 'MDM detection failed: ' + (error.message || 'Unknown error')
+    });
+  }
+});
+
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ error: 'Internal server error' });

@@ -52,7 +52,7 @@ export function DashboardLayout() {
     };
 
     return (
-        <div className="h-screen flex flex-col workshop-bg">
+        <div className="h-[100dvh] flex flex-col workshop-bg">
             <header className="h-12 border-b border-border sneaker-box-card flex items-center px-4 gap-3 swoosh-accent">
                 <div className="flex items-center gap-2">
                     <div className="w-7 h-7 bg-primary rounded flex items-center justify-center ambient-glow-cyan">
@@ -74,11 +74,11 @@ export function DashboardLayout() {
                 </div>
             </header>
 
-            <div className="flex-1 flex overflow-hidden">
+            <div className="flex-1 flex min-h-0 overflow-hidden">
                 <DeviceSidebar collapsed={sidebarCollapsed} onToggle={setSidebarCollapsed} />
 
-                <main className="flex-1 flex flex-col overflow-hidden">
-                    <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col">
+                <main className="flex-1 flex min-h-0 flex-col overflow-hidden">
+                    <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex min-h-0 flex-col">
                         <div className="border-b border-border bg-card/30 street-gradient">
                             <TabsList className="h-11 bg-transparent w-full justify-start rounded-none border-0 px-3 gap-1">
                                 <TabsTrigger 
@@ -165,7 +165,7 @@ export function DashboardLayout() {
                             </TabsList>
                         </div>
 
-                        <ScrollArea className="flex-1 floor-grid">
+                        <ScrollArea className="flex-1 min-h-0 floor-grid">
                             <div className="p-4 repair-table">
                                 <TabsContent value="diagnostics" className="mt-0">
                                     <DiagnosticsTab />
