@@ -170,38 +170,11 @@ export async function execute(context: PluginContext): Promise<PluginResult<Batt
         recommendations: parsedData.recommendations || []
       };
     } else if (context.platform === 'ios') {
-      // iOS battery info would use idevice tools
-      // For now, return mock data for iOS
-      batteryData = {
-        level: 80,
-        status: 'discharging',
-        health: 'good',
-        technology: 'Li-Ion',
-        temperature: 28,
-        voltage: 3850,
-        capacity: 3000,
-        isCharging: false,
-        isPowerConnected: false,
-        healthScore: 95,
-        warnings: [],
-        recommendations: []
-      };
+      // iOS battery info requires libimobiledevice tools
+      throw new Error('iOS battery health not implemented. Install libimobiledevice and ideviceinfo tools.');
     } else {
-      // Fallback mock data for testing
-      batteryData = {
-        level: 75,
-        status: 'discharging',
-        health: 'good',
-        technology: 'Li-Ion',
-        temperature: 30,
-        voltage: 3800,
-        capacity: 4000,
-        isCharging: false,
-        isPowerConnected: false,
-        healthScore: 90,
-        warnings: [],
-        recommendations: ['Keep battery between 20% and 80% for optimal longevity']
-      };
+      // No fallback mock data - return explicit error
+      throw new Error(`Platform ${context.platform} battery health not implemented. Only Android is currently supported.`);
     }
 
     context.logger?.info(`Battery health analysis complete: Score ${batteryData.healthScore}`);
