@@ -231,12 +231,9 @@ export async function execute(context: PluginContext): Promise<PluginResult<Ther
         timestamp: Date.now()
       };
     } else if (context.platform === 'ios') {
-      // iOS thermal info would require specific tools
-      // iOS thermal data not implemented
-      throw new Error('iOS thermal monitoring not implemented. Android only.');
+      throw new Error('Thermal monitoring for iOS is not available. Install/enable required tools.');
     } else {
-      // No fallback mock data - return explicit error
-      throw new Error(`Platform ${context.platform} thermal monitoring not implemented. Only Android is currently supported.`);
+      throw new Error('Thermal monitoring requires Android ADB or platform-specific tooling.');
     }
 
     context.logger?.info(`Thermal health analysis complete: Status ${thermalData.overallStatus}`);

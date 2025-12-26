@@ -41,6 +41,7 @@ export function PluginMarketplace() {
   const [activeTab, setActiveTab] = useState<'browse' | 'installed' | 'submit'>('browse');
   const [plugins, setPlugins] = useState<Plugin[]>([]);
   const [loading, setLoading] = useState(false);
+  const [registryError, setRegistryError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState<Map<string, PluginDownloadProgress>>(new Map());
   const [dependencyInstallDialog, setDependencyInstallDialog] = useState<{
     open: boolean;
@@ -57,13 +58,16 @@ export function PluginMarketplace() {
 
   const loadPlugins = async () => {
     setLoading(true);
+    setRegistryError(null);
     try {
       const results = await pluginAPI.searchPlugins(filters);
       setPlugins(results);
     } catch (error) {
       console.error('Failed to load plugins:', error);
       toast.error('Failed to load plugins from registry. Check backend connection.');
-      setPlugins([]); // Show empty state instead of fake fallback
+      const message = error instanceof Error ? error.message : 'Registry unavailable';
+      setRegistryError(message);
+      setPlugins([]); // Truth-first: no mock fallback
     } finally {
       setLoading(false);
     }
@@ -241,6 +245,22 @@ export function PluginMarketplace() {
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
+            {/* Gated: Show explicit registry unavailable state when backend cannot be reached */}
+            {!loading && registryError && (
+              <Card className="p-12 text-center md:col-span-2">
+                <CloudArrowUp className="w-12 h-12 mx-auto mb-3 text-destructive" />
+                <p className="font-semibold text-destructive mb-1">Plugin registry unavailable</p>
+                <p className="text-muted-foreground mb-4">
+                  {registryError}. Ensure the backend is running at http://localhost:3001 and the registry API is configured.
+                </p>
+                <div className="flex items-center justify-center">
+                  <Button onClick={loadPlugins} variant="outline" className="gap-1.5">
+                    <ArrowsClockwise className="w-4 h-4" />
+                    Retry
+                  </Button>
+                </div>
+              </Card>
+            )}
             {filteredPlugins.map(plugin => {
               const isInstalled = installed.some(p => p.plugin.id === plugin.id);
               const downloadProgress = downloading.get(plugin.id);
@@ -351,10 +371,12 @@ export function PluginMarketplace() {
           </div>
 
           {filteredPlugins.length === 0 && (
-            <Card className="p-12 text-center">
-              <Package className="w-12 h-12 mx-auto mb-3 text-muted-foreground" />
-              <p className="text-muted-foreground">No plugins found matching your criteria</p>
-            </Card>
+            !registryError ? (
+              <Card className="p-12 text-center">
+                <Package className="w-12 h-12 mx-auto mb-3 text-muted-foreground" />
+                <p className="text-muted-foreground">No plugins found matching your criteria</p>
+              </Card>
+            ) : null
           )}
         </TabsContent>
 

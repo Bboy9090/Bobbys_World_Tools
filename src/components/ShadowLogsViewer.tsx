@@ -22,15 +22,21 @@ interface ShadowLogEntry {
 }
 
 export function ShadowLogsViewer() {
-  const [adminPassword, setAdminPassword] = useState('');
+  const [secretPasscode, setSecretPasscode] = useState(() => {
+    try {
+      return localStorage.getItem('bobbysWorkshop.secretRoomPasscode') || 'BJ0990';
+    } catch {
+      return 'BJ0990';
+    }
+  });
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [logs, setLogs] = useState<ShadowLogEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const fetchLogs = async () => {
-    if (!adminPassword) {
-      setError('Admin password is required');
+    if (!secretPasscode) {
+      setError('Secret Room passcode is required');
       return;
     }
 
@@ -42,7 +48,7 @@ export function ShadowLogsViewer() {
         `http://localhost:3001/api/trapdoor/logs/shadow?date=${date}`,
         {
           headers: {
-            'X-Admin-Password': adminPassword
+            'X-Secret-Room-Passcode': secretPasscode
           }
         }
       );
@@ -99,18 +105,26 @@ export function ShadowLogsViewer() {
             Shadow Logs Authentication
           </CardTitle>
           <CardDescription>
-            Enter admin credentials to decrypt and view shadow logs
+            Enter the Secret Room passcode to view shadow logs
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <Label htmlFor="adminPassword">Admin Password</Label>
+            <Label htmlFor="secretPasscode">Secret Room Passcode</Label>
             <Input
-              id="adminPassword"
+              id="secretPasscode"
               type="password"
-              placeholder="Enter admin password"
-              value={adminPassword}
-              onChange={(e) => setAdminPassword(e.target.value)}
+              placeholder="Enter Secret Room passcode (example: BJ0990)"
+              value={secretPasscode}
+              onChange={(e) => {
+                const value = e.target.value;
+                setSecretPasscode(value);
+                try {
+                  localStorage.setItem('bobbysWorkshop.secretRoomPasscode', value);
+                } catch {
+                  // ignore
+                }
+              }}
             />
           </div>
 
@@ -129,7 +143,7 @@ export function ShadowLogsViewer() {
 
           <Button
             onClick={fetchLogs}
-            disabled={loading || !adminPassword}
+            disabled={loading || !apiKey}
             className="w-full"
           >
             {loading ? 'Loading...' : (

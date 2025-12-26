@@ -102,7 +102,7 @@ export function RealTimeUSBDiagnostics() {
   }
 
   function correlateDevices() {
-    if (androidDevices.length === 0 && bootforgeDevices.length === 0) {
+    if (!androidDevices.length && !bootforgeDevices.length) {
       setCorrelatedDevices([]);
       return;
     }

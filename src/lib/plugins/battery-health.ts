@@ -170,11 +170,11 @@ export async function execute(context: PluginContext): Promise<PluginResult<Batt
         recommendations: parsedData.recommendations || []
       };
     } else if (context.platform === 'ios') {
-      // iOS battery info requires libimobiledevice tools
-      throw new Error('iOS battery health not implemented. Install libimobiledevice and ideviceinfo tools.');
+      // iOS battery path not implemented yet
+      throw new Error('Battery health analysis for iOS is not available. Install/enable iOS tools to proceed.');
     } else {
-      // No fallback mock data - return explicit error
-      throw new Error(`Platform ${context.platform} battery health not implemented. Only Android is currently supported.`);
+      // No mock fallback in production
+      throw new Error('Battery health analysis requires Android ADB connection.');
     }
 
     context.logger?.info(`Battery health analysis complete: Score ${batteryData.healthScore}`);

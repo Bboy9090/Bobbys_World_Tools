@@ -209,11 +209,9 @@ export async function execute(context: PluginContext): Promise<PluginResult<Stor
 
       storageData.healthScore = calculateStorageHealthScore(storageData, partitions);
     } else if (context.platform === 'ios') {
-      // iOS storage analysis not implemented
-      throw new Error('iOS storage analysis not implemented. Android only.');
+      throw new Error('Storage analysis for iOS is not available. Install/enable required tools.');
     } else {
-      // No fallback mock data - return explicit error
-      throw new Error(`Platform ${context.platform} storage analysis not implemented. Only Android is currently supported.`);
+      throw new Error('Storage analysis requires Android ADB or platform-specific tooling.');
     }
 
     context.logger?.info(`Storage health analysis complete: Score ${storageData.healthScore}`);

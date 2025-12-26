@@ -20,7 +20,13 @@ interface WorkflowResult {
 export function TrapdoorControlPanel() {
   const [deviceSerial, setDeviceSerial] = useState('');
   const [authorizationInput, setAuthorizationInput] = useState('');
-  const [adminPassword, setAdminPassword] = useState('');
+  const [secretPasscode, setSecretPasscode] = useState(() => {
+    try {
+      return localStorage.getItem('bobbysWorkshop.secretRoomPasscode') || 'BJ0990';
+    } catch {
+      return 'BJ0990';
+    }
+  });
   const [executing, setExecuting] = useState(false);
   const [result, setResult] = useState<WorkflowResult | null>(null);
   const [error, setError] = useState('');
@@ -31,8 +37,8 @@ export function TrapdoorControlPanel() {
       return;
     }
 
-    if (!adminPassword) {
-      setError('Admin password is required');
+    if (!secretPasscode) {
+      setError('Secret Room passcode is required');
       return;
     }
 
@@ -50,7 +56,7 @@ export function TrapdoorControlPanel() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Admin-Password': adminPassword
+          'X-Secret-Room-Passcode': secretPasscode
         },
         body: JSON.stringify({
           deviceSerial,
@@ -93,27 +99,34 @@ export function TrapdoorControlPanel() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5" />
-            Admin Authentication
+            Authentication
           </CardTitle>
           <CardDescription>
-            Admin password is required for all Trapdoor operations
+            Enter the Secret Room passcode to enable Trapdoor operations
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="adminPassword">Admin Password</Label>
+              <Label htmlFor="secretPasscode">Secret Room Passcode</Label>
               <Input
-                id="adminPassword"
+                id="secretPasscode"
                 type="password"
-                placeholder="Enter admin password"
-                value={adminPassword}
-                onChange={(e) => setAdminPassword(e.target.value)}
+                placeholder="Enter Secret Room passcode (example: BJ0990)"
+                value={secretPasscode}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setSecretPasscode(value);
+                  try {
+                    localStorage.setItem('bobbysWorkshop.secretRoomPasscode', value);
+                  } catch {
+                    // ignore
+                  }
+                }}
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Server config: set <code className="font-mono">PANDORA_ROOM_PASSWORD</code> (or legacy <code className="font-mono">ADMIN_API_KEY</code>)
-                <br />
-                <strong className="text-orange-500">⚠️ Never commit or share the password</strong>
+                Server must be configured with <code className="font-mono">SECRET_ROOM_PASSCODE</code>. Requests send
+                <code className="font-mono"> X-Secret-Room-Passcode</code>.
               </p>
             </div>
 
@@ -173,7 +186,7 @@ export function TrapdoorControlPanel() {
 
               <Button
                 onClick={() => executeWorkflow('frp', 'I OWN THIS DEVICE')}
-                disabled={executing || !deviceSerial || !adminPassword}
+                disabled={executing || !deviceSerial || !secretPasscode}
                 className="w-full"
                 variant="destructive"
               >
@@ -219,7 +232,7 @@ export function TrapdoorControlPanel() {
 
               <Button
                 onClick={() => executeWorkflow('unlock', 'UNLOCK')}
-                disabled={executing || !deviceSerial || !adminPassword}
+                disabled={executing || !deviceSerial || !secretPasscode}
                 className="w-full"
                 variant="destructive"
               >

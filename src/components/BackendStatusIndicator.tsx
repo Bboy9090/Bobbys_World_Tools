@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, Warning, XCircle, CircleNotch } from '@phosphor-icons/react';
 import { useBackendHealth } from '@/lib/backend-health';
 import { useAudioNotifications } from '@/hooks/use-audio-notifications';
-import { API_CONFIG } from '@/lib/apiConfig';
+import { API_CONFIG, getWSUrl } from '@/lib/apiConfig';
 
 interface ServiceStatus {
   name: string;
@@ -15,63 +15,76 @@ interface ServiceStatus {
   endpoint?: string;
 }
 
-const WS_BASE_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:3001';
+const WS_DEVICE_EVENTS_URL = getWSUrl('/ws/device-events');
 
 export function BackendStatusIndicator() {
   const health = useBackendHealth(10000); // Check every 10 seconds
   const audio = useAudioNotifications();
   const [wsStatus, setWsStatus] = useState<'connected' | 'disconnected' | 'checking'>('checking');
   const [bootforgeStatus, setBootforgeStatus] = useState<'connected' | 'disconnected' | 'checking'>('checking');
-  const [previousWsStatus, setPreviousWsStatus] = useState<'connected' | 'disconnected' | 'checking'>('checking');
+  const previousWsStatusRef = useRef<'connected' | 'disconnected' | 'checking'>('checking');
+  const audioRef = useRef(audio);
+  const shouldReconnectRef = useRef(true);
+
+  useEffect(() => {
+    audioRef.current = audio;
+  }, [audio]);
   
   // Check WebSocket connectivity
   useEffect(() => {
     let ws: WebSocket | null = null;
-    let reconnectTimer: NodeJS.Timeout;
+    let reconnectTimer: NodeJS.Timeout | null = null;
+
+    shouldReconnectRef.current = true;
 
     const connectWS = () => {
       try {
-        ws = new WebSocket(`${WS_BASE_URL}/ws/device-events`);
+        ws = new WebSocket(WS_DEVICE_EVENTS_URL);
         
         ws.onopen = () => {
           console.log('[BackendStatus] WebSocket connected');
           setWsStatus('connected');
           // Play connect sound only if previously disconnected
-          if (previousWsStatus === 'disconnected') {
-            audio.handleConnect();
+          if (previousWsStatusRef.current === 'disconnected') {
+            audioRef.current.handleConnect();
           }
-          setPreviousWsStatus('connected');
+          previousWsStatusRef.current = 'connected';
         };
         
         ws.onerror = (error) => {
           console.error('[BackendStatus] WebSocket error:', error);
           setWsStatus('disconnected');
-          if (previousWsStatus === 'connected') {
-            audio.handleDisconnect();
+          if (previousWsStatusRef.current === 'connected') {
+            audioRef.current.handleDisconnect();
           }
-          setPreviousWsStatus('disconnected');
+          previousWsStatusRef.current = 'disconnected';
         };
         
         ws.onclose = () => {
           console.log('[BackendStatus] WebSocket disconnected');
           setWsStatus('disconnected');
-          if (previousWsStatus === 'connected') {
-            audio.handleDisconnect();
+          if (previousWsStatusRef.current === 'connected') {
+            audioRef.current.handleDisconnect();
           }
-          setPreviousWsStatus('disconnected');
+          previousWsStatusRef.current = 'disconnected';
           // Attempt reconnect after 5 seconds
-          reconnectTimer = setTimeout(connectWS, 5000);
+          if (shouldReconnectRef.current) {
+            reconnectTimer = setTimeout(connectWS, 5000);
+          }
         };
       } catch (error) {
         console.error('[BackendStatus] Failed to create WebSocket:', error);
         setWsStatus('disconnected');
-        reconnectTimer = setTimeout(connectWS, 5000);
+        if (shouldReconnectRef.current) {
+          reconnectTimer = setTimeout(connectWS, 5000);
+        }
       }
     };
 
     connectWS();
 
     return () => {
+      shouldReconnectRef.current = false;
       if (ws) {
         ws.close();
       }
@@ -79,7 +92,7 @@ export function BackendStatusIndicator() {
         clearTimeout(reconnectTimer);
       }
     };
-  }, [previousWsStatus, audio]);
+  }, []);
 
   // Check BootForge USB backend
   useEffect(() => {
@@ -112,7 +125,7 @@ export function BackendStatusIndicator() {
       name: 'WebSocket',
       status: wsStatus,
       lastCheck: Date.now(),
-      endpoint: `${WS_BASE_URL}/ws/device-events`
+      endpoint: WS_DEVICE_EVENTS_URL
     },
     {
       name: 'BootForge USB',

@@ -11,6 +11,7 @@ All phases of the GUI polish and backend enhancement have been completed success
 The application now features a unique visual identity inspired by the 90s/00s Bronx street culture:
 
 #### Visual Elements
+
 - **Sneaker Box Cards**: Device cards styled like premium sneaker boxes with subtle elevation
 - **Candy Shimmer Effects**: Animated shimmer effects on badges and interactive elements
 - **PlayStation Button Colors**: Triangle (Green), Circle (Red), X (Blue), Square (Gold) color scheme
@@ -21,8 +22,17 @@ The application now features a unique visual identity inspired by the 90s/00s Br
 - **Street Sign Typography**: Bold "BEBAS NEUE" headers with tracking
 - **Workshop Floor Grid**: Subtle cyan grid pattern on scroll areas
 - **Status LED Indicators**: Real-time pulsing LED effects for connection states
+- **Baseball Card Style**: Trading card borders and stats panels for device info
+- **CD Jewel Case Effects**: Rainbow reflections and disc shine animations
+- **Air Jordan Colorways**: Bred, Royal, Chicago, Concord, Space Jam, Cement themes
+- **Boom Bap Panels**: SP-1200/MPC-inspired dark panel aesthetics with orange accents
+- **Vinyl Record Grooves**: Radial gradient backgrounds with groove patterns
+- **Cassette Tape Style**: Dual-reel tape deck inspired containers
+- **Boombox Speaker Grills**: Cross-hatch mesh patterns for audio/output sections
+- **Sound Effects System**: 90s/00s hip-hop UI sounds (kick drums, scratches, clicks)
 
 #### Emoji Integration
+
 - 🎮 Gaming console references
 - 👟 Sneaker culture nods
 - 📦 Phone box imagery
@@ -33,14 +43,16 @@ The application now features a unique visual identity inspired by the 90s/00s Br
 ### 2. Enterprise Backend Connectivity
 
 #### BackendStatusIndicator Component
+
 - **Real-time Service Monitoring**: Tracks REST API, WebSocket, and BootForge USB independently
 - **Auto-Reconnection**: WebSocket connections automatically retry every 5 seconds
 - **Detailed Status Display**: Click the status badge to see individual service health
 - **Environment Configuration**: All URLs configurable via environment variables
-  - `VITE_API_URL` for REST API (default: http://localhost:3001)
+  - `VITE_API_URL` for REST API (default: <http://localhost:3001>)
   - `VITE_WS_URL` for WebSocket (default: ws://localhost:3001)
 
 #### Truth-First Principles
+
 - No mock data in production paths
 - All "Connected" states validated by actual backend responses
 - Clear error messages when services are unavailable
@@ -51,12 +63,14 @@ The application now features a unique visual identity inspired by the 90s/00s Br
 Comprehensive device state detection across all platforms:
 
 #### iOS Detection
+
 - **Normal Mode**: Standard iOS operation
 - **Recovery Mode**: iTunes recovery state
 - **DFU Mode**: Device Firmware Update state
 - **Detection Method**: USB VID/PID analysis + idevice_id tool correlation
 
 #### Android Detection
+
 - **Normal (ADB)**: Standard Android Debug Bridge
 - **Fastboot**: Bootloader mode for flashing
 - **Recovery**: Custom recovery (TWRP, CWM, etc.)
@@ -66,6 +80,7 @@ Comprehensive device state detection across all platforms:
 - **Detection Method**: USB class analysis + adb/fastboot tool correlation
 
 #### Additional Features
+
 - **TWRP Detection**: Identifies custom recovery installations
 - **Rooted Device Detection**: Checks for Magisk/SuperSU presence
 - **Bootloader State**: Locked vs. unlocked detection
@@ -76,6 +91,7 @@ Comprehensive device state detection across all platforms:
 ### Prerequisites
 
 #### Required Tools
+
 ```bash
 # Node.js and npm (for frontend and API server)
 node --version  # v18+ recommended
@@ -97,6 +113,7 @@ cargo --version
 ### Installation Steps
 
 #### 1. Clone and Install Dependencies
+
 ```bash
 git clone https://github.com/Bboy9090/Bobbys-Workshop-.git
 cd Bobbys-Workshop-
@@ -111,6 +128,7 @@ cd ..
 ```
 
 #### 2. Build BootForge USB (Optional)
+
 ```bash
 cd crates/bootforge-usb
 cargo build --release
@@ -119,6 +137,7 @@ cd ../..
 ```
 
 #### 3. Build Frontend
+
 ```bash
 npm run build
 ```
@@ -126,6 +145,7 @@ npm run build
 #### 4. Start Backend Services
 
 Terminal 1 - Node.js API Server:
+
 ```bash
 cd server
 npm start
@@ -133,6 +153,7 @@ npm start
 ```
 
 Terminal 2 - Python BootForge Backend (Optional):
+
 ```bash
 cd server
 python3 bootforge_backend.py
@@ -142,12 +163,14 @@ python3 bootforge_backend.py
 #### 5. Serve Frontend
 
 Development:
+
 ```bash
 npm run dev
 # Open http://localhost:5000
 ```
 
 Production:
+
 ```bash
 npm run preview
 # Open http://localhost:4173
@@ -156,6 +179,7 @@ npm run preview
 ### Environment Configuration
 
 Create `.env` file in the root directory:
+
 ```env
 # API Configuration
 VITE_API_URL=http://localhost:3001
@@ -164,16 +188,25 @@ VITE_WS_URL=ws://localhost:3001
 # Production Configuration (example)
 # VITE_API_URL=https://api.bobbysworkshop.com
 # VITE_WS_URL=wss://api.bobbysworkshop.com
+ 
+ # Plugin Registry & Services
+ # Configure these to avoid unavailable features in production.
+ # If unset, frontend defaults to localhost.
+ VITE_REGISTRY_API_URL=http://localhost:3001/api/plugins
+ VITE_FIRMWARE_API_URL=http://localhost:3001/api/firmware
+ VITE_BOOTFORGE_API_URL=http://localhost:3001/api
 ```
 
 ## 🔒 Security Status
 
 ### CodeQL Security Scanning
+
 - **JavaScript Analysis**: ✅ 0 vulnerabilities found
 - **Code Review**: ✅ Passed with minor recommendations (addressed)
 - **Truth-First Compliance**: ✅ No mock data in production paths
 
 ### Best Practices Implemented
+
 - Environment variable configuration for deployment flexibility
 - Proper error handling with explicit messages
 - WebSocket auto-reconnection with exponential backoff
@@ -210,10 +243,18 @@ Workshop atmosphere classes (in `src/styles/workshop-vibe.css`):
 .device-card-console  /* Game console inspired device cards */
 .phone-box            /* Box of phones container */
 .phone-stack          /* 3D stacked phone effect */
+.baseball-card        /* Trading card border and style */
+.baseball-card-stats  /* Stats panel with monospace font */
+.cd-jewel-case        /* CD jewel case with rainbow reflection */
+.cd-disc-shine        /* Spinning rainbow CD disc effect */
+.vinyl-groove         /* Vinyl record with radial grooves */
+.cassette-tape        /* Cassette tape with dual reels */
+.speaker-grill        /* Boombox speaker mesh pattern */
 
 /* Text & Typography */
 .street-sign-text     /* Bold street sign style text */
 .console-text         /* Console/terminal style text */
+.boom-bap-text        /* SP-1200 style orange text with shadow */
 
 /* Effects */
 .candy-shimmer        /* Animated candy wrapper shimmer */
@@ -226,7 +267,19 @@ Workshop atmosphere classes (in `src/styles/workshop-vibe.css`):
 
 /* Interactive */
 .btn-sneaker          /* Sneaker colorway button style */
+.boom-bap-button      /* Boom bap style button (dark brown/orange) */
 .status-led           /* Pulsing LED indicator */
+
+/* Air Jordan Colorways */
+.jordan-bred           /* Black/Red (Bred) colorway */
+.jordan-royal          /* Black/Blue (Royal) colorway */
+.jordan-chicago        /* White/Red/Black (Chicago) colorway */
+.jordan-concord        /* White/Purple (Concord) colorway */
+.jordan-spacejam       /* Black/Blue (Space Jam) colorway */
+.jordan-cement         /* Grey/Red (Cement) colorway */
+
+/* Boom Bap Aesthetic */
+.boom-bap-panel        /* Dark brown panel with orange accents */
 ```
 
 ### PlayStation Button Color Reference
@@ -282,6 +335,7 @@ Events: { type: 'metrics', cpu: N, memory: N, ... }
 For future implementation, consider creating installer scripts:
 
 ### Windows (PowerShell)
+
 ```powershell
 # install-bobbys-workshop.ps1
 # - Download Node.js if needed
@@ -294,6 +348,7 @@ For future implementation, consider creating installer scripts:
 ```
 
 ### Linux/macOS (Bash)
+
 ```bash
 # install-bobbys-workshop.sh
 # - Check for Node.js, Python, Rust
