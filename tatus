@@ -342,3 +342,89 @@ Date:   Fri Dec 26 04:41:48 2025 -0500
 [32m+[m[32mexport const getApiUrl = (endpoint: string): string => {[m
 [32m+[m[32m  return `${SERVER_CONFIG.BASE_URL}${endpoint}`;[m
 [32m+[m[32m};[m
+* [33m5ce611a[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain-tool-kit[m[33m, [m[1;31morigin/main-tool-kit[m[33m, [m[1;31morigin/HEAD[m[33m)[m WIP sync
+*   [33m66c0066[m Merge pull request #96 from Bboy9090/copilot/get-app-ready-for-deployment
+[32m|[m[33m\[m  
+[32m|[m *   [33mab18088[m Merge branch 'main-tool-kit' into copilot/get-app-ready-for-deployment
+[32m|[m [34m|[m[32m\[m  
+[32m|[m [34m|[m[32m/[m  
+[32m|[m[32m/[m[34m|[m   
+* [34m|[m [33m3ca1bf0[m apply: stash@{7} (accepted stash versions + regenerated locks)
+* [34m|[m [33md6ff243[m apply: stash@{8} (accepted stash versions + regenerated locks)
+* [34m|[m [33m21ea2a8[m apply: stash@{11},{10},{9} (accepted stash versions + regenerated locks)
+* [34m|[m [33m26a1ad8[m apply: mass stash application (stash@{11} to stash@{0})
+[35m|[m * [33m2c632ec[m[33m ([m[1;31morigin/copilot/get-app-ready-for-deployment[m[33m)[m Add deployment completion summary and final documentation
+[35m|[m * [33m3821473[m Fix inconsistent BW_DISABLE_NODE_BACKEND usage in error message
+[35m|[m * [33m31db20a[m Add comprehensive build and release documentation for maintainers
+[35m|[m * [33m10ac832[m Add comprehensive installation documentation for end users
+[35m|[m * [33me9eb397[m Remove mock data fallbacks from plugins - return explicit errors instead
+[35m|[m * [33m90f4f57[m Enable backend auto-start by default for production deployment
+[35m|[m * [33mb6f512e[m Initial plan
+[35m|[m[35m/[m  
+*   [33mdacbac0[m[33m ([m[1;31morigin/merge/alt-into-main-tool-kit[m[33m, [m[1;32mmerge/alt-into-main-tool-kit[m[33m, [m[1;32mbackup/main-tool-kit-2025-12-26-conflicts[m[33m, [m[1;32mbackup/main-tool-kit-2025-12-26[m[33m, [m[1;32mbackup-before-stash-apply[m[33m, [m[1;32mbackup-before-mass-stash-apply[m[33m)[m Merge pull request #90 from Bboy9090/copilot/push-version-4-core-foundation
+[36m|[m[1;31m\[m  
+[36m|[m * [33m6f7eb32[m[33m ([m[1;31morigin/copilot/push-version-4-core-foundation[m[33m)[m Add quick start guide for Operation Envelopes - VERSION 4 COMPLETE
+[36m|[m * [33m21548aa[m Add comprehensive test suite and documentation for Operation Envelopes
+[36m|[m * [33mac88a93[m Implement Operation Envelopes system - Tier 1 foundation complete
+[36m|[m * [33m9925faa[m Initial plan
+* [1;31m|[m [33m8196902[m Fix incorrect block closure in flash_start function
+* [1;31m|[m [33m89318b2[m refactor: update product name and language in tauri configuration
+[1;31m|[m[1;31m/[m  
+* [33mc94e8e7[m docs: archive Electron main reference
+* [33m1ac6b50[m chore: ignore local artifacts; update Cargo.lock; small UI/script cleanup
+* [33m5ab34a6[m WIP: packaging scripts + trapdoor password auth + UI flex fixes
+*   [33m53a5515[m Merge pull request #86 from Bboy9090/codex/conduct-comparative-analysis-of-ios-tooling
+[1;32m|[m[1;33m\[m  
+[1;32m|[m * [33m1fed2ed[m[33m ([m[1;31morigin/codex/conduct-comparative-analysis-of-ios-tooling[m[33m)[m Add resilient clipboard helper for copy actions
+* [1;33m|[m   [33m0dc1589[m Merge pull request #80 from Bboy9090/dependabot/npm_and_yarn/react-resizable-panels-4.0.15
+[1;34m|[m[1;35m\[m [1;33m\[m  
+[1;34m|[m * [1;33m|[m [33m68dbf4a[m chore(deps): bump react-resizable-panels from 4.0.14 to 4.0.15
+[1;34m|[m [1;33m|[m[1;33m/[m  
+* [1;33m|[m   [33m1d6329b[m Merge pull request #85 from Bboy9090/copilot/conduct-ios-tooling-research
+[1;33m|[m[31m\[m [1;33m\[m  
+[1;33m|[m [31m|[m[1;33m/[m  
+[1;33m|[m[1;33m/[m[31m|[m   
+[1;33m|[m * [33m8f36e72[m[33m ([m[1;31morigin/copilot/conduct-ios-tooling-research[m[33m)[m Add comprehensive iOS tooling ecosystem research documentation
+* [33m5ce611a[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain-tool-kit[m[33m, [m[1;31morigin/main-tool-kit[m[33m, [m[1;31morigin/HEAD[m[33m)[m WIP sync
+*   [33m66c0066[m Merge pull request #96 from Bboy9090/copilot/get-app-ready-for-deployment
+[32m|[m[33m\[m  
+[32m|[m *   [33mab18088[m Merge branch 'main-tool-kit' into copilot/get-app-ready-for-deployment
+[32m|[m [34m|[m[32m\[m  
+[32m|[m [34m|[m[32m/[m  
+[32m|[m[32m/[m[34m|[m   
+* [34m|[m [33m3ca1bf0[m apply: stash@{7} (accepted stash versions + regenerated locks)
+* [34m|[m [33md6ff243[m apply: stash@{8} (accepted stash versions + regenerated locks)
+* [34m|[m [33m21ea2a8[m apply: stash@{11},{10},{9} (accepted stash versions + regenerated locks)
+* [34m|[m [33m26a1ad8[m apply: mass stash application (stash@{11} to stash@{0})
+[35m|[m * [33m2c632ec[m[33m ([m[1;31morigin/copilot/get-app-ready-for-deployment[m[33m)[m Add deployment completion summary and final documentation
+[35m|[m * [33m3821473[m Fix inconsistent BW_DISABLE_NODE_BACKEND usage in error message
+[35m|[m * [33m31db20a[m Add comprehensive build and release documentation for maintainers
+[35m|[m * [33m10ac832[m Add comprehensive installation documentation for end users
+[35m|[m * [33me9eb397[m Remove mock data fallbacks from plugins - return explicit errors instead
+[35m|[m * [33m90f4f57[m Enable backend auto-start by default for production deployment
+[35m|[m * [33mb6f512e[m Initial plan
+[35m|[m[35m/[m  
+*   [33mdacbac0[m[33m ([m[1;31morigin/merge/alt-into-main-tool-kit[m[33m, [m[1;32mmerge/alt-into-main-tool-kit[m[33m, [m[1;32mbackup/main-tool-kit-2025-12-26-conflicts[m[33m, [m[1;32mbackup/main-tool-kit-2025-12-26[m[33m, [m[1;32mbackup-before-stash-apply[m[33m, [m[1;32mbackup-before-mass-stash-apply[m[33m)[m Merge pull request #90 from Bboy9090/copilot/push-version-4-core-foundation
+[36m|[m[1;31m\[m  
+[36m|[m * [33m6f7eb32[m[33m ([m[1;31morigin/copilot/push-version-4-core-foundation[m[33m)[m Add quick start guide for Operation Envelopes - VERSION 4 COMPLETE
+[36m|[m * [33m21548aa[m Add comprehensive test suite and documentation for Operation Envelopes
+[36m|[m * [33mac88a93[m Implement Operation Envelopes system - Tier 1 foundation complete
+[36m|[m * [33m9925faa[m Initial plan
+* [1;31m|[m [33m8196902[m Fix incorrect block closure in flash_start function
+* [1;31m|[m [33m89318b2[m refactor: update product name and language in tauri configuration
+[1;31m|[m[1;31m/[m  
+* [33mc94e8e7[m docs: archive Electron main reference
+* [33m1ac6b50[m chore: ignore local artifacts; update Cargo.lock; small UI/script cleanup
+* [33m5ab34a6[m WIP: packaging scripts + trapdoor password auth + UI flex fixes
+*   [33m53a5515[m Merge pull request #86 from Bboy9090/codex/conduct-comparative-analysis-of-ios-tooling
+[1;32m|[m[1;33m\[m  
+[1;32m|[m * [33m1fed2ed[m[33m ([m[1;31morigin/codex/conduct-comparative-analysis-of-ios-tooling[m[33m)[m Add resilient clipboard helper for copy actions
+* [1;33m|[m   [33m0dc1589[m Merge pull request #80 from Bboy9090/dependabot/npm_and_yarn/react-resizable-panels-4.0.15
+[1;34m|[m[1;35m\[m [1;33m\[m  
+[1;34m|[m * [1;33m|[m [33m68dbf4a[m chore(deps): bump react-resizable-panels from 4.0.14 to 4.0.15
+[1;34m|[m [1;33m|[m[1;33m/[m  
+* [1;33m|[m   [33m1d6329b[m Merge pull request #85 from Bboy9090/copilot/conduct-ios-tooling-research
+[1;33m|[m[31m\[m [1;33m\[m  
+[1;33m|[m [31m|[m[1;33m/[m  
+[1;33m|[m[1;33m/[m[31m|[m   
+[1;33m|[m * [33m8f36e72[m[33m ([m[1;31morigin/copilot/conduct-ios-tooling-research[m[33m)[m Add comprehensive iOS tooling ecosystem research documentation
