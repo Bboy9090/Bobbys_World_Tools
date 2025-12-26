@@ -16,7 +16,6 @@ import {
   XCircle,
   Clock
 } from 'lucide-react';
-import { DEV_ADMIN_API_KEY, getApiUrl } from '@/lib/secrets';
 
 interface Workflow {
   id: string;
@@ -61,18 +60,39 @@ export function WorkflowExecutionConsole() {
   const fetchWorkflows = async () => {
     setLoading(true);
     try {
-      const response = await fetch(getApiUrl('/trapdoor/workflows'), {
+      let secretPasscode: string | null = null;
+      try {
+        secretPasscode = localStorage.getItem('bobbysWorkshop.secretRoomPasscode');
+      } catch {
+        secretPasscode = null;
+      }
+
+      if (!secretPasscode) {
+        setWorkflows([]);
+        setError('Secret Room passcode is required to load workflows.');
+        return;
+      }
+
+      // Note: Trapdoor endpoints are gated by the Secret Room passcode.
+      const response = await fetch('http://localhost:3001/api/trapdoor/workflows', {
         headers: {
-          'X-API-Key': DEV_ADMIN_API_KEY
+          'X-Secret-Room-Passcode': secretPasscode
         }
       });
 
       if (response.ok) {
         const data = await response.json();
         setWorkflows(data.workflows || []);
+        setError('');
+      } else {
+        const data = await response.json().catch(() => null);
+        setWorkflows([]);
+        setError(data?.message || data?.error || 'Failed to load workflows.');
       }
     } catch (err) {
       console.error('Error fetching workflows:', err);
+      setWorkflows([]);
+      setError('Network error while loading workflows.');
     } finally {
       setLoading(false);
     }

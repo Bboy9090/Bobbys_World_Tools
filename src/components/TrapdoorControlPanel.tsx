@@ -10,8 +10,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertTriangle, Lock, Shield, Terminal, FileKey } from 'lucide-react';
-import { DeviceStateGuide } from './DeviceStateGuide';
-import { DEV_ADMIN_API_KEY, getApiUrl } from '@/lib/secrets';
 
 interface WorkflowResult {
   success: boolean;
@@ -22,7 +20,13 @@ interface WorkflowResult {
 export function TrapdoorControlPanel() {
   const [deviceSerial, setDeviceSerial] = useState('');
   const [authorizationInput, setAuthorizationInput] = useState('');
-  const [apiKey, setApiKey] = useState('');
+  const [secretPasscode, setSecretPasscode] = useState(() => {
+    try {
+      return localStorage.getItem('bobbysWorkshop.secretRoomPasscode') || 'BJ0990';
+    } catch {
+      return 'BJ0990';
+    }
+  });
   const [executing, setExecuting] = useState(false);
   const [result, setResult] = useState<WorkflowResult | null>(null);
   const [error, setError] = useState('');
@@ -33,8 +37,8 @@ export function TrapdoorControlPanel() {
       return;
     }
 
-    if (!apiKey) {
-      setError('Admin API key is required');
+    if (!secretPasscode) {
+      setError('Secret Room passcode is required');
       return;
     }
 
@@ -48,11 +52,11 @@ export function TrapdoorControlPanel() {
     setResult(null);
 
     try {
-      const response = await fetch(getApiUrl(`/trapdoor/${endpoint}`), {
+      const response = await fetch(`http://localhost:3001/api/trapdoor/${endpoint}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-API-Key': apiKey || DEV_ADMIN_API_KEY
+          'X-Secret-Room-Passcode': secretPasscode
         },
         body: JSON.stringify({
           deviceSerial,
@@ -95,27 +99,34 @@ export function TrapdoorControlPanel() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5" />
-            Admin Authentication
+            Authentication
           </CardTitle>
           <CardDescription>
-            Admin API key is required for all Trapdoor operations
+            Enter the Secret Room passcode to enable Trapdoor operations
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="apiKey">Admin API Key</Label>
+              <Label htmlFor="secretPasscode">Secret Room Passcode</Label>
               <Input
-                id="apiKey"
+                id="secretPasscode"
                 type="password"
-                placeholder="Enter admin API key"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="Enter Secret Room passcode (example: BJ0990)"
+                value={secretPasscode}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setSecretPasscode(value);
+                  try {
+                    localStorage.setItem('bobbysWorkshop.secretRoomPasscode', value);
+                  } catch {
+                    // ignore
+                  }
+                }}
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Set via ADMIN_API_KEY environment variable (default: dev-admin-key for development)
-                <br />
-                <strong className="text-orange-500">⚠️ Production: Use JWT tokens instead of static API keys</strong>
+                Server must be configured with <code className="font-mono">SECRET_ROOM_PASSCODE</code>. Requests send
+                <code className="font-mono"> X-Secret-Room-Passcode</code>.
               </p>
             </div>
 
@@ -160,14 +171,13 @@ export function TrapdoorControlPanel() {
                 </AlertDescription>
               </Alert>
 
-              <DeviceStateGuide requiredState="adb" platform="android" />
-
               <div>
                 <Label htmlFor="frpAuth">Type to Confirm</Label>
                 <Input
                   id="frpAuth"
                   placeholder="Type: I OWN THIS DEVICE"
-                  className="font-mono"
+                  value={authorizationInput}
+                  onChange={(e) => setAuthorizationInput(e.target.value)}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
                   You must type exactly: <code className="font-mono">I OWN THIS DEVICE</code>
@@ -175,10 +185,12 @@ export function TrapdoorControlPanel() {
               </div>
 
               <Button
+                onClick={() => executeWorkflow('frp', 'I OWN THIS DEVICE')}
+                disabled={executing || !deviceSerial || !secretPasscode}
                 className="w-full"
                 variant="destructive"
               >
-                Execute FRP Bypass
+                {executing ? 'Executing...' : 'Execute FRP Bypass'}
               </Button>
             </CardContent>
           </Card>
@@ -205,14 +217,13 @@ export function TrapdoorControlPanel() {
                 </AlertDescription>
               </Alert>
 
-              <DeviceStateGuide requiredState="fastboot" platform="android" />
-
               <div>
                 <Label htmlFor="unlockAuth">Type to Confirm</Label>
                 <Input
                   id="unlockAuth"
                   placeholder="Type: UNLOCK"
-                  className="font-mono"
+                  value={authorizationInput}
+                  onChange={(e) => setAuthorizationInput(e.target.value)}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
                   You must type exactly: <code className="font-mono">UNLOCK</code>
@@ -220,10 +231,12 @@ export function TrapdoorControlPanel() {
               </div>
 
               <Button
+                onClick={() => executeWorkflow('unlock', 'UNLOCK')}
+                disabled={executing || !deviceSerial || !secretPasscode}
                 className="w-full"
                 variant="destructive"
               >
-                Execute Bootloader Unlock
+                {executing ? 'Executing...' : 'Execute Bootloader Unlock'}
               </Button>
             </CardContent>
           </Card>

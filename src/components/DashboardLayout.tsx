@@ -14,11 +14,9 @@ import { BobbysDevCorner } from "./SecretRoom/BobbysDevCorner";
 import { LiveAnalyticsDashboard } from "./LiveAnalyticsDashboard";
 import { DeviceSidebar } from "./DeviceSidebar";
 import { LogsPanel } from "./LogsPanel";
-import { HipHopShowcase } from "./HipHopShowcase";
 import { BackendStatusIndicator } from "./BackendStatusIndicator";
 import { useApp } from "@/lib/app-context";
 import { useAudioNotifications } from "@/hooks/use-audio-notifications";
-import { useSoundEffect } from "@/lib/soundManager";
 import { 
     Cpu, 
     FileText, 
@@ -30,8 +28,7 @@ import {
     LockKey,
     ChartLine,
     Skull,
-    Code,
-    MusicNotesSimple
+    Code
 } from '@phosphor-icons/react';
 
 export function DashboardLayout() {
@@ -39,20 +36,9 @@ export function DashboardLayout() {
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const { backendAvailable } = useApp();
     const audio = useAudioNotifications();
-    const playTabClick = useSoundEffect('cassette-click');
-    const playHeavy = useSoundEffect('record-drop');
-
-    const handleTabChange = (value: string) => {
-        setActiveTab(value);
-        if (value === 'traproom' || value === 'pandoras-room') {
-            playHeavy();
-        } else {
-            playTabClick();
-        }
-    };
 
     return (
-        <div className="h-[100dvh] flex flex-col workshop-bg">
+        <div className="h-screen flex flex-col workshop-bg">
             <header className="h-12 border-b border-border sneaker-box-card flex items-center px-4 gap-3 swoosh-accent">
                 <div className="flex items-center gap-2">
                     <div className="w-7 h-7 bg-primary rounded flex items-center justify-center ambient-glow-cyan">
@@ -74,11 +60,11 @@ export function DashboardLayout() {
                 </div>
             </header>
 
-            <div className="flex-1 flex min-h-0 overflow-hidden">
+            <div className="flex-1 flex overflow-hidden">
                 <DeviceSidebar collapsed={sidebarCollapsed} onToggle={setSidebarCollapsed} />
 
-                <main className="flex-1 flex min-h-0 flex-col overflow-hidden">
-                    <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex min-h-0 flex-col">
+                <main className="flex-1 flex flex-col overflow-hidden min-h-0">
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
                         <div className="border-b border-border bg-card/30 street-gradient">
                             <TabsList className="h-11 bg-transparent w-full justify-start rounded-none border-0 px-3 gap-1">
                                 <TabsTrigger 
@@ -120,14 +106,6 @@ export function DashboardLayout() {
                                     <Badge variant="outline" className="ml-1.5 text-[10px] px-1.5 py-0">EXP</Badge>
                                 </TabsTrigger>
                                 <TabsTrigger 
-                                    value="hiphop" 
-                                    className="gap-1.5 px-4 data-[state=active]:btn-sneaker data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
-                                >
-                                    <MusicNotesSimple weight="duotone" size={18} />
-                                    <span className="font-medium">Hip-Hop Lab</span>
-                                    <Badge variant="secondary" className="ml-1.5 text-[10px] px-1.5 py-0 candy-shimmer">NEW</Badge>
-                                </TabsTrigger>
-                                <TabsTrigger 
                                     value="reports" 
                                     className="gap-1.5 px-4 data-[state=active]:btn-sneaker data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
                                 >
@@ -166,7 +144,7 @@ export function DashboardLayout() {
                         </div>
 
                         <ScrollArea className="flex-1 min-h-0 floor-grid">
-                            <div className="p-4 repair-table">
+                            <div className="p-4 repair-table min-h-0">
                                 <TabsContent value="diagnostics" className="mt-0">
                                     <DiagnosticsTab />
                                 </TabsContent>
@@ -181,9 +159,6 @@ export function DashboardLayout() {
                                 </TabsContent>
                                 <TabsContent value="dev-corner" className="mt-0 p-0">
                                     <BobbysDevCorner />
-                                </TabsContent>
-                                <TabsContent value="hiphop" className="mt-0 p-0">
-                                    <HipHopShowcase />
                                 </TabsContent>
                                 <TabsContent value="reports" className="mt-0">
                                     <ReportsTab />

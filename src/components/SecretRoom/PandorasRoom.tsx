@@ -8,15 +8,11 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Alert, AlertDescription } from '../ui/alert';
-import { Input } from '../ui/input';
 import { Smartphone, Activity, Upload, FileText, Wrench, Shield, Lock } from 'lucide-react';
 import { TrapdoorControlPanel } from '../TrapdoorControlPanel';
 import { ShadowLogsViewer } from '../ShadowLogsViewer';
 import { WorkflowExecutionConsole } from '../WorkflowExecutionConsole';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import { useSoundEffect } from '@/lib/soundManager';
-import { DeviceStateGuide } from '../DeviceStateGuide';
-import { SECRET_ROOM_PASSWORD } from '@/lib/secrets';
 
 interface Device {
   id: string;
@@ -30,12 +26,6 @@ export const PandorasRoom: React.FC = () => {
   const [devices, setDevices] = useState<Device[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [passwordInput, setPasswordInput] = useState('');
-  const [passwordError, setPasswordError] = useState(false);
-  const playUnlock = useSoundEffect('cd-tray-open');
-  const playTabSwitch = useSoundEffect('cassette-click');
-  const playError = useSoundEffect('vinyl-scratch');
 
   const tabs = [
     { id: 'overview' as const, name: 'Overview', icon: Smartphone },
@@ -44,67 +34,14 @@ export const PandorasRoom: React.FC = () => {
     { id: 'deployment' as const, name: 'Deployment', icon: Upload },
   ];
 
-  const handlePasswordSubmit = () => {
-    if (passwordInput === SECRET_ROOM_PASSWORD) {
-      playUnlock();
-      setIsAuthenticated(true);
-      setPasswordError(false);
-      setPasswordInput('');
-    } else {
-      playError();
-      setPasswordError(true);
-      setPasswordInput('');
-    }
-  };
-
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen workshop-bg text-white p-6 flex items-center justify-center">
-        <Card className="w-full max-w-md cd-jewel-case">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-[#FF6B9D]">
-              <Lock className="h-5 w-5" />
-              Pandora's Room
-            </CardTitle>
-            <CardDescription>Enter password to access</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Input
-              type="password"
-              placeholder="Enter password"
-              value={passwordInput}
-              onChange={(e) => {
-                setPasswordInput(e.target.value);
-                setPasswordError(false);
-              }}
-              onKeyPress={(e) => e.key === 'Enter' && handlePasswordSubmit()}
-              className="bg-[#1A1F2C] border-[#2FD3FF]/30 text-white"
-            />
-            {passwordError && (
-              <Alert className="bg-red-500/20 border-red-500">
-                <AlertDescription className="text-red-300">Invalid password</AlertDescription>
-              </Alert>
-            )}
-            <Button 
-              onClick={handlePasswordSubmit}
-              className="w-full btn-sneaker"
-            >
-              🔓 Unlock Pandora's Room
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen workshop-bg text-white p-6 repair-table">
+    <div className="min-h-0 bg-[#0B0F14] text-white p-6">
       <div className="max-w-7xl mx-auto">
-        <header className="mb-8 graffiti-tag">
+        <header className="mb-8">
           <div className="flex items-center gap-3 mb-2">
             <Lock className="h-8 w-8 text-[#2FD3FF]" />
-            <h1 className="street-sign-text text-3xl">
-              🔐 PANDORA'S ROOM 🔐
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-[#2FD3FF] to-[#FF6B9D] bg-clip-text text-transparent">
+              Pandora's Room
             </h1>
           </div>
           <p className="text-gray-400">
@@ -115,30 +52,27 @@ export const PandorasRoom: React.FC = () => {
           </p>
         </header>
 
-        <Alert className="mb-6 sneaker-box-card ambient-glow-gold">
+        <Alert className="mb-6 bg-[#141922] border-[#FF6B9D]">
           <Shield className="h-4 w-4 text-[#FF6B9D]" />
           <AlertDescription className="text-gray-300">
-            <strong className="text-[#FF6B9D]">⚖️ Legal Notice:</strong> Trapdoor tools are for authorized use only on devices you own or have explicit permission to access. 
+            <strong className="text-[#FF6B9D]">Legal Notice:</strong> Trapdoor tools are for authorized use only on devices you own or have explicit permission to access. 
             Unauthorized device access is illegal under CFAA and similar laws worldwide.
           </AlertDescription>
         </Alert>
 
         {/* Tab Navigation */}
-        <div className="boom-bap-panel rounded-lg p-1 mb-6 flex gap-2">
+        <div className="bg-[#141922] rounded-lg p-1 mb-6 flex gap-2">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
             return (
               <button
                 key={tab.id}
-                onClick={() => {
-                  playTabSwitch();
-                  setActiveTab(tab.id);
-                }}
+                onClick={() => setActiveTab(tab.id)}
                 className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-md font-medium text-sm transition-all ${
                   isActive
-                    ? 'btn-sneaker'
-                    : 'boom-bap-button'
+                    ? 'bg-[#2FD3FF] text-black'
+                    : 'text-gray-400 hover:text-white hover:bg-[#1A1F2C]'
                 }`}
               >
                 <Icon className="h-4 w-4" />
@@ -160,18 +94,13 @@ export const PandorasRoom: React.FC = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="text-gray-300">
-                  <ul className="space-y-2 text-sm mb-4">
+                  <ul className="space-y-2 text-sm">
                     <li>✓ iOS Tools (A5-A11): checkra1n, palera1n, lockra1n</li>
                     <li>✓ iOS Tools (A12+): MinaCriss, iRemovalTools</li>
                     <li>✓ Android Tools: FRP helpers, Magisk, TWRP</li>
                     <li>✓ Firejail sandboxing with security isolation</li>
                     <li>✓ Tool signature verification (SHA-256)</li>
                   </ul>
-                  <Alert className="bg-blue-500/10 border-blue-500/30">
-                    <AlertDescription className="text-blue-300 text-xs">
-                      <strong>Device States Required:</strong> DFU (iOS), Fastboot/ADB (Android), Recovery mode for some operations
-                    </AlertDescription>
-                  </Alert>
                 </CardContent>
               </Card>
 
@@ -183,18 +112,13 @@ export const PandorasRoom: React.FC = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="text-gray-300">
-                  <ul className="space-y-2 text-sm mb-4">
+                  <ul className="space-y-2 text-sm">
                     <li>✓ Deep hardware diagnostics</li>
                     <li>✓ Thermal monitoring and imaging</li>
                     <li>✓ Storage health analysis</li>
                     <li>✓ USB transport layer diagnostics</li>
                     <li>✓ Deployment job management</li>
                   </ul>
-                  <Alert className="bg-green-500/10 border-green-500/30">
-                    <AlertDescription className="text-green-300 text-xs">
-                      <strong>Preferred State:</strong> Normal mode with ADB enabled (Android) or Developer Mode (iOS)
-                    </AlertDescription>
-                  </Alert>
                 </CardContent>
               </Card>
             </div>
