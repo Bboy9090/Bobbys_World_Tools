@@ -18,6 +18,7 @@ import {
   XCircle,
   Clock
 } from 'lucide-react';
+import { DEV_ADMIN_API_KEY, getApiUrl } from '@/lib/secrets';
 
 interface Workflow {
   id: string;
@@ -69,9 +70,15 @@ export function WorkflowExecutionConsole() {
     setLoading(true);
     setError('');
     try {
+<<<<<<< Updated upstream
       const response = await fetch('http://localhost:3001/api/trapdoor/workflows', {
         headers: {
           'X-Admin-Password': adminPassword
+=======
+      const response = await fetch(getApiUrl('/trapdoor/workflows'), {
+        headers: {
+          'X-API-Key': DEV_ADMIN_API_KEY
+>>>>>>> Stashed changes
         }
       });
 

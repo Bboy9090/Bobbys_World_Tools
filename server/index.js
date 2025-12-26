@@ -14,6 +14,7 @@ import catalogRouter from './catalog.js';
 import toolsInspectRouter from './tools-inspect.js';
 import operationsRouter from './operations.js';
 import { ensureManagedPlatformTools, getManagedPlatformToolsDir } from './platform-tools.js';
+import ADBLibrary from '../core/lib/adb.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -235,6 +236,29 @@ function getConnectedUsbDevices() {
   } catch {
     return [];
   }
+}
+
+// Minimal Apple USB PID classification for iOS modes on Windows
+// Source: Commonly observed Apple USB product IDs
+// - 0x1227: DFU mode
+// - 0x1281: Recovery mode
+// - 0x12a8: Normal (usbmux) mode
+function classifyAppleUsbMode(vid, pid) {
+  if (!vid || !pid) return null;
+  const v = String(vid).toLowerCase();
+  const p = String(pid).toLowerCase();
+  if (v !== '05ac') return null;
+
+  const dfuPids = new Set(['1227']);
+  const recoveryPids = new Set(['1281']);
+  const normalPids = new Set(['12a8']);
+
+  if (dfuPids.has(p)) return { platform_hint: 'ios', mode: 'DFU (USB)', confidence: 0.95 };
+  if (recoveryPids.has(p)) return { platform_hint: 'ios', mode: 'Recovery (USB)', confidence: 0.92 };
+  if (normalPids.has(p)) return { platform_hint: 'ios', mode: 'Normal OS (USB)', confidence: 0.85 };
+
+  // Unknown Apple USB interface; still hint iOS with lower confidence
+  return { platform_hint: 'ios', mode: 'USB-connected (Apple)', confidence: 0.60 };
 }
 
 function parseAdbDevicesList(devicesRaw) {
@@ -723,11 +747,22 @@ app.get('/api/devices/scan', (req, res) => {
     const uid = `usb-${Buffer.from(String(key)).toString('base64').replace(/=+$/g, '')}`;
     if (seenUids.has(uid)) continue;
     seenUids.add(uid);
+    // Attempt Apple iOS mode classification from USB VID/PID
+    let platformHint = 'unknown';
+    let mode = 'usb_connected';
+    let confidence = 0.50;
+    const appleClass = classifyAppleUsbMode(d.vid, d.pid);
+    if (appleClass) {
+      platformHint = appleClass.platform_hint;
+      mode = appleClass.mode;
+      confidence = appleClass.confidence;
+    }
+
     scanned.push({
       device_uid: uid,
-      platform_hint: 'unknown',
-      mode: 'usb_connected',
-      confidence: 0.50,
+      platform_hint: platformHint,
+      mode,
+      confidence,
       evidence: {
         source: 'usb',
         name: d.name,
@@ -737,7 +772,7 @@ app.get('/api/devices/scan', (req, res) => {
         pid: d.pid
       },
       matched_tool_ids: [uid],
-      correlation_badge: 'UNCONFIRMED',
+      correlation_badge: platformHint === 'ios' ? 'LIKELY' : 'UNCONFIRMED',
       display_name: d.name || d.pnpDeviceId || uid
     });
   }
@@ -3411,6 +3446,122 @@ app.use('/api/catalog', catalogRouter);
 app.use('/api/tools', toolsInspectRouter);
 app.use('/api/operations', operationsRouter);
 
+// FRP Detection Endpoint - Works even if device not in regular device list
+app.post('/api/frp/detect', async (req, res) => {
+  try {
+    // Get ADB devices first
+    const devicesResult = await ADBLibrary.listDevices();
+    
+    if (!devicesResult.success || devicesResult.devices.length === 0) {
+      return res.status(200).json({
+        detected: false,
+        confidence: 'unknown',
+        indicators: ['No ADB devices connected'],
+        error: 'No devices found via ADB. Connect device and enable USB debugging.',
+      });
+    }
+
+    // Check FRP on first available device (or specific serial if provided in req.body)
+    const targetSerial = req.body.serial || devicesResult.devices[0].serial;
+    const frpResult = await ADBLibrary.checkFRPStatus(targetSerial);
+    
+    if (!frpResult.success) {
+      return res.status(200).json({
+        detected: false,
+        confidence: 'unknown',
+        indicators: [],
+        error: frpResult.error || 'Unable to check FRP status'
+      });
+    }
+
+    // Get device info for enrichment
+    const deviceInfo = await ADBLibrary.getDeviceInfo(targetSerial);
+
+    res.json({
+      detected: frpResult.hasFRP,
+      confidence: frpResult.confidence,
+      indicators: frpResult.hasFRP 
+        ? [`Short android_id detected (${frpResult.androidId?.length || 0} chars)`, 'Likely Factory Reset Protection active']
+        : [`Normal android_id length (${frpResult.androidId?.length || 0} chars)`, 'FRP unlikely'],
+      androidId: frpResult.androidId,
+      deviceInfo: deviceInfo.success ? {
+        manufacturer: deviceInfo.manufacturer,
+        model: deviceInfo.model,
+        androidVersion: deviceInfo.androidVersion
+      } : undefined
+    });
+  } catch (error) {
+    console.error('[FRP Detection] Error:', error);
+    res.status(500).json({
+      detected: false,
+      confidence: 'unknown',
+      indicators: [],
+      error: 'FRP detection failed: ' + (error.message || 'Unknown error')
+    });
+  }
+});
+
+// MDM Detection Endpoint - Detect Mobile Device Management profiles
+app.post('/api/mdm/detect', async (req, res) => {
+  try {
+    // Get ADB devices first
+    const devicesResult = await ADBLibrary.listDevices();
+    
+    if (!devicesResult.success || devicesResult.devices.length === 0) {
+      return res.status(200).json({
+        detected: false,
+        restrictions: [],
+        error: 'No ADB devices connected. Connect device and enable USB debugging.',
+      });
+    }
+
+    // Check MDM on first available device (or specific serial if provided in req.body)
+    const targetSerial = req.body.serial || devicesResult.devices[0].serial;
+    
+    // Check for common MDM indicators
+    const packageCheck = await ADBLibrary.shell(targetSerial, 'pm list packages | grep -E "mdm|airwatch|mobileiron|intune|workspace|kandji"');
+    const deviceOwner = await ADBLibrary.shell(targetSerial, 'dumpsys device_policy | grep "Device Owner"');
+    const profileOwner = await ADBLibrary.shell(targetSerial, 'dumpsys device_policy | grep "Profile Owner"');
+    
+    const hasMDMPackages = packageCheck.success && packageCheck.stdout?.trim().length > 0;
+    const hasDeviceOwner = deviceOwner.success && deviceOwner.stdout?.includes('Device Owner');
+    const hasProfileOwner = profileOwner.success && profileOwner.stdout?.includes('Profile Owner');
+    
+    const detected = hasMDMPackages || hasDeviceOwner || hasProfileOwner;
+    const restrictions = [];
+    
+    if (hasMDMPackages) restrictions.push('MDM management packages detected');
+    if (hasDeviceOwner) restrictions.push('Device Owner policy active');
+    if (hasProfileOwner) restrictions.push('Profile Owner policy active');
+    
+    // Try to extract organization info if available
+    let organization = undefined;
+    let profileName = undefined;
+    if (detected) {
+      const orgCheck = await ADBLibrary.shell(targetSerial, 'dumpsys device_policy | grep -A 5 "Device Owner\\|Profile Owner"');
+      if (orgCheck.success && orgCheck.stdout) {
+        const orgMatch = orgCheck.stdout.match(/name="([^"]+)"/);
+        if (orgMatch) profileName = orgMatch[1];
+      }
+    }
+
+    res.json({
+      detected,
+      profileName,
+      organization,
+      restrictions,
+      mdmPackages: hasMDMPackages ? packageCheck.stdout?.split('\n').filter(Boolean) : []
+    });
+  } catch (error) {
+    console.error('[MDM Detection] Error:', error);
+    res.status(500).json({
+      detected: false,
+      restrictions: [],
+      error: 'MDM detection failed: ' + (error.message || 'Unknown error')
+    });
+  }
+});
+
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ error: 'Internal server error' });
@@ -3495,6 +3646,7 @@ server.listen(PORT, () => {
   console.log(`🔐 Authorization triggers (27 endpoints): http://localhost:${PORT}/api/authorization/*`);
   console.log(`📦 Firmware library: http://localhost:${PORT}/api/firmware/*`);
   console.log(`🔓 Trapdoor API (Bobby's Secret Workshop): http://localhost:${PORT}/api/trapdoor/*`);
+  console.log(`🔒 FRP/MDM Detection: http://localhost:${PORT}/api/frp/detect & /api/mdm/detect`);
   console.log(`🌐 WebSocket hotplug: ws://localhost:${PORT}/ws/device-events`);
   console.log(`🔗 WebSocket correlation: ws://localhost:${PORT}/ws/correlation`);
   console.log(`📊 WebSocket analytics: ws://localhost:${PORT}/ws/analytics`);
@@ -3502,4 +3654,5 @@ server.listen(PORT, () => {
   console.log(`\n✅ All 27 authorization triggers ready for real device probe execution`);
   console.log(`✅ Firmware Library with brand-organized downloads available`);
   console.log(`✅ Trapdoor API with workflow execution and shadow logging enabled`);
+  console.log(`✅ FRP/MDM detection available even without regular device detection`);
 });

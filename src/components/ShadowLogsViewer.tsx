@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Shield, Eye, Calendar, AlertTriangle, Lock } from 'lucide-react';
+import { DEV_ADMIN_API_KEY, getApiUrl } from '@/lib/secrets';
 
 interface ShadowLogEntry {
   timestamp: string;
@@ -39,10 +40,14 @@ export function ShadowLogsViewer() {
 
     try {
       const response = await fetch(
-        `http://localhost:3001/api/trapdoor/logs/shadow?date=${date}`,
+        getApiUrl(`/trapdoor/logs/shadow?date=${date}`),
         {
           headers: {
+<<<<<<< Updated upstream
             'X-Admin-Password': adminPassword
+=======
+            'X-API-Key': apiKey || DEV_ADMIN_API_KEY
+>>>>>>> Stashed changes
           }
         }
       );

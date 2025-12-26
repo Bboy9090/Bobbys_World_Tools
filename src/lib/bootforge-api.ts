@@ -16,6 +16,7 @@ import { DEVICE_BRAND_CAPABILITIES } from '@/types/flash-operations';
 
 type JsonValue = unknown;
 
+<<<<<<< Updated upstream
 async function readErrorBody(response: Response): Promise<string> {
   try {
     const text = await response.text();
@@ -76,6 +77,9 @@ function mapBackendDeviceToBootForgeDevice(raw: any): BootForgeDevice {
     lastSeen: Date.now(),
   };
 }
+=======
+// No mock data in production paths
+>>>>>>> Stashed changes
 
 export interface BootForgeAPI {
   scanDevices(): Promise<BootForgeDevice[]>;
@@ -91,6 +95,7 @@ export interface BootForgeAPI {
 
 export const bootForgeAPI: BootForgeAPI = {
   async scanDevices(): Promise<BootForgeDevice[]> {
+<<<<<<< Updated upstream
     if (isTauri()) {
       const records = await tauriInvoke<any[]>('bootforgeusb_scan');
       const devices = Array.isArray(records) ? records : [];
@@ -224,6 +229,103 @@ export const bootForgeAPI: BootForgeAPI = {
       canResume: false,
       canCancel: true,
     };
+=======
+    try {
+      const response = await fetch(`${API_BASE}/devices/scan`);
+      if (!response.ok) {
+        throw new Error('BootForgeUSB service unavailable');
+      }
+      const data = await response.json();
+      return data.devices || [];
+    } catch (err) {
+      throw new Error('BootForgeUSB service unavailable');
+    }
+  },
+
+  async getDeviceInfo(serial: string): Promise<BootForgeDevice | null> {
+    try {
+      const response = await fetch(`${API_BASE}/devices/${serial}`);
+      if (!response.ok) {
+        throw new Error('BootForgeUSB service unavailable');
+      }
+      return await response.json();
+    } catch (err) {
+      throw new Error('BootForgeUSB service unavailable');
+    }
+  },
+
+  async startFlashJob(config: FlashJobConfig): Promise<string> {
+    try {
+      const response = await fetch(`${API_BASE}/flash/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config)
+      });
+      if (!response.ok) {
+        throw new Error('Failed to start flash job');
+      }
+      const data = await response.json();
+      return data.jobId;
+    } catch (err) {
+      throw new Error('Failed to start flash job');
+    }
+  },
+
+  async pauseFlashJob(jobId: string): Promise<boolean> {
+    const response = await fetch(`${API_BASE}/flash/${jobId}/pause`, { method: 'POST' });
+    if (!response.ok) return false;
+    return true;
+  },
+
+  async resumeFlashJob(jobId: string): Promise<boolean> {
+    const response = await fetch(`${API_BASE}/flash/${jobId}/resume`, { method: 'POST' });
+    if (!response.ok) return false;
+    return true;
+  },
+
+  async cancelFlashJob(jobId: string): Promise<boolean> {
+    const response = await fetch(`${API_BASE}/flash/${jobId}/cancel`, { method: 'POST' });
+    if (!response.ok) return false;
+    return true;
+  },
+
+  async getFlashProgress(jobId: string): Promise<FlashProgress | null> {
+    const response = await fetch(`${API_BASE}/flash/${jobId}/progress`);
+    if (!response.ok) return null;
+    return await response.json();
+  },
+
+  async getActiveFlashOperations(): Promise<FlashOperation[]> {
+    try {
+      const response = await fetch(`${API_BASE}/flash/active`);
+      if (!response.ok) {
+        throw new Error('Failed to query active flash operations');
+      }
+      return await response.json();
+    } catch (err) {
+      throw new Error('Failed to query active flash operations');
+    }
+  },
+
+  async getFlashHistory(limit: number = 50): Promise<FlashOperation[]> {
+    try {
+      const response = await fetch(`${API_BASE}/flash/history?limit=${limit}`);
+      if (!response.ok) {
+        throw new Error('Failed to query flash history');
+      }
+      return await response.json();
+    } catch (err) {
+      throw new Error('Failed to query flash history');
+    }
+  },
+
+  async verifyFlashResult(jobId: string): Promise<{ success: boolean; errors: string[] }> {
+    const response = await fetch(`${API_BASE}/flash/${jobId}/verify`);
+    if (!response.ok) {
+      return { success: false, errors: ['Verification failed'] };
+    }
+    return await response.json();
+>>>>>>> Stashed changes
   },
 
   async pauseFlashOperation(jobId: string): Promise<{ success: boolean; message?: string }> {

@@ -15,10 +15,15 @@ import { BobbysDevCorner } from "./SecretRoom/BobbysDevCorner";
 import { LiveAnalyticsDashboard } from "./LiveAnalyticsDashboard";
 import { DeviceSidebar } from "./DeviceSidebar";
 import { LogsPanel } from "./LogsPanel";
+import { HipHopShowcase } from "./HipHopShowcase";
 import { BackendStatusIndicator } from "./BackendStatusIndicator";
 import { useApp } from "@/lib/app-context";
 import { useAudioNotifications } from "@/hooks/use-audio-notifications";
+<<<<<<< Updated upstream
 import { featureFlags } from "@/lib/featureFlags";
+=======
+import { useSoundEffect } from "@/lib/soundManager";
+>>>>>>> Stashed changes
 import { 
     Cpu, 
     FileText, 
@@ -31,7 +36,11 @@ import {
     ChartLine,
     Skull,
     Code,
+<<<<<<< Updated upstream
     Toolbox
+=======
+    MusicNotesSimple
+>>>>>>> Stashed changes
 } from '@phosphor-icons/react';
 
 export function DashboardLayout() {
@@ -39,6 +48,17 @@ export function DashboardLayout() {
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const { backendAvailable } = useApp();
     const audio = useAudioNotifications();
+    const playTabClick = useSoundEffect('cassette-click');
+    const playHeavy = useSoundEffect('record-drop');
+
+    const handleTabChange = (value: string) => {
+        setActiveTab(value);
+        if (value === 'traproom' || value === 'pandoras-room') {
+            playHeavy();
+        } else {
+            playTabClick();
+        }
+    };
 
     return (
         <div className="h-screen min-h-0 flex flex-col workshop-bg">
@@ -66,8 +86,13 @@ export function DashboardLayout() {
             <div className="flex-1 min-h-0 flex overflow-hidden">
                 <DeviceSidebar collapsed={sidebarCollapsed} onToggle={setSidebarCollapsed} />
 
+<<<<<<< Updated upstream
                 <main className="flex-1 min-h-0 flex flex-col overflow-hidden">
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 min-h-0 flex flex-col">
+=======
+                <main className="flex-1 flex flex-col overflow-hidden">
+                    <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col">
+>>>>>>> Stashed changes
                         <div className="border-b border-border bg-card/30 street-gradient">
                             <TabsList className="h-11 bg-transparent w-full justify-start rounded-none border-0 px-3 gap-1">
                                 <TabsTrigger 
@@ -107,6 +132,14 @@ export function DashboardLayout() {
                                     <Code weight="duotone" size={18} />
                                     <span className="font-medium">💻 Dev Corner</span>
                                     <Badge variant="outline" className="ml-1.5 text-[10px] px-1.5 py-0">EXP</Badge>
+                                </TabsTrigger>
+                                <TabsTrigger 
+                                    value="hiphop" 
+                                    className="gap-1.5 px-4 data-[state=active]:btn-sneaker data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+                                >
+                                    <MusicNotesSimple weight="duotone" size={18} />
+                                    <span className="font-medium">Hip-Hop Lab</span>
+                                    <Badge variant="secondary" className="ml-1.5 text-[10px] px-1.5 py-0 candy-shimmer">NEW</Badge>
                                 </TabsTrigger>
                                 <TabsTrigger 
                                     value="reports" 
@@ -172,6 +205,9 @@ export function DashboardLayout() {
                                 </TabsContent>
                                 <TabsContent value="dev-corner" className="mt-0 p-0">
                                     <BobbysDevCorner />
+                                </TabsContent>
+                                <TabsContent value="hiphop" className="mt-0 p-0">
+                                    <HipHopShowcase />
                                 </TabsContent>
                                 <TabsContent value="reports" className="mt-0">
                                     <ReportsTab />

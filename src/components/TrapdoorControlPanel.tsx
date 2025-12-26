@@ -10,6 +10,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertTriangle, Lock, Shield, Terminal, FileKey } from 'lucide-react';
+import { DeviceStateGuide } from './DeviceStateGuide';
+import { DEV_ADMIN_API_KEY, getApiUrl } from '@/lib/secrets';
 
 interface WorkflowResult {
   success: boolean;
@@ -46,11 +48,15 @@ export function TrapdoorControlPanel() {
     setResult(null);
 
     try {
-      const response = await fetch(`http://localhost:3001/api/trapdoor/${endpoint}`, {
+      const response = await fetch(getApiUrl(`/trapdoor/${endpoint}`), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+<<<<<<< Updated upstream
           'X-Admin-Password': adminPassword
+=======
+          'X-API-Key': apiKey || DEV_ADMIN_API_KEY
+>>>>>>> Stashed changes
         },
         body: JSON.stringify({
           deviceSerial,
@@ -158,13 +164,14 @@ export function TrapdoorControlPanel() {
                 </AlertDescription>
               </Alert>
 
+              <DeviceStateGuide requiredState="adb" platform="android" />
+
               <div>
                 <Label htmlFor="frpAuth">Type to Confirm</Label>
                 <Input
                   id="frpAuth"
                   placeholder="Type: I OWN THIS DEVICE"
-                  value={authorizationInput}
-                  onChange={(e) => setAuthorizationInput(e.target.value)}
+                  className="font-mono"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
                   You must type exactly: <code className="font-mono">I OWN THIS DEVICE</code>
@@ -172,12 +179,15 @@ export function TrapdoorControlPanel() {
               </div>
 
               <Button
+<<<<<<< Updated upstream
                 onClick={() => executeWorkflow('frp', 'I OWN THIS DEVICE')}
                 disabled={executing || !deviceSerial || !adminPassword}
+=======
+>>>>>>> Stashed changes
                 className="w-full"
                 variant="destructive"
               >
-                {executing ? 'Executing...' : 'Execute FRP Bypass'}
+                Execute FRP Bypass
               </Button>
             </CardContent>
           </Card>
@@ -204,13 +214,14 @@ export function TrapdoorControlPanel() {
                 </AlertDescription>
               </Alert>
 
+              <DeviceStateGuide requiredState="fastboot" platform="android" />
+
               <div>
                 <Label htmlFor="unlockAuth">Type to Confirm</Label>
                 <Input
                   id="unlockAuth"
                   placeholder="Type: UNLOCK"
-                  value={authorizationInput}
-                  onChange={(e) => setAuthorizationInput(e.target.value)}
+                  className="font-mono"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
                   You must type exactly: <code className="font-mono">UNLOCK</code>
@@ -218,12 +229,15 @@ export function TrapdoorControlPanel() {
               </div>
 
               <Button
+<<<<<<< Updated upstream
                 onClick={() => executeWorkflow('unlock', 'UNLOCK')}
                 disabled={executing || !deviceSerial || !adminPassword}
+=======
+>>>>>>> Stashed changes
                 className="w-full"
                 variant="destructive"
               >
-                {executing ? 'Executing...' : 'Execute Bootloader Unlock'}
+                Execute Bootloader Unlock
               </Button>
             </CardContent>
           </Card>

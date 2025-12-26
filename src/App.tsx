@@ -4,6 +4,7 @@ import { DemoModeBanner } from "./components/DemoModeBanner";
 import { Toaster } from "@/components/ui/sonner";
 import { AppProvider, useApp } from "./lib/app-context";
 import { checkBackendHealth } from "./lib/backend-health";
+import { soundManager } from "./lib/soundManager";
 
 function AppContent() {
     const { isDemoMode, setDemoMode, setBackendAvailable } = useApp();
@@ -27,6 +28,11 @@ function AppContent() {
 
         // No cleanup needed - mock services removed
     }, [setDemoMode, setBackendAvailable]);
+
+    useEffect(() => {
+        soundManager.init();
+        return () => soundManager.destroy();
+    }, []);
 
     const handleConnectBackend = async () => {
         const backendHealthy = await checkBackendHealth();

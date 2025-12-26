@@ -8,6 +8,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Button } from '../ui/button';
+import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
 import { 
   Shield, 
@@ -21,6 +22,9 @@ import {
   Database
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useSoundEffect } from '@/lib/soundManager';
+import { DeviceStateGuide, DeviceState } from '../DeviceStateGuide';
+import { SECRET_ROOM_PASSWORD, DEV_ADMIN_API_KEY, getApiUrl } from '@/lib/secrets';
 
 interface BypassTool {
   id: string;
@@ -30,17 +34,21 @@ interface BypassTool {
   power: 'extreme' | 'high' | 'medium';
   risk: 'legal-gray' | 'experimental' | 'dangerous';
   status: 'ready' | 'testing' | 'restricted';
+  requiredStates: { ios?: DeviceState; android?: DeviceState };
+  apiEndpoint: string;
 }
 
 const TRAP_TOOLS: BypassTool[] = [
   {
     id: 'frp-quantum',
     name: 'FRP Quantum Bypass',
-    description: 'Advanced FRP bypass using quantum entanglement method',
+    description: 'Advanced FRP bypass with ADB protocol',
     category: 'frp',
     power: 'extreme',
     risk: 'legal-gray',
-    status: 'ready'
+    status: 'ready',
+    requiredStates: { android: 'adb' },
+    apiEndpoint: '/api/trapdoor/bypass/frp'
   },
   {
     id: 'icloud-phantom',
@@ -49,7 +57,9 @@ const TRAP_TOOLS: BypassTool[] = [
     category: 'icloud',
     power: 'extreme',
     risk: 'dangerous',
-    status: 'testing'
+    status: 'testing',
+    requiredStates: { ios: 'dfu' },
+    apiEndpoint: '/api/trapdoor/bypass/icloud'
   },
   {
     id: 'knox-destroyer',
@@ -58,7 +68,9 @@ const TRAP_TOOLS: BypassTool[] = [
     category: 'knox',
     power: 'extreme',
     risk: 'experimental',
-    status: 'ready'
+    status: 'ready',
+    requiredStates: { android: 'fastboot' },
+    apiEndpoint: '/api/trapdoor/bypass/knox'
   },
   {
     id: 'bootloader-ghost',
@@ -67,7 +79,9 @@ const TRAP_TOOLS: BypassTool[] = [
     category: 'bootloader',
     power: 'high',
     risk: 'legal-gray',
-    status: 'ready'
+    status: 'ready',
+    requiredStates: { android: 'fastboot', ios: 'dfu' },
+    apiEndpoint: '/api/trapdoor/bypass/bootloader'
   },
   {
     id: 'mdm-shadow',
@@ -76,7 +90,9 @@ const TRAP_TOOLS: BypassTool[] = [
     category: 'mdm',
     power: 'high',
     risk: 'dangerous',
-    status: 'restricted'
+    status: 'restricted',
+    requiredStates: { android: 'adb', ios: 'normal' },
+    apiEndpoint: '/api/trapdoor/bypass/mdm'
   },
   {
     id: 'oem-skeleton-key',
@@ -85,33 +101,156 @@ const TRAP_TOOLS: BypassTool[] = [
     category: 'oem',
     power: 'extreme',
     risk: 'experimental',
-    status: 'testing'
+    status: 'testing',
+    requiredStates: { android: 'fastboot', ios: 'recovery' },
+    apiEndpoint: '/api/trapdoor/bypass/oem'
   }
 ];
 
 export const BobbysTraproom: React.FC = () => {
   const [selectedTool, setSelectedTool] = useState<BypassTool | null>(null);
+  const [devicePlatform, setDevicePlatform] = useState<'ios' | 'android'>('android');
+  const [deviceSerial, setDeviceSerial] = useState('');
   const [authenticated, setAuthenticated] = useState(false);
+  const [passwordInput, setPasswordInput] = useState('');
+  const [passwordError, setPasswordError] = useState(false);
+  const [executing, setExecuting] = useState(false);
+  const playUnlock = useSoundEffect('spray-can');
+  const playSelect = useSoundEffect('basketball-bounce');
+  const playExecute = useSoundEffect('air-horn');
+  const playError = useSoundEffect('vinyl-scratch');
 
   const handleToolSelect = (tool: BypassTool) => {
+    playSelect();
     setSelectedTool(tool);
+    toast.info(`Selected: ${tool.name}`, {
+      description: tool.description
+    });
   };
 
-  const handleExecute = () => {
+  const handleExecute = async () => {
+    if (!selectedTool) return;
     if (!authenticated) {
+      playError();
       toast.error('🚫 Authentication Required', {
         description: 'Access to Traproom tools requires authorization'
       });
       return;
     }
 
-    if (!selectedTool) return;
+    if (selectedTool.status === 'restricted') {
+      playError();
+      toast.error('Restricted Tool', {
+        description: `${selectedTool.name} is restricted and cannot be executed.`
+      });
+      return;
+    }
 
-    toast.warning('⚠️ Experimental Tool', {
-      description: `${selectedTool.name} is ${selectedTool.status}. Use at your own risk.`
-    });
+    if (!deviceSerial) {
+      playError();
+      toast.error('Device Serial Required', {
+        description: 'Enter your device serial number or UDID'
+      });
+      return;
+    }
+
+    setExecuting(true);
+    playExecute();
+
+    try {
+      const response = await fetch(getApiUrl(selectedTool.apiEndpoint), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': DEV_ADMIN_API_KEY
+        },
+        body: JSON.stringify({
+          deviceSerial,
+          platform: devicePlatform,
+          authorization: {
+            confirmed: true,
+            userInput: `EXECUTE_${selectedTool.id.toUpperCase()}`
+          }
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        playError();
+        toast.error('Execution Failed', {
+          description: data.message || 'Check device state and try again'
+        });
+        return;
+      }
+
+      toast.success('✅ Bypass Executed', {
+        description: `${selectedTool.name} completed. Check device status.`
+      });
+      
+      setSelectedTool(null);
+    } catch (err: any) {
+      playError();
+      toast.error('Network Error', {
+        description: err.message || 'Could not reach server'
+      });
+    } finally {
+      setExecuting(false);
+    }
   };
 
+  const handlePasswordSubmit = () => {
+    if (passwordInput === SECRET_ROOM_PASSWORD) {
+      playUnlock();
+      setAuthenticated(true);
+      setPasswordError(false);
+      setPasswordInput('');
+    } else {
+      playError();
+      setPasswordError(true);
+      setPasswordInput('');
+    }
+  };
+
+  if (!authenticated) {
+    return (
+      <div className="min-h-screen workshop-bg text-white p-6 flex items-center justify-center">
+        <Card className="w-full max-w-md cassette-tape">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-destructive">
+              <Skull className="h-5 w-5" />
+              Bobby's Traproom
+            </CardTitle>
+            <CardDescription>Enter password to access</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Input
+              type="password"
+              placeholder="Enter password"
+              value={passwordInput}
+              onChange={(e) => {
+                setPasswordInput(e.target.value);
+                setPasswordError(false);
+              }}
+              onKeyPress={(e) => e.key === 'Enter' && handlePasswordSubmit()}
+              className="bg-[#1A1F2C] border-red-500/30 text-white"
+            />
+            {passwordError && (
+              <Alert className="bg-red-500/20 border-red-500">
+                <AlertDescription className="text-red-300">Invalid password</AlertDescription>
+              </Alert>
+            )}
+            <Button 
+              onClick={handlePasswordSubmit}
+              className="w-full jordan-bred"
+            >
+              💀 Unlock Traproom 💀
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
   const getPowerColor = (power: string) => {
     switch (power) {
       case 'extreme': return 'text-red-500';
@@ -129,7 +268,7 @@ export const BobbysTraproom: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background p-6">
+    <div className="min-h-screen workshop-bg p-6 floor-grid">
       <div className="max-w-7xl mx-auto">
         {/* Header with skull emoji */}
         <header className="mb-8 graffiti-tag">
@@ -243,18 +382,71 @@ export const BobbysTraproom: React.FC = () => {
                     {selectedTool.description}
                   </p>
                 </div>
+
+                {/* Device Platform Selector */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Device Platform</label>
+                  <div className="flex gap-2">
+                    <Button
+                      variant={devicePlatform === 'android' ? 'default' : 'outline'}
+                      onClick={() => setDevicePlatform('android')}
+                      className="flex-1"
+                    >
+                      Android
+                    </Button>
+                    <Button
+                      variant={devicePlatform === 'ios' ? 'default' : 'outline'}
+                      onClick={() => setDevicePlatform('ios')}
+                      className="flex-1"
+                    >
+                      iOS
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Device Serial Input */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Device Serial / UDID</label>
+                  <Input
+                    placeholder={devicePlatform === 'android' ? 'e.g., R38M80ABCDE' : 'e.g., 00008101-000A123456...'}
+                    value={deviceSerial}
+                    onChange={(e) => setDeviceSerial(e.target.value)}
+                    className="font-mono text-xs"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {devicePlatform === 'android' 
+                      ? 'Run: adb devices' 
+                      : 'Found in device settings or Finder'}
+                  </p>
+                </div>
+
+                {/* Device State Guide */}
+                {devicePlatform === 'ios' && selectedTool.requiredStates.ios && (
+                  <DeviceStateGuide 
+                    requiredState={selectedTool.requiredStates.ios}
+                    platform="ios"
+                  />
+                )}
+                {devicePlatform === 'android' && selectedTool.requiredStates.android && (
+                  <DeviceStateGuide 
+                    requiredState={selectedTool.requiredStates.android}
+                    platform="android"
+                  />
+                )}
+
                 <div className="flex gap-3">
                   <Button
                     onClick={handleExecute}
-                    disabled={!authenticated || selectedTool.status === 'restricted'}
+                    disabled={!authenticated || selectedTool.status === 'restricted' || executing || !deviceSerial}
                     className="flex-1 btn-sneaker"
                   >
                     <Unlock className="h-4 w-4 mr-2" />
-                    Execute Bypass
+                    {executing ? 'Executing...' : 'Execute Bypass'}
                   </Button>
                   <Button
                     variant="outline"
                     onClick={() => setSelectedTool(null)}
+                    disabled={executing}
                   >
                     Cancel
                   </Button>

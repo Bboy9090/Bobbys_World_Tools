@@ -209,41 +209,9 @@ export async function execute(context: PluginContext): Promise<PluginResult<Stor
 
       storageData.healthScore = calculateStorageHealthScore(storageData, partitions);
     } else if (context.platform === 'ios') {
-      // iOS storage info would use idevice tools
-      storageData = {
-        totalSpace: 128 * 1024 * 1024 * 1024,
-        usedSpace: 80 * 1024 * 1024 * 1024,
-        freeSpace: 48 * 1024 * 1024 * 1024,
-        usagePercentage: 62.5,
-        partitions: [],
-        storageType: 'nvme',
-        healthScore: 90,
-        warnings: [],
-        recommendations: []
-      };
+      throw new Error('Storage analysis for iOS is not available. Install/enable required tools.');
     } else {
-      // Fallback mock data for testing
-      storageData = {
-        totalSpace: 64 * 1024 * 1024 * 1024,
-        usedSpace: 40 * 1024 * 1024 * 1024,
-        freeSpace: 24 * 1024 * 1024 * 1024,
-        usagePercentage: 62.5,
-        partitions: [
-          {
-            name: '/dev/block/dm-0',
-            mountPoint: '/data',
-            totalSize: 50 * 1024 * 1024 * 1024,
-            usedSize: 35 * 1024 * 1024 * 1024,
-            freeSize: 15 * 1024 * 1024 * 1024,
-            usagePercentage: 70,
-            fileSystem: 'ext4'
-          }
-        ],
-        storageType: 'emmc',
-        healthScore: 85,
-        warnings: [],
-        recommendations: ['Regular storage maintenance recommended']
-      };
+      throw new Error('Storage analysis requires Android ADB or platform-specific tooling.');
     }
 
     context.logger?.info(`Storage health analysis complete: Score ${storageData.healthScore}`);
