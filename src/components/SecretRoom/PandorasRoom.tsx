@@ -4,7 +4,8 @@
  * Merged from The-Pandora-Codex Control Room (TITAN 2)
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Button } from '../ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Input } from '../ui/input';
@@ -97,22 +98,13 @@ export const PandorasRoom: React.FC = () => {
   }
 
   return (
-<<<<<<< Updated upstream
-    <div className="min-h-full bg-[#0B0F14] text-white p-6">
-=======
     <div className="min-h-screen workshop-bg text-white p-6 repair-table">
->>>>>>> Stashed changes
       <div className="max-w-7xl mx-auto">
         <header className="mb-8 graffiti-tag">
           <div className="flex items-center gap-3 mb-2">
             <Lock className="h-8 w-8 text-[#2FD3FF]" />
-<<<<<<< Updated upstream
-            <h1 className="text-3xl font-bold bg-linear-to-r from-[#2FD3FF] to-[#FF6B9D] bg-clip-text text-transparent">
-              Pandora's Room
-=======
             <h1 className="street-sign-text text-3xl">
               🔐 PANDORA'S ROOM 🔐
->>>>>>> Stashed changes
             </h1>
           </div>
           <p className="text-gray-400">

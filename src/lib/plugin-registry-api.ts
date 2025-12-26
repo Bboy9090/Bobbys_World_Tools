@@ -46,19 +46,7 @@ let currentSyncStatus: RegistrySyncStatus = {
   pluginsRemoved: 0
 };
 
-<<<<<<< Updated upstream
-async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, init);
-  if (!response.ok) {
-    const body = await response.text().catch(() => '');
-    const detail = body ? ` - ${body.slice(0, 300)}` : '';
-    throw new Error(`Request failed (${response.status}) ${response.statusText}${detail}`);
-  }
-  return (await response.json()) as T;
-}
-=======
 // No mock plugins in production paths; require real registry backend
->>>>>>> Stashed changes
 
 const pluginRegistry: PluginRegistryAPI = {
   config: { ...DEFAULT_CONFIG },
@@ -71,6 +59,9 @@ const pluginRegistry: PluginRegistryAPI = {
     currentSyncStatus = { ...currentSyncStatus, status: 'syncing' };
 
     try {
+      // In production, this would fetch from the actual registry API
+      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
+
       const manifest = await this.fetchManifest();
       
       currentSyncStatus = {
@@ -101,11 +92,6 @@ const pluginRegistry: PluginRegistryAPI = {
     }
 
     try {
-<<<<<<< Updated upstream
-      const manifest = await fetchJson<RegistryManifest>(`${this.config.apiUrl}/manifest`);
-      manifestCache = { data: manifest, timestamp: now };
-      return manifest;
-=======
       const response = await fetch(`${this.config.apiUrl}/manifest`);
       if (!response.ok) {
         throw new Error('Plugin registry manifest unavailable');
@@ -113,7 +99,6 @@ const pluginRegistry: PluginRegistryAPI = {
       const data = await response.json();
       manifestCache = { data, timestamp: now };
       return data;
->>>>>>> Stashed changes
     } catch (error) {
       console.error('[PluginRegistry] Failed to fetch manifest:', error);
       throw error;
@@ -129,11 +114,6 @@ const pluginRegistry: PluginRegistryAPI = {
     }
 
     try {
-<<<<<<< Updated upstream
-      const plugin = await fetchJson<RegistryPlugin>(`${this.config.apiUrl}/plugins/${encodeURIComponent(pluginId)}`);
-      pluginCache.set(pluginId, { data: plugin, timestamp: now });
-      return plugin;
-=======
       const response = await fetch(`${this.config.apiUrl}/plugins/${pluginId}`);
       if (!response.ok) {
         throw new Error('Plugin registry unavailable');
@@ -143,12 +123,7 @@ const pluginRegistry: PluginRegistryAPI = {
         pluginCache.set(pluginId, { data, timestamp: now });
       }
       return data || null;
->>>>>>> Stashed changes
     } catch (error) {
-      // If backend returns 404, treat as not found (not an exception for the UI).
-      if (error instanceof Error && /\(404\)/.test(error.message)) {
-        return null;
-      }
       console.error(`[PluginRegistry] Failed to fetch plugin ${pluginId}:`, error);
       throw error;
     }
@@ -232,52 +207,6 @@ const pluginRegistry: PluginRegistryAPI = {
     if (!plugin) {
       throw new Error(`Plugin not found: ${pluginId}`);
     }
-<<<<<<< Updated upstream
-
-    onProgress?.(0);
-
-    const downloadUrl = (() => {
-      try {
-        return new URL(plugin.downloadUrl).toString();
-      } catch {
-        return new URL(plugin.downloadUrl, `${this.config.apiUrl}/`).toString();
-      }
-    })();
-
-    const response = await fetch(downloadUrl);
-    if (!response.ok) {
-      const body = await response.text().catch(() => '');
-      const detail = body ? ` - ${body.slice(0, 300)}` : '';
-      throw new Error(`Download failed (${response.status}) ${response.statusText}${detail}`);
-    }
-
-    const totalBytesHeader = response.headers.get('content-length');
-    const totalBytes = totalBytesHeader ? Number(totalBytesHeader) : undefined;
-    const bodyStream = response.body;
-
-    if (!bodyStream || !totalBytes || Number.isNaN(totalBytes)) {
-      const blob = await response.blob();
-      onProgress?.(100);
-      return blob;
-    }
-
-    const reader = bodyStream.getReader();
-    const chunks: Uint8Array[] = [];
-    let bytesRead = 0;
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      if (value) {
-        chunks.push(value);
-        bytesRead += value.byteLength;
-        onProgress?.(Math.min(100, (bytesRead / totalBytes) * 100));
-      }
-    }
-
-    onProgress?.(100);
-    return new Blob(chunks, { type: 'application/zip' });
-=======
     // Enforce real download; no mock content
     const response = await fetch(plugin.downloadUrl);
     if (!response.ok) {
@@ -285,14 +214,17 @@ const pluginRegistry: PluginRegistryAPI = {
     }
     // Optional progress reporting could be implemented via streams; omitted here
     return await response.blob();
->>>>>>> Stashed changes
   },
 
   async verifyPluginSignature(pluginId: string, signatureHash: string): Promise<boolean> {
-    // Cryptographic verification must be done by the registry/backend.
-    const url = `${this.config.apiUrl}/plugins/${encodeURIComponent(pluginId)}/verify?signatureHash=${encodeURIComponent(signatureHash)}`;
-    const result = await fetchJson<{ valid: boolean }>(url);
-    return result.valid;
+    const plugin = await this.fetchPluginDetails(pluginId);
+    
+    if (!plugin) {
+      return false;
+    }
+
+    // In production, this would verify the cryptographic signature
+    return plugin.signatureHash === signatureHash;
   },
 
   async getDependencies(pluginId: string): Promise<RegistryPlugin[]> {

@@ -9,7 +9,6 @@ import { ADBFastbootDetector } from './ADBFastbootDetector';
 import { BootForgeUSBScanner } from './BootForgeUSBScanner';
 import { CorrelationBadgeDisplay } from './CorrelationBadgeDisplay';
 import { useAndroidDevices } from '@/hooks/use-android-devices';
-import { getAPIUrl } from '@/lib/apiConfig';
 import type { CorrelationBadge } from '@/types/correlation';
 import type { AndroidDevice, AndroidDeviceProperties, FastbootDeviceProperties } from '@/types/android-devices';
 import { 
@@ -23,6 +22,8 @@ import {
   ArrowsClockwise
 } from '@phosphor-icons/react';
 import { toast } from 'sonner';
+
+const API_BASE = 'http://localhost:3001';
 
 interface USBEvidence {
   vid: string;
@@ -81,7 +82,7 @@ export function RealTimeUSBDiagnostics() {
   async function scanBootForge() {
     setLoading(true);
     try {
-      const res = await fetch(getAPIUrl('/api/bootforgeusb/scan?demo=false'));
+      const res = await fetch(`${API_BASE}/api/bootforgeusb/scan?demo=false`);
       const data = await res.json();
       
       if (data.success && data.devices) {
@@ -102,11 +103,7 @@ export function RealTimeUSBDiagnostics() {
   }
 
   function correlateDevices() {
-<<<<<<< Updated upstream
-    if (androidDevices.length === 0 && bootforgeDevices.length === 0) {
-=======
     if (!bootforgeDevices.length && !androidDevices.length) {
->>>>>>> Stashed changes
       setCorrelatedDevices([]);
       return;
     }
