@@ -5,7 +5,7 @@ This guide replaces risky "no risks, no regressions" claims with verifiable, hig
 ## Recommended Announcement (Codex Style)
 
 > Confirming Version 4 is ready to push.
-> Core Tier-1 foundation is complete: API logic and tool-catalog scaffolding are stable, consistent, and designed to scale.
+> Core Tier 1 foundation is complete: API logic and tool-catalog scaffolding are stable, consistent, and designed to scale.
 >
 > **Verification Status (High Confidence):**
 > - No known regressions from Version 3 based on: lint/build pass, smoke routes, and catalog validation checks.
@@ -13,7 +13,7 @@ This guide replaces risky "no risks, no regressions" claims with verifiable, hig
 > - Tool catalog is structured for forward extension (new tools, new policies, new workflows) without refactors.
 >
 > **Next Steps**
-> 1. Push Version 4 (Tier-1 foundation shipped).
+> 1. Push Version 4 (Tier 1 foundation shipped).
 > 2. Freeze Backend Detection Logic (baseline locked; changes require explicit PR + tests).
 > 3. Choose next focus:
 >    - Operation Envelopes (standardized inspect/execute results + audit trail)
