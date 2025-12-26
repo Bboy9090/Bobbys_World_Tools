@@ -2,26 +2,42 @@
 
 > **🔓 Now featuring Pandora's Room** - Advanced device management with The-Pandora-Codex integration  
 > **🔐 Bobby's Secret Workshop** - Modular workflows, Trapdoor API, and shadow logging  
-> **📦 NEW: Standalone Installers** - One-click install for Windows & macOS!
+> **📦 PRODUCTION READY: Standalone Installers** - One-click install for Windows, macOS & Linux!
 
 Professional repair diagnostic and flashing toolkit with comprehensive multi-brand support, educational security lock resources, real-time device monitoring, and the powerful **Trapdoor module** for advanced device operations.
 
-## 🚀 Quick Start - Two Ways to Use
+## 🚀 Quick Start - Installation (Recommended)
 
-### Option 1: Standalone Installer (Recommended)
+### For End Users: One-Click Installation
 
-**No setup, no building, just install and go!**
+**No terminal commands, no setup, just install and go!**
 
-Download the installer for your platform and double-click to install. Everything is bundled - frontend, backend, and all dependencies. The backend starts automatically when you open the app.
+1. **[📥 Download the installer for your platform](../../releases/latest)**
+   - Windows: `.msi` or `.exe` installer
+   - macOS: `.dmg` disk image  
+   - Linux: `.AppImage` or `.deb` package
 
-- **Windows**: MSI or NSIS installer
-- **macOS**: DMG or APP bundle
+2. **Install Node.js** (required for backend server)
+   - Download from https://nodejs.org/ (LTS version recommended)
+   - Version 18 or higher required
 
-**[📥 Download Installer](INSTALLER_QUICKSTART.md)** | **[📖 Installation Guide](STANDALONE_INSTALLER_GUIDE.md)**
+3. **Install Bobby's Workshop**
+   - Double-click the installer
+   - Follow the installation wizard
+   - Launch from desktop icon or applications menu
 
-### Option 2: Manual Development Setup
+4. **Launch and Use**
+   - Backend starts automatically (no manual steps!)
+   - Frontend opens in a native desktop window
+   - Connect devices and start working
 
-For developers who want to contribute or customize:
+**[📖 Detailed Installation Guide](INSTALLATION.md)** - Step-by-step instructions for all platforms
+
+---
+
+### For Developers: Manual Setup
+
+If you want to contribute or customize:
 
 ```bash
 git clone https://github.com/Bboy9090/Bobbys-Workshop-.git
