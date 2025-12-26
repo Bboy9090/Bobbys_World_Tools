@@ -331,8 +331,9 @@ fn env_var_truthy(name: &str) -> bool {
 }
 
 fn should_start_node_backend() -> bool {
-    // Desktop default: OFF. This avoids relying on localhost networking.
-    env_var_truthy("BW_USE_NODE_BACKEND")
+    // Production default: AUTO-START backend for complete standalone experience
+    // Set BW_DISABLE_NODE_BACKEND=1 to disable backend (use in-process Tauri only)
+    !env_var_truthy("BW_DISABLE_NODE_BACKEND")
 }
 
 #[tauri::command]
@@ -356,7 +357,7 @@ fn get_backend_status(state: tauri::State<'_, AppState>) -> Result<String, Strin
         )
     } else {
         Ok(
-            "Backend server disabled (desktop uses in-process Tauri backend). Set BW_USE_NODE_BACKEND=1 to start the legacy Node backend."
+            "Backend server disabled. To enable the Node backend, unset BW_DISABLE_NODE_BACKEND or set it to 0."
                 .to_string(),
         )
     }
@@ -1029,12 +1030,13 @@ fn main() {
                     }
                     Err(e) => {
                         eprintln!("[Tauri] Failed to start backend server: {}", e);
-                        eprintln!("[Tauri] Node backend is optional; desktop features should still work via in-process backend");
-                        eprintln!("[Tauri] If you need it, ensure Node.js is installed and re-run with BW_USE_NODE_BACKEND=1");
+                        eprintln!("[Tauri] Node backend is required for full functionality");
+                        eprintln!("[Tauri] Ensure Node.js is installed from https://nodejs.org/");
+                        eprintln!("[Tauri] Or set BW_DISABLE_NODE_BACKEND=1 to use in-process backend only");
                     }
                 }
             } else {
-                println!("[Tauri] Legacy Node backend disabled (set BW_USE_NODE_BACKEND=1 to enable)");
+                println!("[Tauri] Node backend disabled by BW_DISABLE_NODE_BACKEND environment variable");
             }
             
             Ok(())
