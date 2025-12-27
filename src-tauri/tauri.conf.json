@@ -22,6 +22,27 @@
         "icons/icon.ico"
       ]
     },
+    "allowlist": {
+      "all": false,
+      "shell": {
+        "all": false,
+        "execute": true,
+        "sidecar": true,
+        "open": true
+      },
+      "path": {
+        "all": true
+      },
+      "fs": {
+        "all": true,
+        "scope": ["$APPDATA/**", "$LOCALAPPDATA/**", "$TEMP/**", "$HOME/**"]
+      },
+      "http": {
+        "all": false,
+        "request": true,
+        "scope": ["http://localhost:3001/**", "https://dl.google.com/**"]
+      }
+    },
     "windows": [
       {
         "title": "Bobbys Workshop",

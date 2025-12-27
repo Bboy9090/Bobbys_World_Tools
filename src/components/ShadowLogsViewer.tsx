@@ -189,8 +189,7 @@ export function ShadowLogsViewer() {
                         </div>
 
                         <div className="space-y-1">
-                          <d
-                          iv className="flex items-center gap-2">
+                          <div className="flex items-center gap-2">
                             <strong className="text-sm">Operation:</strong>
                             <code className="text-sm bg-slate-100 px-2 py-0.5 rounded">
                               {log.operation}
