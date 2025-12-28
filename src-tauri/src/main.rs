@@ -391,9 +391,24 @@ fn flash_start(app_handle: AppHandle, state: tauri::State<'_, AppState>, config:
         return Err("At least one partition is required".to_string());
     }
 
+    // Partition name allowlist (standard Android partitions only)
+    let allowed_partitions = [
+        "boot", "system", "vendor", "userdata", "cache", "recovery",
+        "bootloader", "radio", "aboot", "vbmeta", "dtbo", "persist"
+    ];
+    
     for p in &config.partitions {
-        if p.name.trim().is_empty() {
+        let partition_name = p.name.trim();
+        if partition_name.is_empty() {
             return Err("Partition name cannot be empty".to_string());
+        }
+        // Validate partition name format (alphanumeric, dots, dashes, underscores)
+        if !partition_name.chars().all(|c| c.is_alphanumeric() || c == '.' || c == '-' || c == '_') {
+            return Err(format!("Invalid partition name format: {}", partition_name));
+        }
+        // Additional check: warn if partition is not in allowlist (but allow it anyway for flexibility)
+        if !allowed_partitions.contains(&partition_name) {
+            eprintln!("WARNING: Partition '{}' is not in the standard allowlist", partition_name);
         }
         if p.imagePath.trim().is_empty() {
             return Err(format!("imagePath missing for partition {}", p.name));
@@ -866,10 +881,63 @@ fn start_device_monitor_once(app_handle: &AppHandle, state: tauri::State<'_, App
     });
 }
 
-fn find_node_executable() -> Option<PathBuf> {
+fn get_log_directory() -> PathBuf {
+    #[cfg(target_os = "windows")]
+    {
+        // Windows: %LOCALAPPDATA%\BobbysWorkshop\logs
+        dirs::data_local_dir()
+            .unwrap_or_else(|| PathBuf::from("C:\\Users\\Public"))
+            .join("BobbysWorkshop")
+            .join("logs")
+    }
+    #[cfg(target_os = "macos")]
+    {
+        // macOS: ~/Library/Logs/BobbysWorkshop
+        dirs::home_dir()
+            .unwrap_or_else(|| PathBuf::from("/tmp"))
+            .join("Library")
+            .join("Logs")
+            .join("BobbysWorkshop")
+    }
+    #[cfg(target_os = "linux")]
+    {
+        // Linux: ~/.local/share/bobbys-workshop/logs
+        dirs::data_local_dir()
+            .unwrap_or_else(|| PathBuf::from("/tmp"))
+            .join("bobbys-workshop")
+            .join("logs")
+    }
+    #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
+    {
+        // Fallback
+        PathBuf::from("/tmp").join("bobbys-workshop").join("logs")
+    }
+}
+
+fn find_node_executable(app_handle: &AppHandle) -> Option<PathBuf> {
+    // First, try to find bundled Node.js in resources
+    if let Some(resource_dir) = app_handle.path_resolver().resource_dir() {
+        let bundled_node = resource_dir.join("nodejs");
+        
+        #[cfg(target_os = "windows")]
+        let bundled_node_exe = bundled_node.join("node.exe");
+        
+        #[cfg(not(target_os = "windows"))]
+        let bundled_node_exe = bundled_node.join("bin").join("node");
+        
+        if bundled_node_exe.exists() {
+            println!("[Tauri] Found bundled Node.js at: {:?}", bundled_node_exe);
+            return Some(bundled_node_exe);
+        }
+    }
+    
+    // Fall back to system Node.js (for development)
+    println!("[Tauri] Bundled Node.js not found, trying system Node.js...");
+    
     // Try to find Node.js in system PATH
     if let Ok(output) = Command::new("node").arg("--version").output() {
         if output.status.success() {
+            println!("[Tauri] Found system Node.js in PATH");
             return Some(PathBuf::from("node"));
         }
     }
@@ -885,6 +953,7 @@ fn find_node_executable() -> Option<PathBuf> {
         for path in common_paths {
             let node_path = PathBuf::from(path);
             if node_path.exists() {
+                println!("[Tauri] Found system Node.js at: {:?}", node_path);
                 return Some(node_path);
             }
         }
@@ -900,6 +969,7 @@ fn find_node_executable() -> Option<PathBuf> {
         for path in common_paths {
             let node_path = PathBuf::from(path);
             if node_path.exists() {
+                println!("[Tauri] Found system Node.js at: {:?}", node_path);
                 return Some(node_path);
             }
         }
@@ -915,6 +985,7 @@ fn find_node_executable() -> Option<PathBuf> {
         for path in common_paths {
             let node_path = PathBuf::from(path);
             if node_path.exists() {
+                println!("[Tauri] Found system Node.js at: {:?}", node_path);
                 return Some(node_path);
             }
         }
@@ -926,18 +997,16 @@ fn find_node_executable() -> Option<PathBuf> {
 fn start_backend_server(app_handle: &AppHandle) -> Result<Child, std::io::Error> {
     println!("[Tauri] Starting backend API server...");
     
-    // Find Node.js executable
-    let node_exe = match find_node_executable() {
+    // Find Node.js executable (bundled first, then system)
+    let node_exe = match find_node_executable(app_handle) {
         Some(exe) => exe,
         None => {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::NotFound,
-                "Node.js executable not found. Please install Node.js from https://nodejs.org/"
+                "Node.js executable not found. Bundled Node.js missing and system Node.js not installed. Please install Node.js from https://nodejs.org/"
             ));
         }
     };
-    
-    println!("[Tauri] Found Node.js at: {:?}", node_exe);
     
     // Get the resource directory where we bundled the server
     let resource_dir = app_handle
@@ -959,14 +1028,37 @@ fn start_backend_server(app_handle: &AppHandle) -> Result<Child, std::io::Error>
     // Use port 3001 for the backend server
     let port = 3001;
     
-    // Start the Node.js server
-    let child = Command::new(&node_exe)
-        .arg(&server_path)
-        .current_dir(resource_dir)
+    // Get log directory for backend logs
+    let log_dir = get_log_directory();
+    std::fs::create_dir_all(&log_dir).ok();
+    
+    // Start the Node.js server with log directory environment variable
+    let mut cmd = Command::new(&node_exe);
+    cmd.arg(&server_path)
+        .current_dir(resource_dir.join("server"))
         .env("PORT", port.to_string())
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::inherit())
-        .spawn()?;
+        .env("BW_LOG_DIR", log_dir.to_string_lossy().to_string());
+    
+    // In production, redirect stdout/stderr to log file
+    // In development, inherit for debugging
+    #[cfg(debug_assertions)]
+    {
+        cmd.stdout(Stdio::inherit()).stderr(Stdio::inherit());
+    }
+    #[cfg(not(debug_assertions))]
+    {
+        let log_file = log_dir.join("backend.log");
+        if let (Ok(stdout_file), Ok(stderr_file)) = (
+            std::fs::File::create(&log_file),
+            std::fs::File::create(&log_file)
+        ) {
+            cmd.stdout(Stdio::from(stdout_file)).stderr(Stdio::from(stderr_file));
+        } else {
+            cmd.stdout(Stdio::inherit()).stderr(Stdio::inherit());
+        }
+    }
+    
+    let child = cmd.spawn()?;
     
     println!("[Tauri] Backend API server started on http://localhost:{}", port);
     println!("[Tauri] Server PID: {}", child.id());

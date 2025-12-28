@@ -165,7 +165,7 @@ fn classify_apple_device(pid: &str, usb: &UsbEvidence) -> Classification {
     }
 }
 
-fn classify_android_device(pid: &str, usb: &UsbEvidence) -> Classification {
+fn classify_android_device(_pid: &str, usb: &UsbEvidence) -> Classification {
     if has_vendor_interface(&usb.interface_hints) {
         return Classification {
             mode: DeviceMode::UnknownUsb,

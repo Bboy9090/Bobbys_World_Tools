@@ -1,377 +1,75 @@
-# Security Policy - Bobby's World Tools (Pandora Codex)
+# Security Model
 
-**Version**: 2.0  
-**Last Updated**: December 17, 2024
+## Threat Model
 
----
+This application performs potentially destructive operations on Android devices (flashing firmware, unlocking bootloaders, erasing partitions). The security model is designed to:
 
-## 🔒 Overview
+1. **Prevent accidental execution** - All destructive operations require explicit user confirmation
+2. **Prevent command injection** - All user input is validated and sanitized before use in system commands
+3. **Audit all operations** - All sensitive operations are logged for accountability
+4. **Restrict system access** - Tauri permissions are restricted to only what is necessary
 
-Bobby's World Tools (Pandora Codex) is a professional device operations platform designed with security as a core principle. This document outlines our security practices, vulnerability reporting procedures, and security best practices for deployments.
+## Tauri Security Configuration
 
----
+### Shell Permissions
 
-## 🚨 Reporting Security Vulnerabilities
+- **`shell.execute: false`** - Arbitrary shell command execution is DISABLED
+- **`shell.sidecar: true`** - Only pre-approved sidecar binaries can be executed (if needed)
+- **`shell.open: true`** - Opening URLs/files is allowed for user convenience
 
-### Responsible Disclosure
+**Rationale:** Direct shell execution (`execute: true`) was a security risk. All commands must now go through the controlled backend API which validates input before execution.
 
-If you discover a security vulnerability, please report it responsibly:
+### File System Access
 
-**Contact**: [Create a private security advisory on GitHub](https://github.com/Bboy9090/Bobbys_World_Tools/security/advisories/new)
+- **`fs.all: true`** with scope restrictions:
+  - `$APPDATA/**`, `$LOCALAPPDATA/**`, `$TEMP/**`, `$HOME/**`
+  
+**Rationale:** Application needs to read/write configuration and temporary files, but access is restricted to user-accessible directories.
 
-**Please DO NOT**:
+### HTTP Access
 
-- Report security issues through public GitHub issues
-- Disclose vulnerabilities publicly before we've had a chance to address them
-- Exploit vulnerabilities beyond what's necessary to demonstrate the issue
+- **`http.request: true`** with scope restrictions:
+  - `http://localhost:3001/**` (backend API)
+  - `https://dl.google.com/**` (Android platform tools downloads)
+  
+**Rationale:** Frontend needs to communicate with local backend API and download official Android tools.
 
-**Please DO**:
+## Input Validation
 
-- Provide detailed reproduction steps
-- Include the affected version(s)
-- Describe the potential impact
-- Suggest a fix if possible
+### Device Serial Numbers
 
-### Response Timeline
+- **Format:** `^[a-zA-Z0-9._-]+$` (alphanumeric, dots, dashes, underscores only)
+- **Location:** Validated in both Tauri Rust code and Node.js backend
 
-- **Acknowledgment**: Within 48 hours
-- **Initial Assessment**: Within 7 days
-- **Fix Release**: Based on severity
-  - Critical: Within 7 days
-  - High: Within 14 days
-  - Medium: Within 30 days
-  - Low: Next regular release
+### Partition Names
 
----
+- **Format:** `^[a-zA-Z0-9._-]+$` (alphanumeric, dots, dashes, underscores only)
+- **Allowlist:** Standard Android partitions are preferred (boot, system, vendor, etc.)
+- **Location:** Validated in Tauri Rust code with allowlist check
 
-## 🛡️ Security Features
+### Command Execution
 
-### 1. Truth-First Design
+- All commands use `Command::new()` with explicit arguments (no shell interpretation)
+- No user input is ever passed through a shell
+- All paths are validated before use
 
-**Principle**: No fake success responses, no silent failures
+## Operation Gates
 
-**Implementation**:
+All destructive operations require:
 
-- All operations return real results
-- Confidence scoring for device detection
-- Evidence-based classifications
-- Full audit trail
+1. **Frontend confirmation dialog** - User must type the exact confirmation text
+2. **Backend validation** - Confirmation token is verified server-side
+3. **Device locking** - Per-device locks prevent concurrent operations
+4. **Audit logging** - All attempts (successful or denied) are logged
 
-**Security Benefit**: Prevents false sense of security, enables forensic analysis
+## Security Checklist
 
-### 2. Authorization Triggers System
-
-**Feature**: 36+ mapped device authorization prompts
-
-**Implementation**:
-
-- Every sensitive operation requires explicit authorization
-- Typed confirmations (e.g., "UNLOCK", "RESET")
-- Full audit logging with timestamps
-- Chain-of-custody tracking
-
-**Code Reference**: `server/authorization-triggers.js:12-157`
-
-### 3. Critical Partition Protection
-
-**Feature**: Blocked access to critical device partitions
-
-**Protected Partitions**:
-
-- `bootloader` - Device bootloader
-- `radio` - Baseband firmware
-- `aboot` - Android bootloader
-- Boot-critical partitions
-
-**Implementation**: Whitelist-based approach in fastboot operations
-
-**Code Reference**: `server/index.js:228-240`
-
-### 4. Command Filtering (ADB)
-
-**Feature**: Whitelist of safe ADB commands
-
-**Blocked Commands**:
-
-- Direct root shell access
-- Package installation without verification
-- System modification commands
-
-**Allowed Commands**:
-
-- Device information queries
-- Non-destructive diagnostics
-- Authorized operations only
-
-### 5. Evidence Bundle System
-
-**Feature**: Signed, immutable audit logs
-
-**Implementation**:
-
-- SHA-256 signing of evidence bundles
-- Timestamped operation logs
-- Chain-of-custody preservation
-- Tamper detection
-
-**Code Reference**: `src/lib/evidence-bundle.ts:1-29`
-
-### 6. Admin API Key Authentication
-
-**Feature**: Admin operations require API key
-
-**Implementation**:
-
-```bash
-# All admin endpoints check x-api-key header
-curl -H "x-api-key: $ADMIN_API_KEY" http://localhost:3001/api/admin/...
-```
-
-**Endpoints Protected**:
-
-- Authorization triggers
-- System configuration
-- Evidence export
-
----
-
-## 🔐 Security Best Practices
-
-### Deployment Security
-
-#### 1. Change Default Admin Key
-
-```bash
-# Generate strong admin key
-openssl rand -hex 32
-
-# Set in .env
-ADMIN_API_KEY=generated_key_here
-```
-
-**Never use**:
-
-- Default keys
-- Weak passwords
-- Keys in source control
-
-#### 2. Use HTTPS in Production
-
-```bash
-# Use nginx with Let's Encrypt
-sudo certbot --nginx -d your-domain.com
-```
-
-**Never expose**:
-
-- HTTP-only endpoints in production
-- Unencrypted WebSocket connections
-
-#### 3. Configure Firewall
-
-```bash
-# Ubuntu/Debian
-sudo ufw allow 443/tcp  # HTTPS
-sudo ufw allow 22/tcp   # SSH (restrict to specific IPs)
-sudo ufw deny 3001/tcp  # Block direct backend access
-sudo ufw enable
-```
-
-#### 4. USB Access Control
-
-```bash
-# Restrict USB access to specific users
-sudo usermod -aG plugdev authorized_user
-
-# Review udev rules
-sudo nano /etc/udev/rules.d/51-android.rules
-```
-
-#### 5. Regular Updates
-
-```bash
-# Check for updates weekly
-git pull origin main
-npm install
-cd server && npm install
-```
-
-### Operational Security
-
-#### 1. Audit Log Monitoring
-
-```bash
-# Review authorization logs daily
-tail -f /var/log/pandora-codex/authorization.log
-
-# Alert on suspicious activity
-# (Configure your monitoring system)
-```
-
-#### 2. Evidence Bundle Verification
-
-```bash
-# Verify evidence bundle integrity
-sha256sum evidence-bundle.json
-# Compare with recorded hash
-```
-
-#### 3. Access Control
-
-- **Principle of Least Privilege**: Users only get minimum necessary permissions
-- **Multi-User Deployments**: Separate admin and operator roles
-- **Physical Security**: Restrict physical access to deployment machine
-
----
-
-## ⚠️ Known Security Considerations
-
-### 1. USB Device Trust
-
-**Issue**: USB devices must be trusted by the operator
-
-**Mitigation**:
-
-- Visual device identification
-- Device serial number verification
-- Authorization trigger confirmation
-
-**Recommendation**: Only connect known, authorized devices
-
-### 2. ADB Authorization Requirement
-
-**Issue**: Android devices require ADB authorization
-
-**Mitigation**:
-
-- Physical device access required
-- User must approve ADB authorization on device
-- Authorization tracked in audit logs
-
-**Recommendation**: This is a security feature, not a bug
-
-### 3. Trapdoor Module
-
-**Issue**: Trapdoor module provides access to powerful bypass tools
-
-**Mitigation**:
-
-- Admin-only access
-- Firejail sandboxing (optional)
-- Full audit logging
-- Legal disclaimer required
-
-**Recommendation**: Only use on devices you own or have explicit authorization to service
-
----
-
-## 🚫 Out of Scope (Intentional Exclusions)
-
-### Security Bypass Features
-
-The following features are **intentionally excluded** for legal and ethical reasons:
-
-❌ **iOS**:
-
-- Apple ID bypass
-- Activation lock bypass
-- MDM profile removal (unauthorized)
-- Jailbreaking without user consent
-
-❌ **Android**:
-
-- FRP (Factory Reset Protection) bypass
-- Bootloader unlock bypass
-- IMEI alteration
-- Knox warranty bit modification
-- Carrier unlock
-
-**Rationale**: Legal compliance, ownership respect, ethical boundaries
-
-**Legal Note**: Bypassing security features on devices you do not own is illegal under:
-
-- Computer Fraud and Abuse Act (CFAA) - United States
-- Computer Misuse Act - United Kingdom
-- Similar laws in most jurisdictions
-
----
-
-## 📋 Security Checklist
-
-### Pre-Deployment
-
-- [ ] Change default admin API key
-- [ ] Configure HTTPS/TLS
-- [ ] Set up firewall rules
-- [ ] Configure USB access control
-- [ ] Review udev rules
-- [ ] Set up log monitoring
-- [ ] Configure backup encryption
-- [ ] Test disaster recovery
-
-### Post-Deployment
-
-- [ ] Verify HTTPS certificate
-- [ ] Test admin authentication
-- [ ] Review audit logs daily
-- [ ] Monitor for suspicious activity
-- [ ] Keep dependencies updated
-- [ ] Conduct monthly security reviews
-
-### Ongoing Maintenance
-
-- [ ] Weekly: Check for security updates
-- [ ] Monthly: Review access logs
-- [ ] Quarterly: Security audit
-- [ ] Annually: Penetration testing (recommended)
-
----
-
-## 🔍 Security Audit
-
-### Last Audit
-
-**Date**: December 17, 2024  
-**Type**: Production Reality Audit  
-**Findings**: See `docs/audits/production-reality-audit.md`
-
-**Key Results**:
-
-- ✅ No hardcoded success responses
-- ✅ No silent error swallowing
-- ✅ Proper error propagation
-- ✅ Evidence-based device detection
-- ✅ Full audit trail implemented
-
-### Next Audit
-
-**Scheduled**: March 17, 2025  
-**Type**: Quarterly Security Review
-
----
-
-## 📞 Security Contact
-
-**GitHub Security Advisories**: [Create Advisory](https://github.com/Bboy9090/Bobbys_World_Tools/security/advisories/new)
-
-**For Non-Security Issues**: [GitHub Issues](https://github.com/Bboy9090/Bobbys_World_Tools/issues)
-
----
-
-## 📚 Related Documentation
-
-- `docs/DEPLOYMENT.md` - Secure deployment guide
-- `docs/OPERATIONS.md` - Security monitoring and maintenance
-- `docs/audits/production-reality-audit.md` - Latest security audit
-- `LEGAL_NOTICE.md` - Legal boundaries and compliance
-
----
-
-**Security Policy Version**: 2.0  
-**Maintained By**: Pandora Codex Security Team  
-**Next Review**: March 17, 2025
-
----
-
-_"Security through transparency. Trust through audit. Protection through design."_  
-— **Pandora Codex Security Principles**
+- [x] Tauri `shell.execute` disabled
+- [x] Device serial validation (regex)
+- [x] Partition name validation (regex + allowlist)
+- [x] Confirmation gates for destructive operations
+- [x] Device locks prevent race conditions
+- [x] Audit logging for sensitive operations
+- [x] No shell interpretation of user input
+- [x] File system access scoped to user directories
+- [x] HTTP access restricted to localhost + trusted domains

@@ -2,19 +2,67 @@ import express from 'express';
 import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import cors from 'cors';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 import { WebSocketServer } from 'ws';
 import { createServer } from 'http';
 import { AuthorizationTriggers } from './authorization-triggers.js';
 import trapdoorRouter from '../core/api/trapdoor.js';
+import catalogRouter from './catalog.js';
+import operationsRouter from './operations.js';
 import { ensureManagedPlatformTools, getManagedPlatformToolsDir } from './platform-tools.js';
+import { auditLogMiddleware } from './middleware/audit-logger.js';
+import { acquireDeviceLock, releaseDeviceLock } from './locks.js';
+import { getToolPath, isToolAvailable, getToolInfo, getAllToolsInfo, executeTool } from './tools-manager.js';
+import { downloadFirmware, getDownloadStatus, cancelDownload, getActiveDownloads } from './firmware-downloader.js';
+
+// Initialize logging first
+const LOG_DIR = process.env.BW_LOG_DIR || (process.platform === 'win32' 
+  ? path.join(process.env.LOCALAPPDATA || process.env.APPDATA || process.cwd(), 'BobbysWorkshop', 'logs')
+  : path.join(process.env.HOME || process.cwd(), '.local', 'share', 'bobbys-workshop', 'logs'));
+const LOG_FILE = process.env.BW_LOG_FILE || path.join(LOG_DIR, 'backend.log');
+
+// Ensure log directory exists
+if (!fs.existsSync(LOG_DIR)) {
+  fs.mkdirSync(LOG_DIR, { recursive: true });
+}
+
+// Simple file logger
+const logger = {
+  info: (msg) => {
+    const line = `[${new Date().toISOString()}] INFO: ${msg}\n`;
+    try {
+      fs.appendFileSync(LOG_FILE, line);
+    } catch (err) {
+      console.error('Failed to write to log file:', err);
+    }
+    console.log(line.trim());
+  },
+  error: (msg) => {
+    const line = `[${new Date().toISOString()}] ERROR: ${msg}\n`;
+    try {
+      fs.appendFileSync(LOG_FILE, line);
+    } catch (err) {
+      console.error('Failed to write to log file:', err);
+    }
+    console.error(line.trim());
+  }
+};
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 const DEMO_MODE = process.env.DEMO_MODE === '1';
 
+logger.info(`Backend starting on port ${PORT}`);
+logger.info(`Log directory: ${LOG_DIR}`);
+logger.info(`Log file: ${LOG_FILE}`);
+
 app.use(cors());
 app.use(express.json());
+app.use(auditLogMiddleware);
 
 const authTriggers = new AuthorizationTriggers();
 
@@ -1367,7 +1415,50 @@ app.get('/api/fastboot/device-info', (req, res) => {
   }
 });
 
-app.post('/api/fastboot/flash', async (req, res) => {
+// Device lock middleware for destructive operations
+function requireDeviceLock(req, res, next) {
+  const deviceSerial = req.body?.serial || req.body?.deviceSerial || req.params?.serial;
+  
+  if (!deviceSerial) {
+    // Operations that don't need a device lock can proceed
+    return next();
+  }
+
+  const operation = req.path.replace('/api/', '').replace(/\//g, '_');
+  const lockResult = acquireDeviceLock(deviceSerial, operation);
+
+  if (!lockResult.acquired) {
+    return res.status(423).json({
+      success: false,
+      error: 'Device locked',
+      message: lockResult.reason,
+      lockedBy: lockResult.lockedBy,
+      retryAfter: 300 // seconds (5 minutes)
+    });
+  }
+
+  // Release lock when response finishes (success or error)
+  const originalEnd = res.end;
+  res.end = function(...args) {
+    releaseDeviceLock(deviceSerial);
+    originalEnd.apply(this, args);
+  };
+
+  next();
+}
+
+app.post('/api/fastboot/flash', requireDeviceLock, async (req, res) => {
+  const { confirmation } = req.body;
+  
+  // Require confirmation for flash operations
+  if (!confirmation || confirmation !== 'FLASH') {
+    return res.status(400).json({
+      success: false,
+      error: 'Confirmation required',
+      message: 'You must provide confirmation: "FLASH" to confirm this operation'
+    });
+  }
+
   if (!commandExists("fastboot")) {
     return res.status(404).json({ error: "Fastboot not installed" });
   }
@@ -1421,12 +1512,22 @@ app.post('/api/fastboot/flash', async (req, res) => {
   }
 });
 
-app.post('/api/fastboot/unlock', (req, res) => {
+app.post('/api/fastboot/unlock', requireDeviceLock, (req, res) => {
+  const { serial, confirmation } = req.body;
+  
+  // Require confirmation for unlock operations
+  if (!confirmation || confirmation !== 'UNLOCK') {
+    return res.status(400).json({
+      success: false,
+      error: 'Confirmation required',
+      message: 'You must type "UNLOCK" to confirm this operation. This will ERASE ALL DATA on the device.'
+    });
+  }
+
   if (!commandExists("fastboot")) {
     return res.status(404).json({ error: "Fastboot not installed" });
   }
 
-  const { serial } = req.body;
   if (!serial) {
     return res.status(400).json({ error: "Serial number required" });
   }
@@ -1489,12 +1590,23 @@ app.post('/api/fastboot/reboot', (req, res) => {
   }
 });
 
-app.post('/api/fastboot/erase', (req, res) => {
+app.post('/api/fastboot/erase', requireDeviceLock, (req, res) => {
+  const { serial, partition, confirmation } = req.body;
+  
+  // Require confirmation for erase operations
+  const expectedConfirmation = `ERASE ${partition}`.toUpperCase();
+  if (!confirmation || confirmation.toUpperCase() !== expectedConfirmation) {
+    return res.status(400).json({
+      success: false,
+      error: 'Confirmation required',
+      message: `You must type "${expectedConfirmation}" to confirm erasing partition ${partition}`
+    });
+  }
+
   if (!commandExists("fastboot")) {
     return res.status(404).json({ error: "Fastboot not installed" });
   }
 
-  const { serial, partition } = req.body;
   if (!serial || !partition) {
     return res.status(400).json({ error: "Serial and partition required" });
   }
@@ -2553,71 +2665,204 @@ app.post('/api/monitor/stop', (req, res) => {
 });
 
 app.get('/api/monitor/live', (req, res) => {
+  // Check if monitoring is active
   if (!monitoringActive) {
-    return res.json({ 
-      status: 'not monitoring',
-      active: false 
+    return res.json({
+      active: false,
+      message: 'Monitoring is not active. Start a flash operation or enable monitoring to collect metrics.',
+      timestamp: new Date().toISOString()
     });
   }
 
-  const metrics = {
-    speed: (Math.random() * 30 + 5).toFixed(2),
-    cpu: Math.floor(Math.random() * 60 + 20),
-    memory: Math.floor(Math.random() * 50 + 30),
-    usb: Math.floor(Math.random() * 70 + 20),
-    disk: Math.floor(Math.random() * 40 + 10),
-    baseline: 21.25,
-    timestamp: new Date().toISOString(),
-    active: true
-  };
+  // Get active flash jobs from activeFlashJobs Map
+  const activeJobs = Array.from(activeFlashJobs.values())
+    .filter(job => {
+      const status = job.status?.status;
+      return status === 'running' || status === 'queued' || status === 'starting';
+    });
+
+  if (activeJobs.length === 0) {
+    return res.json({
+      active: true,
+      monitoring: true,
+      message: 'Monitoring active but no flash operations in progress',
+      speed: 0,
+      cpu: 0,
+      memory: 0,
+      disk: 0,
+      usb: 0,
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  // Get the most recent active flash job
+  const activeJob = activeJobs
+    .sort((a, b) => (b.status?.startTime || 0) - (a.status?.startTime || 0))[0];
+
+  if (!activeJob || !activeJob.status) {
+    return res.json({
+      active: true,
+      monitoring: true,
+      message: 'No active flash operation found',
+      speed: 0,
+      cpu: 0,
+      memory: 0,
+      disk: 0,
+      usb: 0,
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  const jobStatus = activeJob.status;
   
-  res.json(metrics);
+  // Get transfer speed from job status (already in MB/s or bytes/s)
+  let speed = jobStatus.speed || 0;
+  if (speed > 0 && speed < 100) {
+    // Likely already in MB/s
+    speed = speed;
+  } else if (speed >= 100) {
+    // Convert bytes/s to MB/s if needed
+    speed = speed / (1024 * 1024);
+  }
+
+  // Calculate estimated USB utilization based on speed (assuming max ~100 MB/s for USB 3.0)
+  const estimatedUsbUtilization = speed > 0 ? Math.min(100, (speed / 100) * 100) : 0;
+
+  // For now, return metrics based on active flash job status
+  // TODO: Integrate with actual system metrics collection (CPU, memory, disk, USB)
+  // This would require:
+  // - CPU usage monitoring (using system commands or Node.js os module)
+  // - Memory usage monitoring  
+  // - Disk I/O monitoring
+  // - USB bandwidth monitoring (requires USB library integration)
+  
+  res.json({
+    active: true,
+    monitoring: true,
+    speed: speed,
+    cpu: 0, // TODO: Collect actual CPU usage
+    memory: 0, // TODO: Collect actual memory usage
+    disk: 0, // TODO: Collect actual disk I/O
+    usb: estimatedUsbUtilization,
+    flashJobId: jobStatus.jobId,
+    progress: jobStatus.progress || 0,
+    timestamp: new Date().toISOString()
+  });
 });
 
 app.post('/api/tests/run', async (req, res) => {
-  const results = [
-    { 
-      name: 'Device Detection Test', 
-      status: 'PASS',
-      duration: Math.floor(Math.random() * 500 + 100),
-      details: 'All device detection methods working correctly'
-    },
-    { 
-      name: 'USB Performance Test', 
-      status: 'PASS',
-      duration: Math.floor(Math.random() * 800 + 200),
-      details: 'USB bandwidth within acceptable range'
-    },
-    { 
-      name: 'Correlation Test', 
-      status: Math.random() > 0.3 ? 'PASS' : 'FAIL',
-      duration: Math.floor(Math.random() * 600 + 150),
-      details: 'Device correlation accuracy validation'
-    },
-    { 
-      name: 'Optimization Test', 
-      status: Math.random() > 0.5 ? 'PASS' : 'WARNING',
-      duration: Math.floor(Math.random() * 700 + 200),
-      details: 'Performance optimization effectiveness'
+  const { testSuite = 'all', deviceSerial } = req.body;
+  
+  try {
+    const results = {
+      testSuite,
+      deviceSerial: deviceSerial || null,
+      startTime: Date.now(),
+      tests: [],
+      summary: {
+        total: 0,
+        passed: 0,
+        failed: 0,
+        skipped: 0
+      }
+    };
+    
+    // Run basic system tests
+    if (testSuite === 'all' || testSuite === 'system') {
+      // Test 1: ADB availability
+      const adbAvailable = commandExists('adb');
+      results.tests.push({
+        name: 'ADB Tool Available',
+        status: adbAvailable ? 'pass' : 'fail',
+        message: adbAvailable ? 'ADB is available' : 'ADB not found in PATH',
+        duration: 0
+      });
+      results.summary.total++;
+      if (adbAvailable) results.summary.passed++;
+      else results.summary.failed++;
+      
+      // Test 2: Fastboot availability
+      const fastbootAvailable = commandExists('fastboot');
+      results.tests.push({
+        name: 'Fastboot Tool Available',
+        status: fastbootAvailable ? 'pass' : 'fail',
+        message: fastbootAvailable ? 'Fastboot is available' : 'Fastboot not found in PATH',
+        duration: 0
+      });
+      results.summary.total++;
+      if (fastbootAvailable) results.summary.passed++;
+      else results.summary.failed++;
+      
+      // Test 3: iOS tools availability
+      const iosToolsAvailable = commandExists('idevice_id');
+      results.tests.push({
+        name: 'iOS Tools Available',
+        status: iosToolsAvailable ? 'pass' : 'skip',
+        message: iosToolsAvailable ? 'libimobiledevice tools available' : 'iOS tools not found (optional)',
+        duration: 0
+      });
+      results.summary.total++;
+      if (iosToolsAvailable) results.summary.passed++;
+      else results.summary.skipped++;
+      
+      // Test 4: Backend health
+      results.tests.push({
+        name: 'Backend Health',
+        status: 'pass',
+        message: 'Backend is running',
+        duration: 0
+      });
+      results.summary.total++;
+      results.summary.passed++;
     }
-  ];
-  
-  const testRun = {
-    id: Date.now(),
-    timestamp: new Date().toISOString(),
-    results,
-    summary: {
-      total: results.length,
-      passed: results.filter(r => r.status === 'PASS').length,
-      failed: results.filter(r => r.status === 'FAIL').length,
-      warnings: results.filter(r => r.status === 'WARNING').length
+    
+    // Run device-specific tests if deviceSerial provided
+    if (deviceSerial && (testSuite === 'all' || testSuite === 'device')) {
+      if (commandExists('adb')) {
+        const adbCmd = getToolCommand('adb');
+        const devicesOutput = safeExec(`${adbCmd} devices`);
+        const deviceFound = devicesOutput && devicesOutput.includes(deviceSerial);
+        
+        results.tests.push({
+          name: `Device ${deviceSerial} Connected`,
+          status: deviceFound ? 'pass' : 'fail',
+          message: deviceFound ? `Device ${deviceSerial} found in ADB devices` : `Device ${deviceSerial} not found`,
+          duration: 0
+        });
+        results.summary.total++;
+        if (deviceFound) results.summary.passed++;
+        else results.summary.failed++;
+      } else {
+        results.tests.push({
+          name: `Device ${deviceSerial} Connected`,
+          status: 'skip',
+          message: 'ADB not available, cannot test device connection',
+          duration: 0
+        });
+        results.summary.total++;
+        results.summary.skipped++;
+      }
     }
-  };
-  
-  testHistory.unshift(testRun);
-  if (testHistory.length > 20) testHistory = testHistory.slice(0, 20);
-  
-  res.json(testRun);
+    
+    results.endTime = Date.now();
+    results.duration = results.endTime - results.startTime;
+    results.success = results.summary.failed === 0;
+    
+    // Store in test history
+    testHistory.unshift(results);
+    if (testHistory.length > 50) {
+      testHistory = testHistory.slice(0, 50);
+    }
+    
+    res.json(results);
+  } catch (error) {
+    console.error('[Tests Run] Error:', error);
+    res.status(500).json({
+      error: 'Test execution failed',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 app.get('/api/tests/results', (req, res) => {
@@ -2939,31 +3184,734 @@ app.get('/api/firmware/database', async (req, res) => {
 });
 
 app.post('/api/firmware/download', async (req, res) => {
+  const { downloadUrl, firmwareId, expectedSize, expectedChecksum, checksumType } = req.body;
+  
+  if (!downloadUrl) {
+    return res.status(400).json({
+      error: 'Download URL required',
+      message: 'Please provide a downloadUrl in the request body'
+    });
+  }
+  
   try {
-    const { firmwareId, deviceModel, downloadUrl } = req.body;
-    
-    if (!firmwareId || !deviceModel || !downloadUrl) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Missing required fields' 
-      });
-    }
+    // Start download (non-blocking)
+    const result = await downloadFirmware(downloadUrl, {
+      firmwareId,
+      expectedSize,
+      expectedChecksum,
+      checksumType: checksumType || 'sha256',
+      onProgress: (progress) => {
+        // Progress updates are tracked in activeDownloads Map
+        // Clients can poll /api/firmware/download/:downloadId for status
+      }
+    });
     
     res.json({
       success: true,
-      message: `Firmware ${firmwareId} download initiated for ${deviceModel}`,
-      firmwareId,
-      deviceModel,
+      downloadId: result.downloadId,
+      filePath: result.filePath,
+      message: result.message || 'Download started',
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('[Firmware API] Download error:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: 'Download failed' 
+    console.error('[Firmware Download] Error:', error);
+    res.status(500).json({
+      error: 'Download failed',
+      message: error.message,
+      timestamp: new Date().toISOString()
     });
   }
 });
+
+// Get download status
+app.get('/api/firmware/download/:downloadId', (req, res) => {
+  const { downloadId } = req.params;
+  const status = getDownloadStatus(downloadId);
+  
+  if (!status) {
+    return res.status(404).json({
+      error: 'Download not found',
+      message: `Download ID ${downloadId} not found`,
+      timestamp: new Date().toISOString()
+    });
+  }
+  
+  res.json(status);
+});
+
+// Cancel download
+app.post('/api/firmware/download/:downloadId/cancel', (req, res) => {
+  const { downloadId } = req.params;
+  const cancelled = cancelDownload(downloadId);
+  
+  if (!cancelled) {
+    return res.status(404).json({
+      error: 'Download not found',
+      message: `Download ID ${downloadId} not found`,
+      timestamp: new Date().toISOString()
+    });
+  }
+  
+  res.json({
+    success: true,
+    message: 'Download cancelled',
+    downloadId,
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Get all active downloads
+app.get('/api/firmware/downloads/active', (req, res) => {
+  const downloads = getActiveDownloads();
+  res.json({
+    count: downloads.length,
+    downloads,
+    timestamp: new Date().toISOString()
+  });
+});
+
+// iOS Device Detection
+app.get('/api/ios/scan', (req, res) => {
+  if (!commandExists('idevice_id')) {
+    return res.status(503).json({
+      error: 'iOS tools not available',
+      message: 'libimobiledevice tools (idevice_id) are not installed. Install libimobiledevice to scan iOS devices.',
+      devices: [],
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  try {
+    const ideviceCmd = 'idevice_id';
+    const devicesRaw = safeExec(`${ideviceCmd} -l`);
+    
+    const devices = [];
+    if (devicesRaw) {
+      const lines = devicesRaw.split('\n').filter(l => l.trim());
+      for (const line of lines) {
+        const udid = line.trim();
+        if (udid) {
+          // Try to get device name if available
+          let name = null;
+          let productType = null;
+          try {
+            const nameOutput = safeExec(`${ideviceCmd} -u ${udid} -n 2>/dev/null || ideviceinfo -u ${udid} -k DeviceName 2>/dev/null`);
+            if (nameOutput) name = nameOutput.trim();
+            const typeOutput = safeExec(`ideviceinfo -u ${udid} -k ProductType 2>/dev/null`);
+            if (typeOutput) productType = typeOutput.trim();
+          } catch {
+            // Ignore errors getting device info
+          }
+
+          devices.push({
+            udid,
+            name: name || undefined,
+            productType: productType || undefined,
+            mode: 'normal', // Default - could be DFU/recovery if detected
+            isDetected: true
+          });
+        }
+      }
+    }
+
+    res.json({
+      success: true,
+      count: devices.length,
+      devices,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[iOS Scan] Error:', error);
+    res.status(500).json({
+      error: 'Scan failed',
+      message: error.message,
+      devices: [],
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+app.post('/api/ios/jailbreak', async (req, res) => {
+  const { udid, method = 'palera1n' } = req.body;
+  
+  if (!udid) {
+    return res.status(400).json({
+      error: 'Device UDID required',
+      message: 'Please provide a device UDID for jailbreak operation'
+    });
+  }
+  
+  // Check which jailbreak tool is available
+  let toolName = null;
+  if (method === 'palera1n' && isToolAvailable('palera1n')) {
+    toolName = 'palera1n';
+  } else if (method === 'checkra1n' && isToolAvailable('checkra1n')) {
+    toolName = 'checkra1n';
+  } else if (isToolAvailable('palera1n')) {
+    toolName = 'palera1n';
+  } else if (isToolAvailable('checkra1n')) {
+    toolName = 'checkra1n';
+  }
+  
+  if (!toolName) {
+    const toolInfo = getAllToolsInfo();
+    return res.status(503).json({
+      error: 'Jailbreak tool not available',
+      message: 'No jailbreak tool (checkra1n or palera1n) found. Please install one in tools/ directory or system PATH.',
+      availableTools: {
+        checkra1n: toolInfo.checkra1n?.available || false,
+        palera1n: toolInfo.palera1n?.available || false
+      },
+      downloadUrls: {
+        checkra1n: toolInfo.checkra1n?.downloadUrl || null,
+        palera1n: toolInfo.palera1n?.downloadUrl || null
+      },
+      timestamp: new Date().toISOString()
+    });
+  }
+  
+  try {
+    // Execute jailbreak (this is a simplified version - actual jailbreak requires more steps)
+    // For safety, we'll return instructions instead of executing directly
+    // In production, you'd want more comprehensive jailbreak workflow integration
+    
+    const toolInfo = getToolInfo(toolName);
+    
+    res.json({
+      success: true,
+      message: `Jailbreak tool ${toolName} is available. Jailbreak execution should be performed through the workflow system for safety.`,
+      tool: toolName,
+      toolPath: toolInfo.path,
+      udid,
+      instructions: {
+        palera1n: 'Use palera1n CLI: palera1n -c -f [options]',
+        checkra1n: 'Use checkra1n CLI: checkra1n [options]'
+      },
+      warning: 'Jailbreaking may void warranty and has risks. Use workflow system for guided execution.',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[iOS Jailbreak] Error:', error);
+    res.status(500).json({
+      error: 'Jailbreak operation failed',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// FRP Detection
+app.post('/api/frp/detect', async (req, res) => {
+  const { serial } = req.body;
+  
+  if (!serial) {
+    return res.status(400).json({
+      error: 'Device serial required',
+      message: 'Please provide a device serial number for FRP detection'
+    });
+  }
+
+  if (!commandExists('adb')) {
+    return res.status(503).json({
+      error: 'ADB not available',
+      message: 'ADB is required for FRP detection',
+      serial,
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  try {
+    const adbCmd = getToolCommand('adb');
+    
+    // Check if device is connected
+    const devicesOutput = safeExec(`${adbCmd} devices`);
+    if (!devicesOutput || !devicesOutput.includes(serial)) {
+      return res.status(404).json({
+        error: 'Device not found',
+        message: `Device with serial ${serial} is not connected via ADB`,
+        serial,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Check device state
+    const deviceLine = devicesOutput.split('\n').find(l => l.includes(serial));
+    const state = deviceLine?.split(/\s+/)[1];
+    
+    if (state !== 'device') {
+      return res.status(400).json({
+        error: 'Device not ready',
+        message: `Device is in '${state}' state. Device must be in 'device' state for FRP detection.`,
+        serial,
+        state,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Method 1: Check ro.frp.pst property (most reliable)
+    const frpProperty = safeExec(`${adbCmd} -s ${serial} shell getprop ro.frp.pst`);
+    const hasFRPProperty = frpProperty && frpProperty.trim() !== '';
+    
+    // Method 2: Check android_id (if short, likely FRP locked after reset)
+    const androidId = safeExec(`${adbCmd} -s ${serial} shell settings get secure android_id`);
+    const androidIdShort = androidId && androidId.trim().length < 10;
+    
+    // Method 3: Check if Google account is present (indicator of FRP status)
+    const accountsOutput = safeExec(`${adbCmd} -s ${serial} shell dumpsys account 2>/dev/null || echo ""`);
+    const hasGoogleAccount = accountsOutput && accountsOutput.includes('com.google');
+    
+    // Method 4: Check ro.setupwizard.mode (should be DISABLED if device is set up)
+    const setupWizardMode = safeExec(`${adbCmd} -s ${serial} shell getprop ro.setupwizard.mode`);
+    const isSetupWizardDisabled = setupWizardMode && setupWizardMode.trim() === 'DISABLED';
+    
+    // Determine FRP status
+    let detected = false;
+    let confidence = 'low';
+    const indicators = [];
+    
+    if (hasFRPProperty) {
+      detected = true;
+      confidence = 'high';
+      indicators.push('FRP property (ro.frp.pst) is present');
+    }
+    
+    if (androidIdShort) {
+      detected = true;
+      confidence = confidence === 'high' ? 'high' : 'medium';
+      indicators.push('Android ID is unusually short (possible post-reset state)');
+    }
+    
+    if (!hasGoogleAccount && !isSetupWizardDisabled) {
+      detected = true;
+      confidence = confidence === 'high' ? 'high' : 'medium';
+      indicators.push('No Google account detected and setup wizard may be active');
+    }
+
+    // Get additional device info
+    const deviceInfo = {};
+    try {
+      const props = safeExec(`${adbCmd} -s ${serial} shell getprop`);
+      if (props) {
+        deviceInfo.manufacturer = props.match(/\[ro\.product\.manufacturer\]:\s*\[(.*?)\]/)?.[1];
+        deviceInfo.model = props.match(/\[ro\.product\.model\]:\s*\[(.*?)\]/)?.[1];
+        deviceInfo.androidVersion = props.match(/\[ro\.build\.version\.release\]:\s*\[(.*?)\]/)?.[1];
+      }
+    } catch {
+      // Ignore errors getting device info
+    }
+
+    res.json({
+      detected,
+      confidence,
+      indicators,
+      deviceInfo: Object.keys(deviceInfo).length > 0 ? deviceInfo : undefined,
+      serial,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[FRP Detect] Error:', error);
+    res.status(500).json({
+      error: 'Detection failed',
+      message: error.message,
+      serial,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// MDM Detection
+app.post('/api/mdm/detect', (req, res) => {
+  const { serial } = req.body;
+  
+  if (!serial) {
+    return res.status(400).json({
+      error: 'Device serial required',
+      message: 'Please provide a device serial number for MDM detection'
+    });
+  }
+
+  if (!commandExists('adb')) {
+    return res.status(503).json({
+      error: 'ADB not available',
+      message: 'ADB is required for MDM detection',
+      serial,
+      timestamp: new Date().toISOString()
+    });
+  }
+
+  try {
+    const adbCmd = getToolCommand('adb');
+    
+    // Check if device is connected
+    const devicesOutput = safeExec(`${adbCmd} devices`);
+    if (!devicesOutput || !devicesOutput.includes(serial)) {
+      return res.status(404).json({
+        error: 'Device not found',
+        message: `Device with serial ${serial} is not connected via ADB`,
+        serial,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Check device state
+    const deviceLine = devicesOutput.split('\n').find(l => l.includes(serial));
+    const state = deviceLine?.split(/\s+/)[1];
+    
+    if (state !== 'device') {
+      return res.status(400).json({
+        error: 'Device not ready',
+        message: `Device is in '${state}' state. Device must be in 'device' state for MDM detection.`,
+        serial,
+        state,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Check for MDM profiles using dumpsys device_policy
+    const devicePolicyOutput = safeExec(`${adbCmd} -s ${serial} shell dumpsys device_policy 2>/dev/null || echo ""`);
+    
+    let detected = false;
+    let profileName = null;
+    let organization = null;
+    const restrictions = [];
+    
+    if (devicePolicyOutput) {
+      // Look for active admin components
+      const activeAdminMatch = devicePolicyOutput.match(/Active admin components:\s*(.*?)(?:\n|$)/);
+      if (activeAdminMatch && activeAdminMatch[1].trim()) {
+        detected = true;
+        const admins = activeAdminMatch[1].trim().split(/\s+/).filter(a => a);
+        if (admins.length > 0) {
+          profileName = admins[0].split('/').pop();
+        }
+      }
+      
+      // Look for organization info
+      const orgMatch = devicePolicyOutput.match(/Organization:\s*(.*?)(?:\n|$)/i);
+      if (orgMatch && orgMatch[1].trim()) {
+        organization = orgMatch[1].trim();
+      }
+      
+      // Check for common MDM restrictions
+      if (devicePolicyOutput.includes('DISALLOW_')) {
+        detected = true;
+        const restrictionMatches = devicePolicyOutput.match(/DISALLOW_\w+/g);
+        if (restrictionMatches) {
+          restrictions.push(...new Set(restrictionMatches));
+        }
+      }
+      
+      // Check for device owner
+      const deviceOwnerMatch = devicePolicyOutput.match(/Device Owner:\s*(.*?)(?:\n|$)/i);
+      if (deviceOwnerMatch && deviceOwnerMatch[1].trim() && deviceOwnerMatch[1].trim() !== 'null') {
+        detected = true;
+        if (!profileName) {
+          profileName = deviceOwnerMatch[1].trim().split('/').pop();
+        }
+      }
+      
+      // Check for profile owner
+      const profileOwnerMatch = devicePolicyOutput.match(/Profile Owner:\s*(.*?)(?:\n|$)/i);
+      if (profileOwnerMatch && profileOwnerMatch[1].trim() && profileOwnerMatch[1].trim() !== 'null') {
+        detected = true;
+        if (!profileName) {
+          profileName = profileOwnerMatch[1].trim().split('/').pop();
+        }
+      }
+    }
+    
+    // Fallback: Check installed packages for common MDM apps
+    if (!detected) {
+      const packagesOutput = safeExec(`${adbCmd} -s ${serial} shell pm list packages 2>/dev/null || echo ""`);
+      if (packagesOutput) {
+        const mdmPatterns = [
+          /com\.airwatch/i,
+          /com\.vmware/i,
+          /com\.mobileiron/i,
+          /com\.good\.gd/i,
+          /com\.soti/i,
+          /com\.blackberry/i,
+          /com\.intune/i,
+          /com\.microsoft\.companyportal/i,
+          /com\.citrix/i
+        ];
+        
+        for (const pattern of mdmPatterns) {
+          if (pattern.test(packagesOutput)) {
+            detected = true;
+            const match = packagesOutput.match(new RegExp(pattern.source.replace(/\\/g, ''), 'i'));
+            if (match) {
+              profileName = match[0].replace(/package:/i, '').trim();
+            }
+            break;
+          }
+        }
+      }
+    }
+
+    res.json({
+      detected,
+      profileName: profileName || undefined,
+      organization: organization || undefined,
+      restrictions: restrictions.length > 0 ? restrictions : [],
+      serial,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[MDM Detect] Error:', error);
+    res.status(500).json({
+      error: 'Detection failed',
+      message: error.message,
+      serial,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Samsung Odin Flash
+app.post('/api/odin/flash', async (req, res) => {
+  const { deviceSerial, firmwareFiles, options = {} } = req.body;
+  
+  if (!deviceSerial || !firmwareFiles || !Array.isArray(firmwareFiles) || firmwareFiles.length === 0) {
+    return res.status(400).json({
+      error: 'Missing required fields',
+      message: 'Please provide deviceSerial and firmwareFiles array'
+    });
+  }
+  
+  // Check for Odin or Heimdall (cross-platform alternative)
+  let toolName = null;
+  if (isToolAvailable('odin')) {
+    toolName = 'odin';
+  } else if (isToolAvailable('heimdall')) {
+    toolName = 'heimdall';
+  }
+  
+  if (!toolName) {
+    const toolInfo = getAllToolsInfo();
+    return res.status(503).json({
+      error: 'Samsung flashing tool not available',
+      message: 'No Samsung flashing tool (Odin or Heimdall) found. Please install one in tools/ directory or system PATH.',
+      availableTools: {
+        odin: toolInfo.odin?.available || false,
+        heimdall: toolInfo.heimdall?.available || false
+      },
+      downloadUrls: {
+        odin: toolInfo.odin?.downloadUrl || null,
+        heimdall: toolInfo.heimdall?.downloadUrl || null
+      },
+      note: 'Heimdall is cross-platform and recommended for non-Windows systems',
+      timestamp: new Date().toISOString()
+    });
+  }
+  
+  try {
+    const toolInfo = getToolInfo(toolName);
+    
+    // Note: Actual flashing execution would require:
+    // - Device detection in download mode
+    // - Firmware file validation
+    // - Proper command construction for Odin/Heimdall
+    // - Progress tracking
+    // For now, return tool availability and instructions
+    
+    res.json({
+      success: true,
+      message: `Samsung flashing tool ${toolName} is available. Flash execution should be performed through the workflow system for safety.`,
+      tool: toolName,
+      toolPath: toolInfo.path,
+      deviceSerial,
+      firmwareFiles: firmwareFiles.map(f => ({
+        partition: f.partition || f.name,
+        file: f.file || f.path,
+        validated: false // Would validate in real implementation
+      })),
+      instructions: {
+        odin: 'Odin requires Windows and Samsung USB drivers. Use Odin3.exe with firmware files.',
+        heimdall: 'Use heimdall flash --[partition] [file] for each partition'
+      },
+      warning: 'Flashing firmware may void warranty and can brick devices. Use workflow system for guided execution.',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[Odin Flash] Error:', error);
+    res.status(500).json({
+      error: 'Flash operation failed',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// MediaTek Flash
+app.post('/api/mtk/flash', async (req, res) => {
+  const { deviceSerial, scatterFile, firmwareFiles, options = {} } = req.body;
+  
+  if (!deviceSerial || !scatterFile || !firmwareFiles || !Array.isArray(firmwareFiles)) {
+    return res.status(400).json({
+      error: 'Missing required fields',
+      message: 'Please provide deviceSerial, scatterFile, and firmwareFiles array'
+    });
+  }
+  
+  // Check for SP Flash Tool
+  if (!isToolAvailable('spflashtool')) {
+    const toolInfo = getToolInfo('spflashtool');
+    return res.status(503).json({
+      error: 'MediaTek flashing tool not available',
+      message: 'SP Flash Tool not found. Please install it in tools/spflashtool/ directory or system PATH.',
+      available: toolInfo?.available || false,
+      downloadUrl: toolInfo?.downloadUrl || null,
+      requiresDriver: toolInfo?.requiresDriver || false,
+      driverName: toolInfo?.driverName || null,
+      note: 'SP Flash Tool requires Windows and MediaTek USB drivers',
+      timestamp: new Date().toISOString()
+    });
+  }
+  
+  try {
+    const toolInfo = getToolInfo('spflashtool');
+    
+    // Note: Actual flashing execution would require:
+    // - Device detection in BROM/preloader mode
+    // - Scatter file parsing and validation
+    // - Firmware file validation
+    // - Proper command construction for SP Flash Tool
+    // - Progress tracking
+    
+    res.json({
+      success: true,
+      message: 'SP Flash Tool is available. Flash execution should be performed through the workflow system for safety.',
+      tool: 'spflashtool',
+      toolPath: toolInfo.path,
+      deviceSerial,
+      scatterFile,
+      firmwareFiles: firmwareFiles.map(f => ({
+        partition: f.partition || f.name,
+        file: f.file || f.path,
+        validated: false // Would validate in real implementation
+      })),
+      instructions: {
+        spflashtool: 'Use SP Flash Tool GUI or command-line interface with scatter file and firmware images'
+      },
+      warning: 'Flashing firmware may void warranty and can brick devices. Use workflow system for guided execution.',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[MediaTek Flash] Error:', error);
+    res.status(500).json({
+      error: 'Flash operation failed',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Qualcomm EDL Flash
+app.post('/api/edl/flash', async (req, res) => {
+  const { deviceSerial, programmerFile, firmwareFiles, options = {} } = req.body;
+  
+  if (!deviceSerial || !programmerFile || !firmwareFiles || !Array.isArray(firmwareFiles)) {
+    return res.status(400).json({
+      error: 'Missing required fields',
+      message: 'Please provide deviceSerial, programmerFile (firehose), and firmwareFiles array'
+    });
+  }
+  
+  // Check for EDL tool (prefer edl, fallback to qfil)
+  let toolName = null;
+  if (isToolAvailable('edl')) {
+    toolName = 'edl';
+  } else if (isToolAvailable('qfil')) {
+    toolName = 'qfil';
+  }
+  
+  if (!toolName) {
+    const toolInfo = getAllToolsInfo();
+    return res.status(503).json({
+      error: 'EDL flashing tool not available',
+      message: 'No Qualcomm EDL tool (edl or qfil) found. Please install one in tools/ directory or system PATH.',
+      availableTools: {
+        edl: toolInfo.edl?.available || false,
+        qfil: toolInfo.qfil?.available || false
+      },
+      downloadUrls: {
+        edl: toolInfo.edl?.downloadUrl || null,
+        qfil: toolInfo.qfil?.downloadUrl || null
+      },
+      note: 'edl is cross-platform, qfil is Windows-only',
+      timestamp: new Date().toISOString()
+    });
+  }
+  
+  try {
+    const toolInfo = getToolInfo(toolName);
+    
+    // Note: Actual flashing execution would require:
+    // - Device detection in EDL mode (9008 port)
+    // - Firehose/programmer file loading
+    // - Firmware file validation
+    // - Proper command construction for edl/qfil
+    // - Progress tracking
+    
+    res.json({
+      success: true,
+      message: `EDL flashing tool ${toolName} is available. Flash execution should be performed through the workflow system for safety.`,
+      tool: toolName,
+      toolPath: toolInfo.path,
+      deviceSerial,
+      programmerFile,
+      firmwareFiles: firmwareFiles.map(f => ({
+        partition: f.partition || f.name,
+        file: f.file || f.path,
+        validated: false // Would validate in real implementation
+      })),
+      instructions: {
+        edl: 'Use edl CLI: edl [options] --load-programmer [file] --flash [partition] [file]',
+        qfil: 'Use QFIL GUI or command-line interface with programmer and firmware files'
+      },
+      warning: 'EDL flashing can brick devices if incorrect files are used. Use workflow system for guided execution.',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[EDL Flash] Error:', error);
+    res.status(500).json({
+      error: 'Flash operation failed',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Tools Management API
+app.get('/api/tools', (req, res) => {
+  const allTools = getAllToolsInfo();
+  res.json({
+    tools: allTools,
+    timestamp: new Date().toISOString()
+  });
+});
+
+app.get('/api/tools/:toolName', (req, res) => {
+  const { toolName } = req.params;
+  const toolInfo = getToolInfo(toolName);
+  
+  if (!toolInfo) {
+    return res.status(404).json({
+      error: 'Tool not found',
+      message: `Tool ${toolName} is not defined`,
+      timestamp: new Date().toISOString()
+    });
+  }
+  
+  res.json(toolInfo);
+});
+
+// Catalog API - Tool catalog and capabilities
+app.use('/api/catalog', catalogRouter);
+
+// Operations API - Execute and simulate operations
+app.use('/api/operations', operationsRouter);
 
 // Trapdoor API - Secure endpoints for sensitive operations (Bobby's Secret Workshop)
 app.use('/api/trapdoor', requireTrapdoorPasscode, trapdoorRouter);
@@ -2973,22 +3921,28 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Internal server error' });
 });
 
-server.listen(PORT, () => {
-  console.log(`🔧 Pandora Codex API Server running on port ${PORT}`);
-  console.log(`📡 System tools detection: http://localhost:${PORT}/api/system-tools`);
-  console.log(`⚡ Flash operations: http://localhost:${PORT}/api/flash/*`);
-  console.log(`📊 Performance monitor: http://localhost:${PORT}/api/monitor/*`);
-  console.log(`🧪 Automated testing: http://localhost:${PORT}/api/tests/*`);
-  console.log(`📐 Standards reference: http://localhost:${PORT}/api/standards`);
-  console.log(`🔌 Hotplug events: http://localhost:${PORT}/api/hotplug/*`);
-  console.log(`🔐 Authorization triggers (27 endpoints): http://localhost:${PORT}/api/authorization/*`);
-  console.log(`📦 Firmware library: http://localhost:${PORT}/api/firmware/*`);
-  console.log(`🔓 Trapdoor API (Bobby's Secret Workshop): http://localhost:${PORT}/api/trapdoor/*`);
-  console.log(`🌐 WebSocket hotplug: ws://localhost:${PORT}/ws/device-events`);
-  console.log(`🔗 WebSocket correlation: ws://localhost:${PORT}/ws/correlation`);
-  console.log(`📊 WebSocket analytics: ws://localhost:${PORT}/ws/analytics`);
-  console.log(`🏥 Health check: http://localhost:${PORT}/api/health`);
-  console.log(`\n✅ All 27 authorization triggers ready for real device probe execution`);
-  console.log(`✅ Firmware Library with brand-organized downloads available`);
-  console.log(`✅ Trapdoor API with workflow execution and shadow logging enabled`);
+server.listen(PORT, '127.0.0.1', () => {
+  const startupMsg = `🔧 Pandora Codex API Server running on http://127.0.0.1:${PORT}`;
+  logger.info(startupMsg);
+  
+  const endpoints = [
+    `📡 System tools detection: http://127.0.0.1:${PORT}/api/system-tools`,
+    `⚡ Flash operations: http://127.0.0.1:${PORT}/api/flash/*`,
+    `📊 Performance monitor: http://127.0.0.1:${PORT}/api/monitor/*`,
+    `🧪 Automated testing: http://127.0.0.1:${PORT}/api/tests/*`,
+    `📐 Standards reference: http://127.0.0.1:${PORT}/api/standards`,
+    `🔌 Hotplug events: http://127.0.0.1:${PORT}/api/hotplug/*`,
+    `🔐 Authorization triggers (27 endpoints): http://127.0.0.1:${PORT}/api/authorization/*`,
+    `📦 Firmware library: http://127.0.0.1:${PORT}/api/firmware/*`,
+    `🔓 Trapdoor API (Bobby's Secret Workshop): http://127.0.0.1:${PORT}/api/trapdoor/*`,
+    `🌐 WebSocket hotplug: ws://127.0.0.1:${PORT}/ws/device-events`,
+    `🔗 WebSocket correlation: ws://127.0.0.1:${PORT}/ws/correlation`,
+    `📊 WebSocket analytics: ws://127.0.0.1:${PORT}/ws/analytics`,
+    `🏥 Health check: http://127.0.0.1:${PORT}/api/health`
+  ];
+  
+  endpoints.forEach(msg => logger.info(msg));
+  
+  const readyMsg = `\n✅ All 27 authorization triggers ready for real device probe execution\n✅ Firmware Library with brand-organized downloads available\n✅ Trapdoor API with workflow execution and shadow logging enabled`;
+  logger.info(readyMsg);
 });
