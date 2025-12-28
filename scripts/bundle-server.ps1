@@ -44,14 +44,8 @@ if (-not (Test-Path $ServerDir)) {
     throw "Source server directory does not exist: $ServerDir"
 }
 
-# Use Copy-Item properly - source is a directory, destination should be parent, then we rename
-$TempTarget = Join-Path $ResourcesDir "server-temp"
-if (Test-Path $TempTarget) {
-    Remove-Item -Recurse -Force $TempTarget
-}
-
-Copy-Item -Recurse -Force "$ServerDir\*" $TempTarget -ErrorAction Stop
-Rename-Item -Path $TempTarget -NewName "server" -Force
+# Copy entire server directory to target
+Copy-Item -Recurse -Force $ServerDir $TargetServerDir -ErrorAction Stop
 
 # Verify copy succeeded
 if (-not (Test-Path $TargetServerDir)) {

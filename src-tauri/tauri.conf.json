@@ -22,8 +22,8 @@
         "icons/icon.ico"
       ],
       "resources": [
-        "nodejs/**/*",
-        "server/**/*"
+        "bundle/resources/nodejs/**/*",
+        "bundle/resources/server/**/*"
       ]
     },
     "allowlist": {

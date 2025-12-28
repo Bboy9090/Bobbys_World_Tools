@@ -5,7 +5,7 @@
 
 const deviceLocks = new Map();
 
-const LOCK_TIMEOUT = 300000; // 5 minutes
+export const LOCK_TIMEOUT = 300000; // 5 minutes in milliseconds
 
 /**
  * Acquire a lock for a device

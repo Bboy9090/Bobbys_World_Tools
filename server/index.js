@@ -15,9 +15,38 @@ import catalogRouter from './catalog.js';
 import operationsRouter from './operations.js';
 import { ensureManagedPlatformTools, getManagedPlatformToolsDir } from './platform-tools.js';
 import { auditLogMiddleware } from './middleware/audit-logger.js';
-import { acquireDeviceLock, releaseDeviceLock } from './locks.js';
+import { correlationIdMiddleware, envelopeMiddleware } from './middleware/api-envelope.js';
+import { deprecationWarningMiddleware } from './middleware/api-versioning.js';
+import { rateLimiter } from './middleware/rate-limiter.js';
+import { acquireDeviceLock, releaseDeviceLock, LOCK_TIMEOUT } from './locks.js';
 import { getToolPath, isToolAvailable, getToolInfo, getAllToolsInfo, executeTool } from './tools-manager.js';
 import { downloadFirmware, getDownloadStatus, cancelDownload, getActiveDownloads } from './firmware-downloader.js';
+import { readyHandler } from './routes/v1/ready.js';
+import { createRoutesHandler } from './routes/v1/routes.js';
+import { systemToolsHandler } from './routes/v1/system-tools.js';
+import adbRouter from './routes/v1/adb.js';
+import fastbootRouter from './routes/v1/fastboot.js';
+import frpRouter from './routes/v1/frp.js';
+import mdmRouter from './routes/v1/mdm.js';
+import iosRouter from './routes/v1/ios.js';
+import monitorRouter from './routes/v1/monitor.js';
+import testsRouter from './routes/v1/tests.js';
+import firmwareRouter from './routes/v1/firmware.js';
+import flashRouter from './routes/v1/flash.js';
+import bootforgeusbRouter from './routes/v1/bootforgeusb.js';
+import authorizationRouter from './routes/v1/authorization.js';
+import standardsRouter from './routes/v1/standards.js';
+import hotplugRouter from './routes/v1/hotplug.js';
+import performanceMonitorRouter from './routes/v1/monitor/performance.js';
+import iosDFURouter from './routes/v1/ios/dfu.js';
+import rootDetectionRouter from './routes/v1/security/root-detection.js';
+import bootloaderStatusRouter from './routes/v1/security/bootloader-status.js';
+import odinRouter from './routes/v1/flash/odin.js';
+import mtkRouter from './routes/v1/flash/mtk.js';
+import edlRouter from './routes/v1/flash/edl.js';
+import iosLibimobiledeviceRouter from './routes/v1/ios/libimobiledevice-full.js';
+import adbAdvancedRouter from './routes/v1/adb/advanced.js';
+import diagnosticsRouter from './routes/v1/diagnostics/index.js';
 
 // Initialize logging first
 const LOG_DIR = process.env.BW_LOG_DIR || (process.platform === 'win32' 
@@ -62,7 +91,71 @@ logger.info(`Log file: ${LOG_FILE}`);
 
 app.use(cors());
 app.use(express.json());
+
+// Apply middleware in order: correlation ID, envelope, audit logging
+app.use(correlationIdMiddleware);
+app.use(envelopeMiddleware);
 app.use(auditLogMiddleware);
+
+// API versioning: warn on non-v1 routes
+app.use('/api', deprecationWarningMiddleware);
+
+// ============================================================================
+// API v1 Router
+// ============================================================================
+const v1Router = express.Router();
+
+// Health and readiness endpoints
+v1Router.get('/health', (req, res) => {
+  res.sendEnvelope({ status: 'ok', healthy: true });
+});
+
+v1Router.get('/ready', readyHandler);
+
+// Route registry (dev-only)
+if (process.env.NODE_ENV !== 'production' || process.env.ENABLE_ROUTE_REGISTRY === '1') {
+  v1Router.get('/routes', createRoutesHandler(app));
+}
+
+// Mount v1 route modules
+v1Router.get('/system-tools', systemToolsHandler);
+v1Router.use('/adb', adbRouter);
+v1Router.use('/adb/advanced', adbAdvancedRouter);
+v1Router.use('/frp', frpRouter);
+v1Router.use('/mdm', mdmRouter);
+v1Router.use('/ios', iosRouter);
+v1Router.use('/ios/dfu', iosDFURouter);
+v1Router.use('/ios/libimobiledevice', iosLibimobiledeviceRouter);
+v1Router.use('/monitor', monitorRouter);
+v1Router.use('/monitor/performance', performanceMonitorRouter);
+v1Router.use('/tests', testsRouter);
+v1Router.use('/diagnostics', diagnosticsRouter);
+v1Router.use('/firmware', firmwareRouter);
+v1Router.use('/bootforgeusb', bootforgeusbRouter);
+v1Router.use('/standards', standardsRouter);
+v1Router.use('/hotplug', hotplugRouter);
+
+// Security endpoints
+v1Router.use('/security/root-detection', rootDetectionRouter);
+v1Router.use('/security/bootloader-status', bootloaderStatusRouter);
+
+// Catalog, operations routers
+v1Router.use('/catalog', catalogRouter);
+v1Router.use('/operations', operationsRouter);
+
+// Destructive/sensitive operations with rate limiting
+v1Router.use('/fastboot', rateLimiter('fastboot'), fastbootRouter);
+v1Router.use('/flash', rateLimiter('flash'), flashRouter);
+v1Router.use('/flash/odin', rateLimiter('flash'), odinRouter);
+v1Router.use('/flash/mtk', rateLimiter('flash'), mtkRouter);
+v1Router.use('/flash/edl', rateLimiter('flash'), edlRouter);
+v1Router.use('/authorization', rateLimiter('authorization'), authorizationRouter);
+
+// Trapdoor router with rate limiting and authentication
+v1Router.use('/trapdoor', rateLimiter('trapdoor'), requireTrapdoorPasscode, trapdoorRouter);
+
+// Mount v1 router
+app.use('/api/v1', v1Router);
 
 const authTriggers = new AuthorizationTriggers();
 
@@ -87,6 +180,7 @@ wss.on('connection', (ws) => {
           const platform = platforms[Math.floor(Math.random() * platforms.length)];
           const deviceId = `device-${Math.random().toString(36).substr(2, 9)}`;
 
+          const correlationId = `ws-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
           ws.send(JSON.stringify({
             type: isConnect ? 'connected' : 'disconnected',
             device_uid: deviceId,
@@ -94,6 +188,9 @@ wss.on('connection', (ws) => {
             mode: isConnect ? 'Normal OS (Confirmed)' : 'Disconnected',
             confidence: 0.85 + Math.random() * 0.15,
             timestamp: Date.now(),
+            serverTs: new Date().toISOString(),
+            apiVersion: 'v1',
+            correlationId,
             display_name: `${platform.charAt(0).toUpperCase() + platform.slice(1)} Device`,
             matched_tool_ids: Math.random() > 0.5 ? [deviceId] : [],
             correlation_badge: Math.random() > 0.5 ? 'CORRELATED' : 'LIKELY'
@@ -111,6 +208,9 @@ wss.on('connection', (ws) => {
         mode: 'Normal OS (Confirmed)',
         confidence: 0.95,
         timestamp: Date.now(),
+        serverTs: new Date().toISOString(),
+        apiVersion: 'v1',
+        correlationId: `ws-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         display_name: 'Demo Android Device',
         matched_tool_ids: ['ABC123XYZ'],
         correlation_badge: 'CORRELATED',
@@ -135,6 +235,14 @@ wss.on('connection', (ws) => {
 wssCorrelation.on('connection', (ws) => {
   console.log('WebSocket client connected (correlation tracking)');
   correlationClients.add(ws);
+
+  // Send hello message with version info
+  ws.send(JSON.stringify({
+    type: 'hello',
+    apiVersion: 'v1',
+    serverTs: new Date().toISOString(),
+    correlationId: `ws-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+  }));
 
   const interval = DEMO_MODE
     ? setInterval(() => {
@@ -246,7 +354,10 @@ wssCorrelation.on('connection', (ws) => {
       if (message.type === 'ping') {
         ws.send(JSON.stringify({
           type: 'pong',
-          timestamp: Date.now()
+          timestamp: Date.now(),
+          serverTs: new Date().toISOString(),
+          apiVersion: 'v1',
+          correlationId: message.correlationId || `ws-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
         }));
       }
     } catch (error) {
@@ -271,6 +382,14 @@ wssCorrelation.on('connection', (ws) => {
 wssAnalytics.on('connection', (ws) => {
   console.log('WebSocket client connected (live analytics)');
   analyticsClients.add(ws);
+
+  // Send hello message with version info
+  ws.send(JSON.stringify({
+    type: 'hello',
+    apiVersion: 'v1',
+    serverTs: new Date().toISOString(),
+    correlationId: `ws-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+  }));
 
   const analyticsInterval = DEMO_MODE
     ? (() => {
@@ -324,11 +443,16 @@ wssAnalytics.on('connection', (ws) => {
                 networkLatency: Math.max(5, Math.min(100, device.networkLatency + (Math.random() - 0.5) * 10))
               };
 
+              const correlationId = `ws-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
               ws.send(
                 JSON.stringify({
                   type: 'device_metrics',
                   deviceId: device.deviceId,
-                  metrics: updatedMetrics
+                  metrics: updatedMetrics,
+                  timestamp: Date.now(),
+                  serverTs: new Date().toISOString(),
+                  apiVersion: 'v1',
+                  correlationId
                 })
               );
 
@@ -337,6 +461,7 @@ wssAnalytics.on('connection', (ws) => {
 
             if (Math.random() > 0.7) {
               const device = mockDevices[Math.floor(Math.random() * mockDevices.length)];
+              const correlationId = `ws-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
               ws.send(
                 JSON.stringify({
                   type: 'workflow_event',
@@ -351,7 +476,11 @@ wssAnalytics.on('connection', (ws) => {
                     currentStep: ['Initializing', 'Running diagnostics', 'Collecting data', 'Analyzing results'][
                       Math.floor(Math.random() * 4)
                     ]
-                  }
+                  },
+                  timestamp: Date.now(),
+                  serverTs: new Date().toISOString(),
+                  apiVersion: 'v1',
+                  correlationId
                 })
               );
             }
@@ -619,8 +748,9 @@ function requireTrapdoorPasscode(req, res, next) {
   return next();
 }
 
+// Legacy /api/health endpoint (deprecated - use /api/v1/health)
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.sendEnvelope({ status: 'ok', healthy: true, deprecated: true, migrateTo: '/api/v1/health' });
 });
 
 app.get('/api/system-tools', (req, res) => {
@@ -1433,7 +1563,7 @@ function requireDeviceLock(req, res, next) {
       error: 'Device locked',
       message: lockResult.reason,
       lockedBy: lockResult.lockedBy,
-      retryAfter: 300 // seconds (5 minutes)
+      retryAfter: Math.floor(LOCK_TIMEOUT / 1000) // Convert milliseconds to seconds
     });
   }
 
@@ -2445,6 +2575,9 @@ app.post('/api/flash/start', async (req, res) => {
     message: 'Flash operation queued'
   });
 });
+
+// Import shared simulate function
+import { simulateFlashOperation as sharedSimulateFlashOperation } from './routes/v1/flash-shared.js';
 
 function simulateFlashOperation(jobId, config) {
   const job = activeFlashJobs.get(jobId);

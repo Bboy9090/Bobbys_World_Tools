@@ -16,6 +16,7 @@
         "test:watch": "vitest",
         "test:coverage": "vitest run --coverage",
         "test:smoke": "vitest run tests/server-smoke.test.js",
+        "test:contract": "vitest run tests/api-contract.test.js",
         "test:unit": "vitest run tests/unit",
         "test:integration": "vitest run tests/integration",
         "test:e2e": "vitest run tests/e2e",

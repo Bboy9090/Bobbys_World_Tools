@@ -8,7 +8,7 @@
  * - Checksum validation
  */
 
-import { createWriteStream, existsSync, statSync, mkdirSync } from 'fs';
+import { createWriteStream, createReadStream, existsSync, statSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import https from 'https';
@@ -210,8 +210,7 @@ export async function downloadFirmware(url, options = {}) {
 async function calculateChecksum(filePath, type = 'sha256') {
   return new Promise((resolve, reject) => {
     const hash = createHash(type);
-    const fs = require('fs');
-    const stream = fs.createReadStream(filePath);
+    const stream = createReadStream(filePath);
     
     stream.on('data', (data) => hash.update(data));
     stream.on('end', () => resolve(hash.digest('hex')));

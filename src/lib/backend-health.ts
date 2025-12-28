@@ -13,14 +13,26 @@ export interface BackendHealthStatus {
 
 export async function checkBackendHealth(): Promise<BackendHealthStatus> {
   try {
-    const response = await fetch(getAPIUrl('/api/health'), {
+    const response = await fetch(getAPIUrl('/api/v1/ready'), {
       signal: AbortSignal.timeout(5000),
     });
     
+    if (!response.ok) {
+      return {
+        isHealthy: false,
+        lastCheck: Date.now(),
+        error: `HTTP ${response.status}`,
+      };
+    }
+    
+    const data = await response.json();
+    // Handle envelope format
+    const envelope = data.ok !== undefined ? data : { ok: true, data };
+    
     return {
-      isHealthy: response.ok,
+      isHealthy: envelope.ok === true,
       lastCheck: Date.now(),
-      error: response.ok ? undefined : `HTTP ${response.status}`,
+      error: envelope.ok === false ? envelope.error?.message : undefined,
     };
   } catch (error) {
     return {
@@ -40,14 +52,27 @@ export function useBackendHealth(checkInterval: number = 30000): BackendHealthSt
   useEffect(() => {
     const checkHealth = async () => {
       try {
-        const response = await fetch(getAPIUrl('/api/health'), {
+        const response = await fetch(getAPIUrl('/api/v1/ready'), {
           signal: AbortSignal.timeout(5000),
         });
         
+        if (!response.ok) {
+          setHealth({
+            isHealthy: false,
+            lastCheck: Date.now(),
+            error: `HTTP ${response.status}`,
+          });
+          return;
+        }
+        
+        const data = await response.json();
+        // Handle envelope format
+        const envelope = data.ok !== undefined ? data : { ok: true, data };
+        
         setHealth({
-          isHealthy: response.ok,
+          isHealthy: envelope.ok === true,
           lastCheck: Date.now(),
-          error: response.ok ? undefined : `HTTP ${response.status}`,
+          error: envelope.ok === false ? envelope.error?.message : undefined,
         });
       } catch (error) {
         setHealth({
