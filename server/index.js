@@ -10,7 +10,6 @@ const __dirname = path.dirname(__filename);
 import { WebSocketServer } from 'ws';
 import { createServer } from 'http';
 import { AuthorizationTriggers } from './authorization-triggers.js';
-import trapdoorRouter from '../core/api/trapdoor.js';
 import catalogRouter from './catalog.js';
 import operationsRouter from './operations.js';
 import { ensureManagedPlatformTools, getManagedPlatformToolsDir } from './platform-tools.js';
@@ -18,6 +17,7 @@ import { auditLogMiddleware } from './middleware/audit-logger.js';
 import { correlationIdMiddleware, envelopeMiddleware } from './middleware/api-envelope.js';
 import { deprecationWarningMiddleware } from './middleware/api-versioning.js';
 import { rateLimiter } from './middleware/rate-limiter.js';
+import { requireTrapdoorPasscode } from './middleware/trapdoor-auth.js';
 import { acquireDeviceLock, releaseDeviceLock, LOCK_TIMEOUT } from './locks.js';
 import { getToolPath, isToolAvailable, getToolInfo, getAllToolsInfo, executeTool } from './tools-manager.js';
 import { downloadFirmware, getDownloadStatus, cancelDownload, getActiveDownloads } from './firmware-downloader.js';
@@ -47,6 +47,7 @@ import edlRouter from './routes/v1/flash/edl.js';
 import iosLibimobiledeviceRouter from './routes/v1/ios/libimobiledevice-full.js';
 import adbAdvancedRouter from './routes/v1/adb/advanced.js';
 import diagnosticsRouter from './routes/v1/diagnostics/index.js';
+import trapdoorRouter from './routes/v1/trapdoor/index.js';
 
 // Initialize logging first
 const LOG_DIR = process.env.BW_LOG_DIR || (process.platform === 'win32' 
@@ -718,35 +719,7 @@ function runBootForgeUsbScanJson() {
   return { cmd, devices };
 }
 
-function getTrapdoorPasscode() {
-  return process.env.SECRET_ROOM_PASSCODE || process.env.TRAPDOOR_PASSCODE || null;
-}
-
-function requireTrapdoorPasscode(req, res, next) {
-  const required = getTrapdoorPasscode();
-  if (!required) {
-    return res.status(503).json({
-      error: 'Trapdoor passcode not configured',
-      message: 'Set SECRET_ROOM_PASSCODE (recommended) or TRAPDOOR_PASSCODE in the server environment to enable Trapdoor endpoints.',
-      requiredHeader: 'X-Secret-Room-Passcode'
-    });
-  }
-
-  const provided =
-    req.get('X-Secret-Room-Passcode') ||
-    req.get('X-Trapdoor-Passcode') ||
-    (typeof req.query?.passcode === 'string' ? req.query.passcode : null);
-
-  if (!provided || provided !== required) {
-    return res.status(401).json({
-      error: 'Unauthorized',
-      message: 'Invalid or missing Secret Room passcode.',
-      requiredHeader: 'X-Secret-Room-Passcode'
-    });
-  }
-
-  return next();
-}
+// Trapdoor authentication moved to middleware/trapdoor-auth.js
 
 // Legacy /api/health endpoint (deprecated - use /api/v1/health)
 app.get('/api/health', (req, res) => {
