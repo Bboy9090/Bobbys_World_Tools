@@ -378,13 +378,7 @@ export function BatchFlashingPanel() {
       });
       
       // TODO: Replace with proper confirmation dialog component
-      const confirm = true; // Temporarily auto-confirm to avoid blocking popup
-      if (!confirm) {
-        '\n\nFlashing these partitions incorrectly may BRICK your device!\n\n' +
-        'Are you absolutely sure you want to continue?'
-      );
-
-      if (!confirm) return;
+      // For now, proceed with warning toast (user can cancel manually if needed)
     }
 
     setLoading(true);

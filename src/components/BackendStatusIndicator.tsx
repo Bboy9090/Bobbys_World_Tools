@@ -30,20 +30,32 @@ export function BackendStatusIndicator() {
     audioRef.current = audio;
   }, [audio]);
   
-  // Check WebSocket connectivity
+  // Check WebSocket connectivity - quiet mode, no spam
   useEffect(() => {
     let ws: WebSocket | null = null;
     let reconnectTimer: NodeJS.Timeout | null = null;
+    let reconnectAttempts = 0;
+    const MAX_RECONNECT_ATTEMPTS = 3; // Only try 3 times, then give up quietly
 
     shouldReconnectRef.current = true;
 
     const connectWS = () => {
+      // Don't spam reconnection attempts
+      if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+        setWsStatus('disconnected');
+        return;
+      }
+
       try {
         ws = new WebSocket(WS_DEVICE_EVENTS_URL);
         
         ws.onopen = () => {
-          console.log('[BackendStatus] WebSocket connected');
+          // Only log on first connection or after reconnection
+          if (previousWsStatusRef.current === 'disconnected' && reconnectAttempts === 0) {
+            console.log('[BackendStatus] WebSocket connected');
+          }
           setWsStatus('connected');
+          reconnectAttempts = 0; // Reset on success
           // Play connect sound only if previously disconnected
           if (previousWsStatusRef.current === 'disconnected') {
             audioRef.current.handleConnect();
@@ -51,8 +63,8 @@ export function BackendStatusIndicator() {
           previousWsStatusRef.current = 'connected';
         };
         
-        ws.onerror = (error) => {
-          // Silently handle errors - don't spam console
+        ws.onerror = () => {
+          // Don't spam console with errors
           setWsStatus('disconnected');
           if (previousWsStatusRef.current === 'connected') {
             audioRef.current.handleDisconnect();
@@ -61,21 +73,26 @@ export function BackendStatusIndicator() {
         };
         
         ws.onclose = () => {
-          // Silently handle disconnection
+          // Only log first disconnection
+          if (reconnectAttempts === 0) {
+            console.log('[BackendStatus] WebSocket disconnected');
+          }
           setWsStatus('disconnected');
           if (previousWsStatusRef.current === 'connected') {
             audioRef.current.handleDisconnect();
           }
           previousWsStatusRef.current = 'disconnected';
-          // Attempt reconnect after 10 seconds (longer to reduce noise)
-          if (shouldReconnectRef.current) {
-            reconnectTimer = setTimeout(connectWS, 10000);
+          // Attempt reconnect after 10 seconds (longer delay to reduce spam)
+          if (shouldReconnectRef.current && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+            reconnectAttempts++;
+            reconnectTimer = setTimeout(connectWS, 10000); // 10 second delay
           }
         };
       } catch (error) {
-        // Silently handle connection failures
+        // Don't spam console
         setWsStatus('disconnected');
-        if (shouldReconnectRef.current) {
+        if (shouldReconnectRef.current && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+          reconnectAttempts++;
           reconnectTimer = setTimeout(connectWS, 10000);
         }
       }
