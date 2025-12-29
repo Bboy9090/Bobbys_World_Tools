@@ -83,3 +83,38 @@ export function clearAllLocks() {
   deviceLocks.clear();
 }
 
+/**
+ * Get all active locks
+ * @returns {Array<{deviceSerial: string, operation: string, lockedAt: number, ageMs: number}>}
+ */
+export function getAllActiveLocks() {
+  const now = Date.now();
+  const activeLocks = [];
+  
+  // Clean up expired locks and collect active ones
+  for (const [serial, lock] of deviceLocks.entries()) {
+    if (now - lock.lockedAt > LOCK_TIMEOUT) {
+      deviceLocks.delete(serial);
+    } else {
+      activeLocks.push({
+        deviceSerial: serial,
+        operation: lock.operation,
+        lockedAt: lock.lockedAt,
+        ageMs: now - lock.lockedAt,
+        expiresAt: lock.lockedAt + LOCK_TIMEOUT,
+        expiresInMs: (lock.lockedAt + LOCK_TIMEOUT) - now
+      });
+    }
+  }
+  
+  return activeLocks;
+}
+
+/**
+ * Get lock count
+ * @returns {number}
+ */
+export function getActiveLockCount() {
+  return getAllActiveLocks().length;
+}
+

@@ -25,7 +25,7 @@ export function auditLogMiddleware(req, res, next) {
       statusCode: res.statusCode,
       duration: Date.now() - startTime,
       success: res.statusCode < 400,
-      userId: req.ip, // TODO: Replace with actual user ID/session
+      userId: req.get('X-Session-Id') || req.correlationId?.split('-')[0] || req.ip, // Session ID from header or correlation prefix
       userAgent: req.get('user-agent'),
       requestBody: sanitizeRequestBody(req.body) // Remove sensitive data
     };
@@ -70,14 +70,29 @@ function sanitizeRequestBody(body) {
   }
 
   const sanitized = { ...body };
-  const sensitiveFields = ['password', 'passcode', 'token', 'secret', 'authorization', 'confirmation'];
+  const sensitiveFields = [
+    'password', 'passcode', 'token', 'secret', 'authorization', 
+    'confirmation', 'key', 'apiKey', 'api_key', 'accessToken',
+    'refreshToken', 'privateKey', 'private_key', 'credential'
+  ];
 
-  for (const field of sensitiveFields) {
-    if (sanitized[field]) {
-      sanitized[field] = '[REDACTED]';
+  // Recursively sanitize nested objects
+  function sanitizeObject(obj) {
+    if (!obj || typeof obj !== 'object') return obj;
+    if (Array.isArray(obj)) return obj.map(sanitizeObject);
+    
+    const result = { ...obj };
+    for (const [key, value] of Object.entries(result)) {
+      const lowerKey = key.toLowerCase();
+      if (sensitiveFields.some(f => lowerKey.includes(f.toLowerCase()))) {
+        result[key] = '[REDACTED]';
+      } else if (typeof value === 'object' && value !== null) {
+        result[key] = sanitizeObject(value);
+      }
     }
+    return result;
   }
 
-  return sanitized;
+  return sanitizeObject(sanitized);
 }
 

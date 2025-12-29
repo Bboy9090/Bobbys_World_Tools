@@ -18,7 +18,7 @@ import { correlationIdMiddleware, envelopeMiddleware } from './middleware/api-en
 import { deprecationWarningMiddleware } from './middleware/api-versioning.js';
 import { rateLimiter } from './middleware/rate-limiter.js';
 import { requireTrapdoorPasscode } from './middleware/trapdoor-auth.js';
-import { acquireDeviceLock, releaseDeviceLock, LOCK_TIMEOUT } from './locks.js';
+import { acquireDeviceLock, releaseDeviceLock, LOCK_TIMEOUT, getAllActiveLocks, getActiveLockCount } from './locks.js';
 import { getToolPath, isToolAvailable, getToolInfo, getAllToolsInfo, executeTool } from './tools-manager.js';
 import { downloadFirmware, getDownloadStatus, cancelDownload, getActiveDownloads } from './firmware-downloader.js';
 import { readyHandler } from './routes/v1/ready.js';
@@ -120,6 +120,34 @@ if (process.env.NODE_ENV !== 'production' || process.env.ENABLE_ROUTE_REGISTRY =
 
 // Mount v1 route modules
 v1Router.get('/system-tools', systemToolsHandler);
+
+// Locks status endpoint
+v1Router.get('/locks', (req, res) => {
+  try {
+    const locks = getAllActiveLocks();
+    res.sendEnvelope({
+      count: locks.length,
+      locks: locks,
+      timeout: LOCK_TIMEOUT
+    });
+  } catch (error) {
+    res.sendEnvelope({ count: 0, locks: [], error: error.message });
+  }
+});
+
+// Active operations count endpoint
+v1Router.get('/operations/active', (req, res) => {
+  try {
+    // Count active locks as a proxy for active operations
+    const lockCount = getActiveLockCount();
+    res.sendEnvelope({
+      count: lockCount,
+      active: lockCount > 0
+    });
+  } catch (error) {
+    res.sendEnvelope({ count: 0, active: false, error: error.message });
+  }
+});
 v1Router.use('/adb', adbRouter);
 v1Router.use('/adb/advanced', adbAdvancedRouter);
 v1Router.use('/frp', frpRouter);
