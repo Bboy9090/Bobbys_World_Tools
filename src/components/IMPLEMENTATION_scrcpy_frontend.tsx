@@ -67,10 +67,14 @@ export function AndroidScreenMirror({ device }) {
       if (data.success) {
         setActiveSession(data);
       } else {
-        alert(data.error || 'Failed to start screen mirroring');
+        toast.error('Failed to start screen mirroring', {
+          description: data.error || 'Unknown error',
+        });
       }
     } catch (error) {
-      alert('Failed to start screen mirroring: ' + error.message);
+      toast.error('Failed to start screen mirroring', {
+        description: error.message,
+      });
     } finally {
       setLoading(false);
     }
@@ -90,7 +94,9 @@ export function AndroidScreenMirror({ device }) {
         setActiveSession(null);
       }
     } catch (error) {
-      alert('Failed to stop screen mirroring: ' + error.message);
+      toast.error('Failed to stop screen mirroring', {
+        description: error.message,
+      });
     } finally {
       setLoading(false);
     }

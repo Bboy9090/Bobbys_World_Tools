@@ -83,11 +83,13 @@ export function DashboardLayout() {
                 
                 <div className="flex-1" />
                 
-                {/* Greeting */}
+                {/* Greeting - Only show once per session */}
                 {showGreeting && (
                     <OrnamentBugsGreeting 
                         variant={backendAvailable ? 'devices' : 'warning'}
                         onDismiss={dismiss}
+                        autoHide={true}
+                        autoHideDuration={4000}
                     />
                 )}
                 

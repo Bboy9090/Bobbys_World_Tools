@@ -36,10 +36,20 @@ export function OrnamentBugsGreeting({
 
     const timer = setTimeout(() => {
       setVisible(false);
-      setTimeout(() => onDismiss?.(), 300); // Wait for fade
+      // Call onDismiss after fade animation completes
+      const dismissTimer = setTimeout(() => {
+        onDismiss?.();
+      }, 300);
+      
+      // Cleanup dismiss timer if component unmounts
+      return () => {
+        clearTimeout(dismissTimer);
+      };
     }, autoHideDuration);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+    };
   }, [autoHide, autoHideDuration, onDismiss]);
 
   if (!visible) return null;

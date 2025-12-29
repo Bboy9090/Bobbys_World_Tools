@@ -19,11 +19,13 @@ export function useBugsGreeting(options: UseBugsGreetingOptions = {}) {
   const [hasShownThisSession, setHasShownThisSession] = useState(false);
 
   useEffect(() => {
-    // Check session storage
+    // Check session storage - only run once on mount to prevent loops
     const sessionKey = 'bugs-greeting-shown';
     const shown = sessionStorage.getItem(sessionKey) === 'true';
 
+    // Don't show if disabled, already shown, or suppressed
     if (!enabled || shown || suppressDuring) {
+      setShowGreeting(false);
       return;
     }
 
@@ -31,7 +33,9 @@ export function useBugsGreeting(options: UseBugsGreetingOptions = {}) {
     setShowGreeting(true);
     setHasShownThisSession(true);
     sessionStorage.setItem(sessionKey, 'true');
-  }, [enabled, suppressDuring]);
+    
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty deps - only run once on mount
 
   const dismiss = () => {
     setShowGreeting(false);

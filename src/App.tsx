@@ -23,12 +23,12 @@ function AppContent() {
             const backendHealthy = await checkBackendHealth();
             setBackendAvailable(backendHealthy.isHealthy);
 
-            if (!backendHealthy) {
-                console.warn('[App] Backend API unavailable - enabling demo mode');
+            if (!backendHealthy.isHealthy) {
+                // Quiet mode - don't spam console
+                console.log('[App] Backend offline - running in demo mode');
                 setDemoMode(true);
-                console.log('[App] Demo mode enabled - no mock services, just empty states');
             } else {
-                console.log('[App] Backend API connected - running in production mode');
+                console.log('[App] Backend connected - production mode');
                 setDemoMode(false);
             }
             

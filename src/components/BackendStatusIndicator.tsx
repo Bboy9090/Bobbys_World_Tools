@@ -18,7 +18,7 @@ interface ServiceStatus {
 const WS_DEVICE_EVENTS_URL = getWSUrl('/ws/device-events');
 
 export function BackendStatusIndicator() {
-  const health = useBackendHealth(10000); // Check every 10 seconds
+  const health = useBackendHealth(30000); // Check every 30 seconds (reduced noise)
   const audio = useAudioNotifications();
   const [wsStatus, setWsStatus] = useState<'connected' | 'disconnected' | 'checking'>('checking');
   const [bootforgeStatus, setBootforgeStatus] = useState<'connected' | 'disconnected' | 'checking'>('checking');
@@ -52,7 +52,7 @@ export function BackendStatusIndicator() {
         };
         
         ws.onerror = (error) => {
-          console.error('[BackendStatus] WebSocket error:', error);
+          // Silently handle errors - don't spam console
           setWsStatus('disconnected');
           if (previousWsStatusRef.current === 'connected') {
             audioRef.current.handleDisconnect();
@@ -61,22 +61,22 @@ export function BackendStatusIndicator() {
         };
         
         ws.onclose = () => {
-          console.log('[BackendStatus] WebSocket disconnected');
+          // Silently handle disconnection
           setWsStatus('disconnected');
           if (previousWsStatusRef.current === 'connected') {
             audioRef.current.handleDisconnect();
           }
           previousWsStatusRef.current = 'disconnected';
-          // Attempt reconnect after 5 seconds
+          // Attempt reconnect after 10 seconds (longer to reduce noise)
           if (shouldReconnectRef.current) {
-            reconnectTimer = setTimeout(connectWS, 5000);
+            reconnectTimer = setTimeout(connectWS, 10000);
           }
         };
       } catch (error) {
-        console.error('[BackendStatus] Failed to create WebSocket:', error);
+        // Silently handle connection failures
         setWsStatus('disconnected');
         if (shouldReconnectRef.current) {
-          reconnectTimer = setTimeout(connectWS, 5000);
+          reconnectTimer = setTimeout(connectWS, 10000);
         }
       }
     };
@@ -108,7 +108,7 @@ export function BackendStatusIndicator() {
     };
 
     checkBootforge();
-    const interval = setInterval(checkBootforge, 15000); // Check every 15 seconds
+    const interval = setInterval(checkBootforge, 30000); // Check every 30 seconds (reduced noise)
 
     return () => clearInterval(interval);
   }, []);
@@ -198,7 +198,15 @@ export function BackendStatusIndicator() {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-auto p-0 hover:bg-transparent">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="h-auto p-0 hover:bg-transparent"
+          onClick={(e) => {
+            // Prevent any accidental auto-opening
+            e.stopPropagation();
+          }}
+        >
           {getOverallBadge()}
         </Button>
       </PopoverTrigger>
@@ -253,8 +261,8 @@ export function BackendStatusIndicator() {
           {!allConnected && (
             <div className="p-2 rounded-md bg-warning/10 border border-warning/20">
               <p className="text-xs text-warning">
-                <strong>⚠️ Backend Required:</strong> Some features are unavailable. 
-                Start the backend server with <code className="font-mono">npm run server:start</code>
+                <strong>Backend Offline:</strong> Running in demo mode. 
+                Some features require the backend server.
               </p>
             </div>
           )}

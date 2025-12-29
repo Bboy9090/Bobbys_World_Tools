@@ -162,7 +162,9 @@ export function TrapdoorShadowArchive({
       });
 
       if (!response.ok) {
-        alert('Failed to export logs');
+        toast.error('Failed to export logs', {
+          description: 'Unable to download audit log export',
+        });
         return;
       }
 
@@ -177,7 +179,9 @@ export function TrapdoorShadowArchive({
       URL.revokeObjectURL(url);
     } catch (err) {
       console.error('[TrapdoorShadowArchive] Export error:', err);
-      alert('Export failed');
+      toast.error('Export failed', {
+        description: err instanceof Error ? err.message : 'Unknown error',
+      });
     }
   };
 
