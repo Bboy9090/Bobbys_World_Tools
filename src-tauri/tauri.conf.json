@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Bobbys Workshop",
-  "version": "1.0.0",
+  "version": "3.0.0",
   "identifier": "com.bboy9090.bobbysworkshop",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -25,7 +25,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["msi", "nsis"],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -37,7 +37,12 @@
     "copyright": "",
     "category": "DeveloperTool",
     "shortDescription": "Bobby's Workshop - Device Flashing & Diagnostics",
-    "longDescription": "Professional device flashing and diagnostics tool"
+    "longDescription": "Professional device flashing and diagnostics tool",
+    "windows": {
+      "certificateThumbprint": null,
+      "digestAlgorithm": "sha256",
+      "timestampUrl": ""
+    }
   },
   "plugins": {}
 }

@@ -1,6 +1,6 @@
 [package]
 name = "bobbys-workshop"
-version = "1.0.0"
+version = "3.0.0"
 description = "Bobby's Workshop - Professional Device Repair Toolkit"
 authors = ["Bobby's Workshop Team"]
 license = "MIT"

@@ -96,7 +96,7 @@ export function DashboardLayout() {
                 <div className="flex items-center gap-3">
                     <BackendStatusIndicator />
                     <div className="text-xs font-mono text-ink-muted">
-                        v2.0.0
+                        v3.0.0
                     </div>
                 </div>
             </header>

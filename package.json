@@ -1,7 +1,7 @@
 {
     "name": "bobbys-workshop",
     "private": true,
-    "version": "1.0.0",
+    "version": "3.0.0",
     "type": "module",
     "scripts": {
         "dev": "vite",
@@ -48,7 +48,8 @@
         "build:macos": "node scripts/build-standalone.js --target=x86_64-apple-darwin",
         "installer": "npm run build:standalone",
         "tauri:artifacts:windows": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/collect-tauri-windows-artifacts.ps1",
-        "tauri:artifacts:windows:skipbuild": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/collect-tauri-windows-artifacts.ps1 -SkipBuild"
+        "tauri:artifacts:windows:skipbuild": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/collect-tauri-windows-artifacts.ps1 -SkipBuild",
+        "build:installer": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-complete-installer.ps1"
     },
     "dependencies": {
         "@github/spark": ">=0.43.1 <1",

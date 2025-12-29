@@ -12,27 +12,38 @@ function AppContent() {
     const { isDemoMode, setDemoMode, setBackendAvailable } = useApp();
     const [isLoading, setIsLoading] = useState(true);
     const [showSplash, setShowSplash] = useState(true);
+    const [initError, setInitError] = useState<Error | null>(null);
 
     useEffect(() => {
         async function initializeApp() {
-            setIsLoading(true);
-            
-            // Simulate system boot
-            await new Promise(resolve => setTimeout(resolve, 800));
-            
-            const backendHealthy = await checkBackendHealth();
-            setBackendAvailable(backendHealthy.isHealthy);
+            try {
+                setIsLoading(true);
+                setInitError(null);
+                console.log('[App] Initializing...');
+                
+                // Simulate system boot
+                await new Promise(resolve => setTimeout(resolve, 800));
+                
+                const backendHealthy = await checkBackendHealth();
+                setBackendAvailable(backendHealthy.isHealthy);
 
-            if (!backendHealthy.isHealthy) {
-                // Quiet mode - don't spam console
-                console.log('[App] Backend offline - running in demo mode');
-                setDemoMode(true);
-            } else {
-                console.log('[App] Backend connected - production mode');
-                setDemoMode(false);
+                if (!backendHealthy.isHealthy) {
+                    // Quiet mode - don't spam console
+                    console.log('[App] Backend offline - running in demo mode');
+                    setDemoMode(true);
+                } else {
+                    console.log('[App] Backend connected - production mode');
+                    setDemoMode(false);
+                }
+                
+                setIsLoading(false);
+                console.log('[App] Initialization complete');
+            } catch (error) {
+                console.error('[App] Initialization error:', error);
+                setInitError(error instanceof Error ? error : new Error(String(error)));
+                setIsLoading(false);
+                setDemoMode(true); // Fallback to demo mode on error
             }
-            
-            setIsLoading(false);
         }
 
         initializeApp();
@@ -54,6 +65,27 @@ function AppContent() {
         }
     };
 
+    // Show error if initialization failed
+    if (initError) {
+        return (
+            <div className="min-h-screen bg-midnight-room flex items-center justify-center p-4">
+                <div className="max-w-md w-full bg-workbench-steel border border-panel rounded-lg p-6">
+                    <h1 className="text-xl font-bold text-ink-primary mb-2 font-mono">Initialization Error</h1>
+                    <p className="text-sm text-ink-muted mb-4">Failed to initialize the application.</p>
+                    <pre className="text-xs text-state-danger bg-midnight-room p-3 rounded border overflow-auto max-h-32 font-mono">
+                        {initError.message}
+                    </pre>
+                    <button
+                        onClick={() => window.location.reload()}
+                        className="mt-4 px-4 py-2 bg-spray-cyan/20 text-spray-cyan border border-spray-cyan/50 rounded hover:bg-spray-cyan/30 transition-colors"
+                    >
+                        Reload App
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
     // Show loading page during initialization
     if (isLoading) {
         return <LoadingPage />;
@@ -64,13 +96,28 @@ function AppContent() {
         return <SplashPage onComplete={() => setShowSplash(false)} />;
     }
 
-    return (
-        <>
-            {isDemoMode && <DemoModeBanner onDisable={handleConnectBackend} />}
-            <DashboardLayout />
-            <Toaster />
-        </>
-    );
+    try {
+        return (
+            <>
+                {isDemoMode && <DemoModeBanner onDisable={handleConnectBackend} />}
+                <DashboardLayout />
+                <Toaster />
+            </>
+        );
+    } catch (error) {
+        console.error('[AppContent] Render error:', error);
+        return (
+            <div className="min-h-screen bg-midnight-room flex items-center justify-center p-4">
+                <div className="max-w-md w-full bg-workbench-steel border border-panel rounded-lg p-6">
+                    <h1 className="text-xl font-bold text-ink-primary mb-2 font-mono">Render Error</h1>
+                    <p className="text-sm text-ink-muted mb-4">Failed to render the application.</p>
+                    <pre className="text-xs text-state-danger bg-midnight-room p-3 rounded border overflow-auto max-h-32 font-mono">
+                        {error instanceof Error ? error.message : String(error)}
+                    </pre>
+                </div>
+            </div>
+        );
+    }
 }
 
 function App() {
