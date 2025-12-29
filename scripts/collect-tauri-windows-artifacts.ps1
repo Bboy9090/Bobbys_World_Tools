@@ -54,10 +54,13 @@ function Resolve-TauriCli([string]$repoRoot) {
 $repoRoot = Resolve-RepoRoot
 $tauriConfig = Read-TauriConfig -repoRoot $repoRoot
 
-$productName = $tauriConfig.package.productName
-$tauriVersion = $tauriConfig.package.version
-
+# Tauri v2 config format: productName and version are at root level
+$productName = $tauriConfig.productName
+if (-not $productName) { $productName = $tauriConfig.package.productName }
 if (-not $productName) { $productName = "Bobbys-Workshop" }
+
+$tauriVersion = $tauriConfig.version
+if (-not $tauriVersion) { $tauriVersion = $tauriConfig.package.version }
 if (-not $tauriVersion) { $tauriVersion = "unknown" }
 
 $outAbs = Join-Path $repoRoot $OutDir

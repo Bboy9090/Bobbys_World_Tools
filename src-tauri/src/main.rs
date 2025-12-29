@@ -8,7 +8,7 @@
 
 use std::process::{Command, Child, Stdio};
 use std::sync::Mutex;
-use tauri::{Manager, AppHandle};
+use tauri::{Manager, AppHandle, Emitter};
 use std::path::PathBuf;
 use std::env;
 use std::collections::{HashMap, HashSet};
@@ -217,8 +217,10 @@ fn emit_flash_update(app_handle: &AppHandle, job_id: &str, kind: &str, data: ser
         data,
     };
 
-    // Per-job channel.
-    let _ = app_handle.emit_all(&format!("flash-progress:{}", job_id), payload);
+    // Per-job channel. In Tauri v2, emit to all windows.
+    if let Some(window) = app_handle.get_webview_window("main") {
+        let _ = window.emit(&format!("flash-progress:{}", job_id), &payload);
+    }
 }
 
 fn emit_device_event(app_handle: &AppHandle, event: DeviceHotplugEvent) {
@@ -227,7 +229,10 @@ fn emit_device_event(app_handle: &AppHandle, event: DeviceHotplugEvent) {
         event,
     };
 
-    let _ = app_handle.emit_all("device-events", envelope);
+    // In Tauri v2, emit to all windows.
+    if let Some(window) = app_handle.get_webview_window("main") {
+        let _ = window.emit("device-events", &envelope);
+    }
 }
 
 fn run_command_capture_lines(mut cmd: Command) -> Result<Vec<String>, String> {
@@ -916,7 +921,8 @@ fn get_log_directory() -> PathBuf {
 
 fn find_node_executable(app_handle: &AppHandle) -> Option<PathBuf> {
     // First, try to find bundled Node.js in resources
-    if let Some(resource_dir) = app_handle.path_resolver().resource_dir() {
+    // In Tauri v2, use app_handle.path().resource_dir()
+    if let Ok(resource_dir) = app_handle.path().resource_dir() {
         let bundled_node = resource_dir.join("nodejs");
         
         #[cfg(target_os = "windows")]
@@ -1009,10 +1015,14 @@ fn start_backend_server(app_handle: &AppHandle) -> Result<Child, std::io::Error>
     };
     
     // Get the resource directory where we bundled the server
+    // In Tauri v2, use app_handle.path().resource_dir()
     let resource_dir = app_handle
-        .path_resolver()
+        .path()
         .resource_dir()
-        .expect("Failed to get resource directory");
+        .map_err(|e| std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            format!("Failed to get resource directory: {}", e)
+        ))?;
     
     let server_path = resource_dir.join("server").join("index.js");
     
@@ -1102,7 +1112,7 @@ fn main() {
         device_monitor_started: Mutex::new(false),
     };
 
-    let app = tauri::Builder::default()
+    tauri::Builder::default()
         .manage(app_state)
         .setup(|app| {
             let state = app.state::<AppState>();
@@ -1133,11 +1143,10 @@ fn main() {
             
             Ok(())
         })
-        .on_window_event(|event| {
-            if let tauri::WindowEvent::CloseRequested { .. } = event.event() {
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { .. } = event {
                 // Clean shutdown: stop backend when the app is actually closing.
-                // (We also stop it in RunEvent::ExitRequested/Exit below as a backstop.)
-                stop_backend_server(&event.window().app_handle());
+                stop_backend_server(&window.app_handle());
             }
         })
         .invoke_handler(tauri::generate_handler![
@@ -1152,12 +1161,6 @@ fn main() {
             bootforge_flash_history,
             bootforge_flash_active,
         ])
-        .build(tauri::generate_context!())
+        .run(tauri::generate_context!())
         .expect("error while building tauri application");
-
-    app.run(|app_handle, event| match event {
-        tauri::RunEvent::ExitRequested { .. } => stop_backend_server(app_handle),
-        tauri::RunEvent::Exit => stop_backend_server(app_handle),
-        _ => {}
-    });
 }
