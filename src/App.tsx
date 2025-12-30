@@ -12,6 +12,7 @@ import { setupGlobalErrorHandler } from "./lib/error-handler";
 import { initOfflineStorage, networkStatus } from "./lib/offline-storage";
 import { initializeWebSockets, cleanupWebSockets } from "./lib/websocket-hub";
 import { createLogger } from "./lib/debug-logger";
+import { startBackendSync, stopBackendSync } from "./lib/backend-sync";
 
 const logger = createLogger('App');
 
@@ -53,6 +54,29 @@ function AppContent() {
                     logger.debug('WebSocket connections initialized');
                 }
                 
+                // Start continuous backend sync monitoring
+                // This keeps frontend and backend in sync at all times
+                startBackendSync({
+                    checkInterval: 10000, // Check every 10 seconds
+                    onBackendAvailable: () => {
+                        setBackendAvailable(true);
+                        setDemoMode(false);
+                        initializeWebSockets();
+                        logger.debug('Backend available - frontend and backend in sync');
+                    },
+                    onBackendUnavailable: () => {
+                        setBackendAvailable(false);
+                        setDemoMode(true);
+                        logger.warn('Backend unavailable - frontend and backend out of sync');
+                    },
+                    onBackendRestored: () => {
+                        setBackendAvailable(true);
+                        setDemoMode(false);
+                        initializeWebSockets();
+                        logger.info('Backend restored - frontend and backend back in sync');
+                    },
+                });
+                
                 // Listen for network status changes
                 networkStatus.subscribe((online) => {
                     if (online && !backendHealthy.isHealthy) {
@@ -81,6 +105,7 @@ function AppContent() {
 
         return () => {
             cleanupWebSockets();
+            stopBackendSync(); // Stop sync monitoring on unmount
         };
     }, [setDemoMode, setBackendAvailable]);
 
