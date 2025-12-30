@@ -163,7 +163,6 @@ export function BootForgeUSBScanner() {
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedDevice, setSelectedDevice] = useState<string | null>(null);
-  const [isDemoMode, setIsDemoMode] = useState(false);
   
   const { updateDevice, isTracking } = useCorrelationTracking();
 
@@ -195,7 +194,6 @@ export function BootForgeUSBScanner() {
   async function scanDevices(forceReal = false) {
     setScanning(true);
     setError(null);
-    setIsDemoMode(false);
     try {
       const useDemoFallback = !forceReal;
       const res = await fetch(getAPIUrl(`/api/bootforgeusb/scan${useDemoFallback ? '?demo=true' : ''}`));
@@ -209,10 +207,6 @@ export function BootForgeUSBScanner() {
         throw new Error(data.error || `HTTP ${res.status}`);
       }
       
-      if (data.demo) {
-        setIsDemoMode(true);
-        setError('⚠️ Demo Mode: Showing sample data. Install BootForgeUSB CLI to scan real USB devices connected to your system.');
-      }
       
       setDevices(data.devices || []);
       
@@ -309,11 +303,11 @@ export function BootForgeUSBScanner() {
         </div>
 
         {error && (
-          <Alert className={`mb-4 ${isDemoMode ? 'border-amber-500/30 bg-amber-600/10' : 'border-rose-500/30 bg-rose-600/10'}`}>
-            <Warning className={`w-4 h-4 ${isDemoMode ? 'text-amber-400' : 'text-rose-400'}`} />
-            <AlertDescription className={`${isDemoMode ? 'text-amber-300' : 'text-rose-300'} space-y-2`}>
+          <Alert className="mb-4 border-rose-500/30 bg-rose-600/10">
+            <Warning className="w-4 h-4 text-rose-400" />
+            <AlertDescription className="text-rose-300 space-y-2">
               <div>{error}</div>
-              {isDemoMode && status && !status.cli.installed && (
+              {status && !status.cli.installed && (
                 <div className="text-xs space-y-1 mt-2">
                   <div className="font-semibold">To scan real USB devices:</div>
                   <ol className="list-decimal list-inside space-y-1 ml-2">
@@ -422,13 +416,8 @@ export function BootForgeUSBScanner() {
         <div className="mb-3 flex items-center justify-between">
           <h3 className="text-lg font-medium text-foreground flex items-center gap-2">
             <DeviceMobile className="w-5 h-5 text-primary" weight="duotone" />
-            {isDemoMode ? 'Demo Devices' : 'Detected Devices'} ({devices.length})
-            {isDemoMode && (
-              <Badge variant="outline" className="text-xs bg-amber-600/20 text-amber-300 border-amber-500/30">
-                DEMO MODE
-              </Badge>
-            )}
-            {!isDemoMode && devices.length > 0 && status?.cli.installed && (
+            Detected Devices ({devices.length})
+            {devices.length > 0 && status?.cli.installed && (
               <Badge variant="outline" className="text-xs bg-emerald-600/20 text-emerald-300 border-emerald-500/30">
                 LIVE USB SCAN
               </Badge>

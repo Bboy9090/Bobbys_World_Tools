@@ -39,7 +39,7 @@
         "bundle:nodejs": "node scripts/bundle-nodejs.js",
         "bundle:server": "node -e \"process.platform === 'win32' ? require('child_process').execSync('powershell -NoProfile -ExecutionPolicy Bypass -File scripts/bundle-server.ps1', {stdio: 'inherit'}) : require('child_process').execSync('bash scripts/bundle-server.sh', {stdio: 'inherit'})\"",
         "prepare:bundle": "node -e \"process.platform === 'win32' ? require('child_process').execSync('powershell -NoProfile -ExecutionPolicy Bypass -File scripts/prepare-bundle.ps1', {stdio: 'inherit'}) : require('child_process').execSync('bash scripts/prepare-bundle.sh', {stdio: 'inherit'})\"",
-        "tauri:build": "npm run build && npm run prepare:bundle && cargo tauri build",
+        "tauri:build": "npm run build && npm run prepare:bundle && cargo tauri build && node -e \"process.platform === 'win32' ? require('child_process').execSync('powershell -NoProfile -ExecutionPolicy Bypass -File scripts/copy-server-to-release.ps1', {stdio: 'inherit'}) : require('child_process').execSync('bash -c \\\"cp -r src-tauri/bundle/resources/server src-tauri/target/release/\\\"', {stdio: 'inherit'})\"",
         "tauri:build:windows": "npm run build && npm run prepare:bundle && cargo tauri build --target x86_64-pc-windows-msvc",
         "tauri:build:macos": "npm run build && npm run prepare:bundle && cargo tauri build --target x86_64-apple-darwin",
         "tauri:build:linux": "npm run build && npm run prepare:bundle && cargo tauri build --target x86_64-unknown-linux-gnu",

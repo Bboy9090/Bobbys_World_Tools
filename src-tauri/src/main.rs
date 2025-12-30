@@ -1016,13 +1016,55 @@ fn start_backend_server(app_handle: &AppHandle) -> Result<Child, std::io::Error>
     
     // Get the resource directory where we bundled the server
     // In Tauri v2, use app_handle.path().resource_dir()
-    let resource_dir = app_handle
-        .path()
-        .resource_dir()
-        .map_err(|e| std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            format!("Failed to get resource directory: {}", e)
-        ))?;
+    // Try multiple locations as fallback
+    let resource_dir = match app_handle.path().resource_dir() {
+        Ok(dir) if dir.join("server").join("index.js").exists() => dir,
+        _ => {
+            // Fallback: try relative to executable
+            if let Ok(exe_path) = env::current_exe() {
+                if let Some(exe_dir) = exe_path.parent() {
+                    // Check if server is in bundle/resources relative to exe
+                    let bundle_server = exe_dir.parent()
+                        .and_then(|p| p.parent())
+                        .map(|p| p.join("bundle").join("resources"));
+                    
+                    if let Some(bundle_path) = bundle_server {
+                        if bundle_path.join("server").join("index.js").exists() {
+                            println!("[Tauri] Using fallback bundle path: {:?}", bundle_path);
+                            bundle_path
+                        } else {
+                            // Last resort: check if server directory exists next to exe
+                            let local_server = exe_dir.join("server");
+                            if local_server.join("index.js").exists() {
+                                println!("[Tauri] Using local server path: {:?}", local_server.parent().unwrap());
+                                local_server.parent().unwrap().to_path_buf()
+                            } else {
+                                return Err(std::io::Error::new(
+                                    std::io::ErrorKind::NotFound,
+                                    format!("Server files not found. Checked: resource_dir, bundle/resources, and local server directory")
+                                ));
+                            }
+                        }
+                    } else {
+                        return Err(std::io::Error::new(
+                            std::io::ErrorKind::NotFound,
+                            "Failed to locate server files in any expected location"
+                        ));
+                    }
+                } else {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::NotFound,
+                        "Could not determine executable directory"
+                    ));
+                }
+            } else {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::NotFound,
+                    "Could not determine executable path"
+                ));
+            }
+        }
+    };
     
     let server_path = resource_dir.join("server").join("index.js");
     
@@ -1031,7 +1073,7 @@ fn start_backend_server(app_handle: &AppHandle) -> Result<Child, std::io::Error>
     if !server_path.exists() {
         return Err(std::io::Error::new(
             std::io::ErrorKind::NotFound,
-            format!("Server files not found in bundle at {:?}", server_path)
+            format!("Server files not found at {:?}", server_path)
         ));
     }
     
@@ -1073,11 +1115,32 @@ fn start_backend_server(app_handle: &AppHandle) -> Result<Child, std::io::Error>
     println!("[Tauri] Backend API server started on http://localhost:{}", port);
     println!("[Tauri] Server PID: {}", child.id());
     
-    // Give the server a moment to start up and bind to the port
-    // This is a simple synchronous wait that ensures the server is ready
-    // before the frontend attempts to connect. For production, consider
-    // implementing a health check poll loop instead.
-    std::thread::sleep(std::time::Duration::from_secs(2));
+    // Give the server time to start up and bind to the port
+    // Check if port is listening by attempting a TCP connection
+    let mut attempts = 0;
+    let max_attempts = 30; // 15 seconds total (30 * 500ms)
+    let mut server_ready = false;
+    
+    while attempts < max_attempts && !server_ready {
+        std::thread::sleep(std::time::Duration::from_millis(500));
+        attempts += 1;
+        
+        // Try to connect to the port to see if server is listening
+        match std::net::TcpStream::connect(format!("127.0.0.1:{}", port)) {
+            Ok(_) => {
+                server_ready = true;
+                println!("[Tauri] Backend server confirmed ready after {}ms", attempts * 500);
+                break;
+            }
+            Err(_) => {
+                // Port not ready yet, continue waiting
+            }
+        }
+    }
+    
+    if !server_ready {
+        println!("[Tauri] Warning: Backend server may not be fully ready after {}ms, but continuing...", attempts * 500);
+    }
     
     Ok(child)
 }
