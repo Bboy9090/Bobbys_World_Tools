@@ -22,7 +22,7 @@ import {
 import { toast } from 'sonner';
 import { useFlashProgressWebSocket } from '@/hooks/use-flash-progress-websocket';
 import { useApp } from '@/lib/app-context';
-import { API_CONFIG } from '@/lib/apiConfig';
+import { API_CONFIG, getWSUrl } from '@/lib/apiConfig';
 
 interface MTKDevice {
   id: string;
@@ -60,7 +60,7 @@ export function MediaTekFlashPanel() {
     disconnect,
     send,
   } = useFlashProgressWebSocket({
-    url: 'ws://localhost:3001/flash-progress',
+    url: getWSUrl('/ws/flash-progress'),
     enableNotifications: true,
     autoConnect: true,
   });
@@ -219,7 +219,7 @@ export function MediaTekFlashPanel() {
 
   return (
     <div className="space-y-6">
-      <Card className="border-primary/30 bg-gradient-to-br from-card/90 to-card/60">
+      <Card className="border-primary/30 bg-linear-to-br from-card/90 to-card/60">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">

@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { getWSUrl } from '@/lib/apiConfig';
+import { connectDeviceEvents, type RealtimeConnection } from '@/lib/realtime';
 import { toast } from 'sonner';
 import { useAudioNotifications } from './use-audio-notifications';
 import type { CorrelationBadge } from '@/types/correlation';
@@ -54,7 +55,7 @@ export function useDeviceHotplug(options: UseDeviceHotplugOptions = {}) {
     lastEventTime: null,
   });
 
-  const wsRef = useRef<WebSocket | null>(null);
+  const wsRef = useRef<RealtimeConnection | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttemptsRef = useRef(0);
 
@@ -99,13 +100,12 @@ export function useDeviceHotplug(options: UseDeviceHotplugOptions = {}) {
   }, [onConnect, onDisconnect, showToasts]);
 
   const connect = useCallback(() => {
-    if (wsRef.current?.readyState === WebSocket.OPEN || 
-        wsRef.current?.readyState === WebSocket.CONNECTING) {
+    if (wsRef.current?.readyState === 1 || wsRef.current?.readyState === 0) {
       return;
     }
 
     try {
-      const ws = new WebSocket(wsUrl);
+      const ws = connectDeviceEvents(wsUrl);
 
       ws.onopen = () => {
         setIsConnected(true);
@@ -124,7 +124,7 @@ export function useDeviceHotplug(options: UseDeviceHotplugOptions = {}) {
           const data = JSON.parse(event.data);
           
           if (data.type === 'ping') {
-            ws.send(JSON.stringify({ type: 'pong' }));
+            ws.send?.(JSON.stringify({ type: 'pong' }));
             return;
           }
           

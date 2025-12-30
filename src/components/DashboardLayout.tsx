@@ -1,203 +1,179 @@
+/**
+ * DashboardLayout - Main application layout
+ * 
+ * Migrated to new design system:
+ * - Design tokens (midnight-room, workbench-steel, etc.)
+ * - "What's up, doc?" greeting
+ * - WorkbenchSystemStatus
+ * - New navigation structure
+ */
+
 import { useState } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { DiagnosticsTab } from "./tabs/DiagnosticsTab";
-import { ReportsTab } from "./tabs/ReportsTab";
-import { TestsTab } from "./tabs/TestsTab";
-import { PluginsTab } from "./tabs/PluginsTab";
-import { CommunityTab } from "./tabs/CommunityTab";
-import { SettingsTab } from "./tabs/SettingsTab";
-import { ToolboxTab } from "./tabs/ToolboxTab";
-import { PandorasRoom } from "./SecretRoom";
-import { BobbysTraproom } from "./SecretRoom/BobbysTraproom";
-import { BobbysDevCorner } from "./SecretRoom/BobbysDevCorner";
-import { LiveAnalyticsDashboard } from "./LiveAnalyticsDashboard";
 import { DeviceSidebar } from "./DeviceSidebar";
-import { LogsPanel } from "./LogsPanel";
 import { BackendStatusIndicator } from "./BackendStatusIndicator";
+import { WorkbenchSystemStatus } from "./workbench/WorkbenchSystemStatus";
+import { OrnamentBugsGreeting } from "./ornaments/OrnamentBugsGreeting";
 import { useApp } from "@/lib/app-context";
-import { useAudioNotifications } from "@/hooks/use-audio-notifications";
-import { featureFlags } from "@/lib/featureFlags";
+import { useBugsGreeting } from "@/hooks/useBugsGreeting";
 import { 
-    Cpu, 
-    FileText, 
-    Flask, 
-    Plug, 
-    Users, 
-    Gear,
-    Wrench,
-    LockKey,
-    ChartLine,
-    Skull,
-    Code,
-    Toolbox
-} from '@phosphor-icons/react';
+    LayoutDashboard,
+    Smartphone,
+    Flashlight,
+    Apple,
+    Shield,
+    Activity,
+    Package,
+    Workflow,
+    Lock,
+    Settings,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+// Screen imports
+import { WorkbenchDashboard } from './screens/WorkbenchDashboard';
+import { WorkbenchDevices } from './screens/WorkbenchDevices';
+import { WorkbenchFlashing } from './screens/WorkbenchFlashing';
+import { WorkbenchIOS } from './screens/WorkbenchIOS';
+import { WorkbenchSecurity } from './screens/WorkbenchSecurity';
+import { WorkbenchMonitoring } from './screens/WorkbenchMonitoring';
+import { WorkbenchFirmware } from './screens/WorkbenchFirmware';
+import { WorkbenchWorkflows } from './screens/WorkbenchWorkflows';
+import { WorkbenchSecretRooms } from './screens/WorkbenchSecretRooms';
+import { WorkbenchSettings } from './screens/WorkbenchSettings';
 
 export function DashboardLayout() {
-    const [activeTab, setActiveTab] = useState('diagnostics');
+    const [activeTab, setActiveTab] = useState('dashboard');
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const { backendAvailable } = useApp();
-    const audio = useAudioNotifications();
+    const { showGreeting, dismiss } = useBugsGreeting({ enabled: true });
+
+    const navItems = [
+        { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+        { id: 'devices', label: 'Devices', icon: Smartphone },
+        { id: 'flashing', label: 'Flashing', icon: Flashlight },
+        { id: 'ios', label: 'iOS', icon: Apple },
+        { id: 'security', label: 'Security', icon: Shield },
+        { id: 'monitoring', label: 'Monitoring', icon: Activity },
+        { id: 'firmware', label: 'Firmware', icon: Package },
+        { id: 'workflows', label: 'Workflows', icon: Workflow },
+        { id: 'secret-rooms', label: 'Secret Rooms', icon: Lock, locked: true },
+        { id: 'settings', label: 'Settings', icon: Settings },
+    ];
 
     return (
-        <div className="h-screen flex flex-col workshop-bg">
-            <header className="h-12 border-b border-border sneaker-box-card flex items-center px-4 gap-3 swoosh-accent">
-                <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 bg-primary rounded flex items-center justify-center ambient-glow-cyan">
-                        <Wrench className="text-primary-foreground" size={16} weight="bold" />
+        <div className="h-screen flex flex-col bg-midnight-room">
+            {/* Header */}
+            <header className="h-14 border-b border-panel bg-workbench-steel flex items-center px-4 gap-4">
+                <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg border border-spray-cyan/30 bg-spray-cyan/10 flex items-center justify-center">
+                        <span className="text-spray-cyan font-mono font-bold text-sm">BW</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <h1 className="street-sign-text text-xl text-foreground">
-                            BOBBY'S WORLD
+                    <div>
+                        <h1 className="text-lg font-bold text-ink-primary font-mono">
+                            BOBBY'S WORKSHOP
                         </h1>
-                        <span className="text-xs text-muted-foreground font-mono">🎮 Workshop Toolkit 👟</span>
+                        <p className="text-xs text-ink-muted font-mono">
+                            & His World of Secrets and Traps
+                        </p>
                     </div>
                 </div>
+                
                 <div className="flex-1" />
+                
+                {/* Greeting - Only show once per session */}
+                {showGreeting && (
+                    <OrnamentBugsGreeting 
+                        variant={backendAvailable ? 'devices' : 'warning'}
+                        onDismiss={dismiss}
+                        autoHide={true}
+                        autoHideDuration={4000}
+                    />
+                )}
+                
                 <div className="flex items-center gap-3">
                     <BackendStatusIndicator />
-                    <div className="text-xs font-mono text-muted-foreground">
-                        v2.0.0
+                    <div className="text-xs font-mono text-ink-muted">
+                        v3.0.0
                     </div>
                 </div>
             </header>
 
             <div className="flex-1 flex overflow-hidden">
+                {/* Device Sidebar */}
                 <DeviceSidebar collapsed={sidebarCollapsed} onToggle={setSidebarCollapsed} />
 
-                <main className="flex-1 flex flex-col overflow-hidden">
-                    <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-                        <div className="border-b border-border bg-card/30 street-gradient">
-                            <TabsList className="h-11 bg-transparent w-full justify-start rounded-none border-0 px-3 gap-1">
-                                <TabsTrigger 
-                                    value="diagnostics" 
-                                    className="gap-1.5 px-4 data-[state=active]:btn-sneaker data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
-                                >
-                                    <Cpu weight="duotone" size={18} />
-                                    <span className="font-medium">Diagnostics</span>
-                                </TabsTrigger>
-                                <TabsTrigger 
-                                    value="analytics" 
-                                    className="gap-1.5 px-4 data-[state=active]:btn-sneaker data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
-                                >
-                                    <ChartLine weight="duotone" size={18} />
-                                    <span className="font-medium">Live Analytics</span>
-                                    <Badge variant="secondary" className="ml-1.5 text-[10px] px-1.5 py-0 candy-shimmer">📊 NEW</Badge>
-                                </TabsTrigger>
-                                <TabsTrigger 
-                                    value="pandoras-room" 
-                                    className="gap-1.5 px-4 data-[state=active]:btn-sneaker data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
-                                >
-                                    <LockKey weight="duotone" size={18} />
-                                    <span className="font-medium">Pandora's Room</span>
-                                </TabsTrigger>
-                                <TabsTrigger 
-                                    value="traproom" 
-                                    className="gap-1.5 px-4 data-[state=active]:btn-sneaker data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
-                                >
-                                    <Skull weight="duotone" size={18} />
-                                    <span className="font-medium">💀 Traproom</span>
-                                    <Badge variant="destructive" className="ml-1.5 text-[10px] px-1.5 py-0">HOT</Badge>
-                                </TabsTrigger>
-                                <TabsTrigger 
-                                    value="dev-corner" 
-                                    className="gap-1.5 px-4 data-[state=active]:btn-sneaker data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
-                                >
-                                    <Code weight="duotone" size={18} />
-                                    <span className="font-medium">💻 Dev Corner</span>
-                                    <Badge variant="outline" className="ml-1.5 text-[10px] px-1.5 py-0">EXP</Badge>
-                                </TabsTrigger>
-                                <TabsTrigger 
-                                    value="reports" 
-                                    className="gap-1.5 px-4 data-[state=active]:btn-sneaker data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
-                                >
-                                    <FileText weight="duotone" size={18} />
-                                    <span className="font-medium">Reports</span>
-                                </TabsTrigger>
-                                {featureFlags.experimentalToolbox && (
-                                    <TabsTrigger 
-                                        value="toolbox" 
-                                        className="gap-1.5 px-4 data-[state=active]:btn-sneaker data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
-                                    >
-                                        <Toolbox weight="duotone" size={18} />
-                                        <span className="font-medium">🛠️ Toolbox</span>
-                                        <Badge variant="secondary" className="ml-1.5 text-[10px] px-1.5 py-0 candy-shimmer">EXP</Badge>
-                                    </TabsTrigger>
-                                )}
-                                <TabsTrigger 
-                                    value="tests" 
-                                    className="gap-1.5 px-4 data-[state=active]:btn-sneaker data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
-                                >
-                                    <Flask weight="duotone" size={18} />
-                                    <span className="font-medium">Tests</span>
-                                </TabsTrigger>
-                                <TabsTrigger 
-                                    value="plugins" 
-                                    className="gap-1.5 px-4 data-[state=active]:btn-sneaker data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
-                                >
-                                    <Plug weight="duotone" size={18} />
-                                    <span className="font-medium">Plugins</span>
-                                </TabsTrigger>
-                                <TabsTrigger 
-                                    value="community" 
-                                    className="gap-1.5 px-4 data-[state=active]:btn-sneaker data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
-                                >
-                                    <Users weight="duotone" size={18} />
-                                    <span className="font-medium">Community</span>
-                                </TabsTrigger>
-                                <TabsTrigger 
-                                    value="settings" 
-                                    className="gap-1.5 px-4 data-[state=active]:btn-sneaker data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
-                                >
-                                    <Gear weight="duotone" size={18} />
-                                    <span className="font-medium">Settings</span>
-                                </TabsTrigger>
+                {/* Main Content */}
+                <main className="flex-1 flex flex-col overflow-hidden min-h-0">
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
+                        {/* Navigation Tabs */}
+                        <div className="border-b border-panel bg-workbench-steel">
+                            <TabsList className="h-12 bg-transparent w-full justify-start rounded-none border-0 px-3 gap-1 overflow-x-auto">
+                                {navItems.map((item) => {
+                                    const Icon = item.icon;
+                                    const isActive = activeTab === item.id;
+                                    
+                                    return (
+                                        <TabsTrigger
+                                            key={item.id}
+                                            value={item.id}
+                                            className={cn(
+                                                "gap-2 px-4 h-10 rounded-md transition-all motion-snap",
+                                                "data-[state=active]:bg-spray-cyan/20 data-[state=active]:text-spray-cyan",
+                                                "data-[state=active]:border-spray-cyan/50 data-[state=active]:border",
+                                                "data-[state=inactive]:text-ink-muted data-[state=inactive]:hover:text-ink-primary",
+                                                item.locked && !isActive && "opacity-50"
+                                            )}
+                                        >
+                                            <Icon className="w-4 h-4" />
+                                            <span className="font-medium text-sm">{item.label}</span>
+                                            {item.locked && (
+                                                <Lock className="w-3 h-3" />
+                                            )}
+                                        </TabsTrigger>
+                                    );
+                                })}
                             </TabsList>
                         </div>
 
-                        <ScrollArea className="flex-1 floor-grid">
-                            <div className="p-4 repair-table">
-                                <TabsContent value="diagnostics" className="mt-0">
-                                    <DiagnosticsTab />
+                        {/* Content Area */}
+                        <ScrollArea className="flex-1 min-h-0">
+                            <div className="p-6 min-h-0">
+                                <TabsContent value="dashboard" className="mt-0">
+                                    <WorkbenchDashboard />
                                 </TabsContent>
-                                <TabsContent value="analytics" className="mt-0">
-                                    <LiveAnalyticsDashboard />
+                                <TabsContent value="devices" className="mt-0">
+                                    <WorkbenchDevices />
                                 </TabsContent>
-                                <TabsContent value="pandoras-room" className="mt-0 p-0">
-                                    <PandorasRoom />
+                                <TabsContent value="flashing" className="mt-0">
+                                    <WorkbenchFlashing />
                                 </TabsContent>
-                                <TabsContent value="traproom" className="mt-0 p-0">
-                                    <BobbysTraproom />
+                                <TabsContent value="ios" className="mt-0">
+                                    <WorkbenchIOS />
                                 </TabsContent>
-                                <TabsContent value="dev-corner" className="mt-0 p-0">
-                                    <BobbysDevCorner />
+                                <TabsContent value="security" className="mt-0">
+                                    <WorkbenchSecurity />
                                 </TabsContent>
-                                <TabsContent value="reports" className="mt-0">
-                                    <ReportsTab />
+                                <TabsContent value="monitoring" className="mt-0">
+                                    <WorkbenchMonitoring />
                                 </TabsContent>
-                                {featureFlags.experimentalToolbox && (
-                                    <TabsContent value="toolbox" className="mt-0">
-                                        <ToolboxTab />
-                                    </TabsContent>
-                                )}
-                                <TabsContent value="tests" className="mt-0">
-                                    <TestsTab />
+                                <TabsContent value="firmware" className="mt-0">
+                                    <WorkbenchFirmware />
                                 </TabsContent>
-                                <TabsContent value="plugins" className="mt-0">
-                                    <PluginsTab />
+                                <TabsContent value="workflows" className="mt-0">
+                                    <WorkbenchWorkflows />
                                 </TabsContent>
-                                <TabsContent value="community" className="mt-0">
-                                    <CommunityTab />
+                                <TabsContent value="secret-rooms" className="mt-0 p-0">
+                                    <WorkbenchSecretRooms />
                                 </TabsContent>
                                 <TabsContent value="settings" className="mt-0">
-                                    <SettingsTab />
+                                    <WorkbenchSettings />
                                 </TabsContent>
                             </div>
                         </ScrollArea>
                     </Tabs>
-
-                    <LogsPanel />
                 </main>
             </div>
         </div>

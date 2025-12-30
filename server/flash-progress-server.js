@@ -8,7 +8,13 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const wss = new WebSocket.Server({ port: 3001 });
+const PORT = Number(process.env.FLASH_PROGRESS_PORT || 3002);
+
+console.log('[flash-progress-server] Starting standalone WS server.');
+console.log('[flash-progress-server] NOTE: The main backend (server/index.js) already provides /ws/flash-progress on port 3001.');
+console.log(`[flash-progress-server] This standalone server listens on port ${PORT} to avoid conflicts.`);
+
+const wss = new WebSocket.Server({ port: PORT });
 
 class FlashProgressManager {
   constructor() {

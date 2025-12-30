@@ -137,7 +137,7 @@ echo   - Desktop: Bobby's Workshop
 echo   - Start Menu: Bobby's Workshop
 echo.
 echo Next steps:
-echo 1. Run install.ps1 to install system tools (adb, scrcpy, ffmpeg)
+echo 1. Run install.ps1 to install system tools
 echo 2. Double-click desktop shortcut to launch
 echo.
 echo Press any key to exit...
@@ -145,7 +145,7 @@ pause >nul
 "@
 
 Set-Content -Path "$OUTPUT_DIR\INSTALL.bat" -Value $installerScript -Encoding ASCII
-Write-Host "✅ INSTALL.bat created" -ForegroundColor Green
+Write-Host "Created INSTALL.bat" -ForegroundColor Green
 
 # Step 5: Create uninstaller script
 Write-Host "📝 Creating uninstaller script..." -ForegroundColor Yellow
@@ -206,7 +206,7 @@ Write-Host "✅ UNINSTALL.bat created" -ForegroundColor Green
 # Step 6: Create portable launcher
 Write-Host "📝 Creating portable launcher..." -ForegroundColor Yellow
 
-$portableLauncher = @"
+$portableLauncher = @'
 @echo off
 cls
 echo ==========================================
@@ -245,15 +245,15 @@ cd server
 node index.js
 
 pause
-"@
+'@
 
 Set-Content -Path "$OUTPUT_DIR\RUN_PORTABLE.bat" -Value $portableLauncher -Encoding ASCII
-Write-Host "✅ RUN_PORTABLE.bat created" -ForegroundColor Green
+Write-Host "Created RUN_PORTABLE.bat" -ForegroundColor Green
 
 # Step 7: Create START.bat launcher
-Write-Host "📝 Creating START.bat launcher..." -ForegroundColor Yellow
+Write-Host "Creating START.bat launcher..." -ForegroundColor Yellow
 
-$startLauncher = @"
+$startLauncher = @'
 @echo off
 cls
 echo ==========================================
@@ -281,33 +281,33 @@ cd /d "%~dp0server"
 node index.js
 
 pause
-"@
+'@
 
 Set-Content -Path "$OUTPUT_DIR\START.bat" -Value $startLauncher -Encoding ASCII
-Write-Host "✅ START.bat created" -ForegroundColor Green
+Write-Host "Created START.bat" -ForegroundColor Green
 
 # Step 8: Copy install.ps1 from root
-Write-Host "📝 Copying install.ps1..." -ForegroundColor Yellow
+Write-Host "Copying install.ps1..." -ForegroundColor Yellow
 if (Test-Path "install.ps1") {
     Copy-Item -Path "install.ps1" -Destination "$OUTPUT_DIR\" -Force
-    Write-Host "✅ install.ps1 copied" -ForegroundColor Green
+    Write-Host "install.ps1 copied" -ForegroundColor Green
 } else {
-    Write-Host "⚠️  install.ps1 not found in root" -ForegroundColor Yellow
+    Write-Host "install.ps1 not found in root" -ForegroundColor Yellow
 }
 
 # Step 9: Create installer README
-Write-Host "📝 Creating installer README..." -ForegroundColor Yellow
+Write-Host "Creating installer README..." -ForegroundColor Yellow
 
-$installerReadme = @"
-# 🔥 Bobby's Workshop - Standalone Installer
+$installerReadme = @'
+# Bobby's Workshop - Standalone Installer
 
-## 📦 What's Included
+## What's Included
 
 This installer contains everything you need to run Bobby's Workshop:
 
-- ✅ Complete web application (frontend + backend)
-- ✅ All server APIs and routes
-- ✅ Device management tools
+- Complete web application (frontend + backend)
+- All server APIs and routes
+- Device management tools
 - ✅ Firmware library
 - ✅ Automation framework
 - ✅ All features unlocked!

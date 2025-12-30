@@ -30,7 +30,6 @@ import {
 } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import { useBootForgeFlash } from '@/hooks/use-bootforge-flash';
-import { featureFlags } from '@/lib/featureFlags';
 import { DEVICE_BRAND_CAPABILITIES, type DeviceBrand, type FlashMethod, type FlashJobConfig } from '@/types/flash-operations';
 import { DeviceStateGuide, type DeviceState } from './DeviceStateGuide';
 
@@ -82,13 +81,6 @@ export function UniversalFlashPanel() {
   const guideDeviceName = device?.model || device?.serial || 'Your device';
 
   const handleStartFlash = async () => {
-    if (!featureFlags.experimentalFlashing) {
-      toast.error('Flashing is disabled', {
-        description: 'Set VITE_EXPERIMENTAL_FLASHING=true to enable experimental flashing UI.',
-      });
-      return;
-    }
-
     if (!selectedDevice || !imagePath || selectedPartitions.length === 0) {
       toast.error('Missing required fields', {
         description: 'Please select a device, image, and partitions',
@@ -336,10 +328,10 @@ export function UniversalFlashPanel() {
                   className="w-full"
                   size="lg"
                   onClick={handleStartFlash}
-                  disabled={!featureFlags.experimentalFlashing || !selectedDevice || !imagePath || selectedPartitions.length === 0}
+                  disabled={!selectedDevice || !imagePath || selectedPartitions.length === 0}
                 >
                   <Play className="w-5 h-5 mr-2" weight="fill" />
-                  {featureFlags.experimentalFlashing ? 'Start Flash Operation' : 'Flashing Disabled'}
+                  Start Flash Operation
                 </Button>
               </div>
             </TabsContent>

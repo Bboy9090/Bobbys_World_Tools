@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { getWSUrl } from './apiConfig';
+import { connectDeviceEvents, type RealtimeConnection } from '@/lib/realtime';
 
 export interface WsMessage {
   type: string;
@@ -31,7 +32,7 @@ export interface UseWsReturn {
 
 export function useWs(options: UseWsOptions = {}): UseWsReturn {
   const {
-    url = getWSUrl('/ws'),
+    url = getWSUrl('/ws/device-events'),
     autoConnect = true,
     reconnect = true,
     reconnectInterval = 3000,
@@ -44,20 +45,18 @@ export function useWs(options: UseWsOptions = {}): UseWsReturn {
   const [lastMessage, setLastMessage] = useState<WsMessage | null>(null);
   const [bootforgeTail, setBootforgeTail] = useState<string[]>([]);
 
-  const wsRef = useRef<WebSocket | null>(null);
+  const wsRef = useRef<RealtimeConnection | null>(null);
   const reconnectAttemptsRef = useRef(0);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const connect = useCallback(() => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      return;
-    }
+    if (wsRef.current?.readyState === 1) return;
 
     setConnecting(true);
     setError(null);
 
     try {
-      const ws = new WebSocket(url);
+      const ws = connectDeviceEvents(url);
 
       ws.onopen = () => {
         setConnected(true);
@@ -109,38 +108,41 @@ export function useWs(options: UseWsOptions = {}): UseWsReturn {
     }
   }, [url, reconnect, reconnectInterval, maxReconnectAttempts]);
 
-  const disconnect = useCallback(() => {
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-      reconnectTimeoutRef.current = null;
-    }
-
-    if (wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
-    }
-
-    setConnected(false);
-    setConnecting(false);
-  }, []);
-
-  const send = useCallback((message: WsMessage): boolean => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify(message));
-      return true;
-    }
-    return false;
-  }, []);
-
   useEffect(() => {
+    const scheduleReconnect = () => {
+      reconnectTimeoutRef.current = setTimeout(() => {
+        reconnectAttemptsRef.current++;
+        connect();
+      }, reconnectInterval);
+    };
+
     if (autoConnect) {
       connect();
     }
 
     return () => {
-      disconnect();
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
+      }
+
+      setConnected(false);
+      setConnecting(false);
     };
-  }, [autoConnect, connect, disconnect]);
+  }, [connect, reconnectInterval]);
+
+  const send = useCallback((message: WsMessage): boolean => {
+    if (wsRef.current?.readyState === 1 && wsRef.current.send) {
+      wsRef.current.send(JSON.stringify(message));
+      return true;
+    }
+    return false;
+  }, []);
 
   return {
     connected,
@@ -149,7 +151,20 @@ export function useWs(options: UseWsOptions = {}): UseWsReturn {
     lastMessage,
     bootforgeTail,
     connect,
-    disconnect,
+    disconnect: useCallback(() => {
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
+      }
+
+      setConnected(false);
+      setConnecting(false);
+    }, []),
     send,
   };
 }

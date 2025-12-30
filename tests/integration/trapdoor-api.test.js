@@ -4,7 +4,9 @@ import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const ADMIN_KEY = 'test-admin-key';
-process.env.ADMIN_API_KEY = ADMIN_KEY;
+process.env.PANDORA_ROOM_PASSWORD = ADMIN_KEY;
+process.env.SECRET_ROOM_PASSCODE = ADMIN_KEY;
+process.env.TRAPDOOR_PASSCODE = ADMIN_KEY;
 
 // Shared arrays to assert side effects
 const shadowEntries = [];
@@ -84,14 +86,14 @@ describe('Trapdoor API Integration', () => {
         authorization: { confirmed: true, userInput: 'I OWN THIS DEVICE' }
       });
 
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(403);  // 403 Forbidden for unauthorized access
     expect(res.body.error).toBe('Unauthorized');
   });
 
   it('executes FRP bypass workflow when authorized', async () => {
     const res = await request(app)
       .post('/api/trapdoor/frp')
-      .set('x-api-key', ADMIN_KEY)
+      .set('X-Secret-Room-Passcode', ADMIN_KEY)
       .send({
         deviceSerial: 'demo-serial',
         authorization: { confirmed: true, userInput: 'I OWN THIS DEVICE' }
@@ -110,7 +112,7 @@ describe('Trapdoor API Integration', () => {
   it('executes bootloader unlock workflow when authorized', async () => {
     const res = await request(app)
       .post('/api/trapdoor/unlock')
-      .set('x-api-key', ADMIN_KEY)
+      .set('X-Secret-Room-Passcode', ADMIN_KEY)
       .send({
         deviceSerial: 'fastboot-123',
         authorization: { confirmed: true, userInput: 'UNLOCK' }
@@ -128,7 +130,7 @@ describe('Trapdoor API Integration', () => {
   it('lists available workflows for admins', async () => {
     const res = await request(app)
       .get('/api/trapdoor/workflows')
-      .set('x-api-key', ADMIN_KEY);
+      .set('X-Secret-Room-Passcode', ADMIN_KEY);
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
@@ -139,12 +141,12 @@ describe('Trapdoor API Integration', () => {
   it('retrieves shadow logs after operations', async () => {
     await request(app)
       .post('/api/trapdoor/frp')
-      .set('x-api-key', ADMIN_KEY)
+      .set('X-Secret-Room-Passcode', ADMIN_KEY)
       .send({ deviceSerial: 'demo-serial', authorization: { confirmed: true, userInput: 'I OWN THIS DEVICE' } });
 
     const res = await request(app)
       .get('/api/trapdoor/logs/shadow')
-      .set('x-api-key', ADMIN_KEY);
+      .set('X-Secret-Room-Passcode', ADMIN_KEY);
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);

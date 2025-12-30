@@ -60,19 +60,39 @@ export function WorkflowExecutionConsole() {
   const fetchWorkflows = async () => {
     setLoading(true);
     try {
-      // Note: This endpoint requires admin auth in production
+      let secretPasscode: string | null = null;
+      try {
+        secretPasscode = localStorage.getItem('bobbysWorkshop.secretRoomPasscode');
+      } catch {
+        secretPasscode = null;
+      }
+
+      if (!secretPasscode) {
+        setWorkflows([]);
+        setError('Secret Room passcode is required to load workflows.');
+        return;
+      }
+
+      // Note: Trapdoor endpoints are gated by the Secret Room passcode.
       const response = await fetch('http://localhost:3001/api/trapdoor/workflows', {
         headers: {
-          'X-API-Key': 'dev-admin-key' // In production, get this from auth context
+          'X-Secret-Room-Passcode': secretPasscode
         }
       });
 
       if (response.ok) {
         const data = await response.json();
         setWorkflows(data.workflows || []);
+        setError('');
+      } else {
+        const data = await response.json().catch(() => null);
+        setWorkflows([]);
+        setError(data?.message || data?.error || 'Failed to load workflows.');
       }
     } catch (err) {
       console.error('Error fetching workflows:', err);
+      setWorkflows([]);
+      setError('Network error while loading workflows.');
     } finally {
       setLoading(false);
     }

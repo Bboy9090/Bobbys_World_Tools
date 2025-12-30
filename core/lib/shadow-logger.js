@@ -265,6 +265,136 @@ class ShadowLogger {
   async rotateLogs() {
     return this.cleanupOldLogs();
   }
+
+  /**
+   * Get shadow logs with filtering options
+   * @param {Object} options - Filter options
+   * @param {string} options.deviceSerial - Filter by device serial
+   * @param {Date} options.startDate - Start date filter
+   * @param {Date} options.endDate - End date filter
+   * @param {string} options.operation - Filter by operation type
+   * @param {number} options.limit - Maximum number of entries to return
+   */
+  async getShadowLogs(options = {}) {
+    const { deviceSerial, startDate, endDate, operation, limit = 100 } = options;
+    
+    try {
+      const logs = [];
+      const startDateStr = startDate ? startDate.toISOString().split('T')[0] : null;
+      const endDateStr = endDate ? endDate.toISOString().split('T')[0] : null;
+      
+      // Determine date range to search
+      const datesToSearch = [];
+      if (startDateStr && endDateStr) {
+        const start = new Date(startDateStr);
+        const end = new Date(endDateStr);
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+          datesToSearch.push(d.toISOString().split('T')[0]);
+        }
+      } else if (startDateStr) {
+        datesToSearch.push(startDateStr);
+      } else if (endDateStr) {
+        datesToSearch.push(endDateStr);
+      } else {
+        datesToSearch.push(new Date().toISOString().split('T')[0]);
+      }
+      
+      // Read logs from date range
+      for (const date of datesToSearch) {
+        const result = await this.readShadowLogs(date);
+        if (result.success && result.entries) {
+          logs.push(...result.entries);
+        }
+      }
+      
+      // Apply filters
+      let filtered = logs;
+      if (deviceSerial) {
+        filtered = filtered.filter(log => log.deviceSerial === deviceSerial);
+      }
+      if (operation) {
+        filtered = filtered.filter(log => log.operation === operation);
+      }
+      if (startDate) {
+        filtered = filtered.filter(log => new Date(log.timestamp) >= startDate);
+      }
+      if (endDate) {
+        filtered = filtered.filter(log => new Date(log.timestamp) <= endDate);
+      }
+      
+      // Sort by timestamp (newest first) and limit
+      filtered.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      const limited = filtered.slice(0, limit);
+      
+      return limited;
+    } catch (error) {
+      console.error('Get shadow logs error:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get analytics for Secret Room operations
+   * @param {Object} options - Filter options
+   * @param {Date} options.startDate - Start date filter
+   * @param {Date} options.endDate - End date filter
+   */
+  async getAnalytics(options = {}) {
+    const { startDate, endDate } = options;
+    
+    try {
+      const logs = await this.getShadowLogs({
+        startDate,
+        endDate,
+        limit: 10000 // Large limit for analytics
+      });
+      
+      const operationsByType = {};
+      let successCount = 0;
+      let totalExecutionTime = 0;
+      const devicesProcessed = new Set();
+      
+      logs.forEach(log => {
+        // Count by operation type
+        if (!operationsByType[log.operation]) {
+          operationsByType[log.operation] = 0;
+        }
+        operationsByType[log.operation]++;
+        
+        // Count successes
+        if (log.success) {
+          successCount++;
+        }
+        
+        // Track devices
+        if (log.deviceSerial && log.deviceSerial !== 'N/A') {
+          devicesProcessed.add(log.deviceSerial);
+        }
+        
+        // Extract execution time from metadata if available
+        if (log.metadata && log.metadata.duration) {
+          totalExecutionTime += log.metadata.duration;
+        }
+      });
+      
+      return {
+        totalOperations: logs.length,
+        operationsByType,
+        devicesProcessed: devicesProcessed.size,
+        successRate: logs.length > 0 ? (successCount / logs.length) * 100 : 0,
+        averageExecutionTime: logs.length > 0 ? totalExecutionTime / logs.length : 0
+      };
+    } catch (error) {
+      console.error('Get analytics error:', error);
+      return {
+        totalOperations: 0,
+        operationsByType: {},
+        devicesProcessed: 0,
+        successRate: 0,
+        averageExecutionTime: 0
+      };
+    }
+  }
 }
 
 export default ShadowLogger;

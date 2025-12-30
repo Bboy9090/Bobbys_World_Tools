@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, Warning, XCircle, CircleNotch } from '@phosphor-icons/react';
 import { useBackendHealth } from '@/lib/backend-health';
 import { useAudioNotifications } from '@/hooks/use-audio-notifications';
-import { API_CONFIG } from '@/lib/apiConfig';
+import { API_CONFIG, getWSUrl } from '@/lib/apiConfig';
 
 interface ServiceStatus {
   name: string;
@@ -15,63 +15,93 @@ interface ServiceStatus {
   endpoint?: string;
 }
 
-const WS_BASE_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:3001';
+const WS_DEVICE_EVENTS_URL = getWSUrl('/ws/device-events');
 
 export function BackendStatusIndicator() {
-  const health = useBackendHealth(10000); // Check every 10 seconds
+  const health = useBackendHealth(30000); // Check every 30 seconds (reduced noise)
   const audio = useAudioNotifications();
   const [wsStatus, setWsStatus] = useState<'connected' | 'disconnected' | 'checking'>('checking');
   const [bootforgeStatus, setBootforgeStatus] = useState<'connected' | 'disconnected' | 'checking'>('checking');
-  const [previousWsStatus, setPreviousWsStatus] = useState<'connected' | 'disconnected' | 'checking'>('checking');
+  const previousWsStatusRef = useRef<'connected' | 'disconnected' | 'checking'>('checking');
+  const audioRef = useRef(audio);
+  const shouldReconnectRef = useRef(true);
+
+  useEffect(() => {
+    audioRef.current = audio;
+  }, [audio]);
   
-  // Check WebSocket connectivity
+  // Check WebSocket connectivity - quiet mode, no spam
   useEffect(() => {
     let ws: WebSocket | null = null;
-    let reconnectTimer: NodeJS.Timeout;
+    let reconnectTimer: NodeJS.Timeout | null = null;
+    let reconnectAttempts = 0;
+    const MAX_RECONNECT_ATTEMPTS = 3; // Only try 3 times, then give up quietly
+
+    shouldReconnectRef.current = true;
 
     const connectWS = () => {
+      // Don't spam reconnection attempts
+      if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+        setWsStatus('disconnected');
+        return;
+      }
+
       try {
-        ws = new WebSocket(`${WS_BASE_URL}/ws/device-events`);
+        ws = new WebSocket(WS_DEVICE_EVENTS_URL);
         
         ws.onopen = () => {
-          console.log('[BackendStatus] WebSocket connected');
-          setWsStatus('connected');
-          // Play connect sound only if previously disconnected
-          if (previousWsStatus === 'disconnected') {
-            audio.handleConnect();
+          // Only log on first connection or after reconnection
+          if (previousWsStatusRef.current === 'disconnected' && reconnectAttempts === 0) {
+            console.log('[BackendStatus] WebSocket connected');
           }
-          setPreviousWsStatus('connected');
+          setWsStatus('connected');
+          reconnectAttempts = 0; // Reset on success
+          // Play connect sound only if previously disconnected
+          if (previousWsStatusRef.current === 'disconnected') {
+            audioRef.current.handleConnect();
+          }
+          previousWsStatusRef.current = 'connected';
         };
         
-        ws.onerror = (error) => {
-          console.error('[BackendStatus] WebSocket error:', error);
+        ws.onerror = () => {
+          // Don't spam console with errors
           setWsStatus('disconnected');
-          if (previousWsStatus === 'connected') {
-            audio.handleDisconnect();
+          if (previousWsStatusRef.current === 'connected') {
+            audioRef.current.handleDisconnect();
           }
-          setPreviousWsStatus('disconnected');
+          previousWsStatusRef.current = 'disconnected';
         };
         
         ws.onclose = () => {
-          console.log('[BackendStatus] WebSocket disconnected');
-          setWsStatus('disconnected');
-          if (previousWsStatus === 'connected') {
-            audio.handleDisconnect();
+          // Only log first disconnection
+          if (reconnectAttempts === 0) {
+            console.log('[BackendStatus] WebSocket disconnected');
           }
-          setPreviousWsStatus('disconnected');
-          // Attempt reconnect after 5 seconds
-          reconnectTimer = setTimeout(connectWS, 5000);
+          setWsStatus('disconnected');
+          if (previousWsStatusRef.current === 'connected') {
+            audioRef.current.handleDisconnect();
+          }
+          previousWsStatusRef.current = 'disconnected';
+          // Attempt reconnect after 10 seconds (longer delay to reduce spam)
+          if (shouldReconnectRef.current && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+            reconnectAttempts++;
+            reconnectTimer = setTimeout(connectWS, 10000); // 10 second delay
+          }
         };
       } catch (error) {
-        console.error('[BackendStatus] Failed to create WebSocket:', error);
+        // Don't spam console
         setWsStatus('disconnected');
-        reconnectTimer = setTimeout(connectWS, 5000);
+        if (shouldReconnectRef.current && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+          reconnectAttempts++;
+          reconnectTimer = setTimeout(connectWS, 10000);
+        }
       }
     };
 
     connectWS();
 
     return () => {
+      shouldReconnectRef.current = false;
       if (ws) {
         ws.close();
       }
@@ -79,7 +109,7 @@ export function BackendStatusIndicator() {
         clearTimeout(reconnectTimer);
       }
     };
-  }, [previousWsStatus, audio]);
+  }, []);
 
   // Check BootForge USB backend
   useEffect(() => {
@@ -95,7 +125,7 @@ export function BackendStatusIndicator() {
     };
 
     checkBootforge();
-    const interval = setInterval(checkBootforge, 15000); // Check every 15 seconds
+    const interval = setInterval(checkBootforge, 30000); // Check every 30 seconds (reduced noise)
 
     return () => clearInterval(interval);
   }, []);
@@ -112,7 +142,7 @@ export function BackendStatusIndicator() {
       name: 'WebSocket',
       status: wsStatus,
       lastCheck: Date.now(),
-      endpoint: `${WS_BASE_URL}/ws/device-events`
+      endpoint: WS_DEVICE_EVENTS_URL
     },
     {
       name: 'BootForge USB',
@@ -185,7 +215,15 @@ export function BackendStatusIndicator() {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-auto p-0 hover:bg-transparent">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="h-auto p-0 hover:bg-transparent"
+          onClick={(e) => {
+            // Prevent any accidental auto-opening
+            e.stopPropagation();
+          }}
+        >
           {getOverallBadge()}
         </Button>
       </PopoverTrigger>
@@ -240,8 +278,8 @@ export function BackendStatusIndicator() {
           {!allConnected && (
             <div className="p-2 rounded-md bg-warning/10 border border-warning/20">
               <p className="text-xs text-warning">
-                <strong>⚠️ Backend Required:</strong> Some features are unavailable. 
-                Start the backend server with <code className="font-mono">npm run server:start</code>
+                <strong>Backend Offline:</strong> Running in demo mode. 
+                Some features require the backend server.
               </p>
             </div>
           )}

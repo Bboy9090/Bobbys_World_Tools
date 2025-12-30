@@ -231,35 +231,9 @@ export async function execute(context: PluginContext): Promise<PluginResult<Ther
         timestamp: Date.now()
       };
     } else if (context.platform === 'ios') {
-      // iOS thermal info would require specific tools
-      thermalData = {
-        overallStatus: 'normal',
-        zones: [],
-        isThrottling: false,
-        healthScore: 95,
-        warnings: [],
-        recommendations: [],
-        timestamp: Date.now()
-      };
+      throw new Error('Thermal monitoring for iOS is not available. Install/enable required tools.');
     } else {
-      // Fallback mock data for testing
-      thermalData = {
-        overallStatus: 'normal',
-        zones: [
-          { name: 'cpu', type: 'cpu', temperature: 35, isOverheating: false },
-          { name: 'battery', type: 'battery', temperature: 28, isOverheating: false },
-          { name: 'skin', type: 'skin', temperature: 32, isOverheating: false }
-        ],
-        isThrottling: false,
-        throttlingLevel: 0,
-        cpuTemperature: 35,
-        batteryTemperature: 28,
-        skinTemperature: 32,
-        healthScore: 92,
-        warnings: [],
-        recommendations: ['Thermal performance is optimal'],
-        timestamp: Date.now()
-      };
+      throw new Error('Thermal monitoring requires Android ADB or platform-specific tooling.');
     }
 
     context.logger?.info(`Thermal health analysis complete: Status ${thermalData.overallStatus}`);
