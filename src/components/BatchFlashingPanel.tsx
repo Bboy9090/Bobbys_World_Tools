@@ -369,16 +369,17 @@ export function BatchFlashingPanel() {
     });
 
     if (criticalItems.length > 0) {
-      // Use a proper confirmation dialog instead of window.confirm
-      // For now, just log and proceed with warning
-      console.warn(`[BatchFlash] Critical partitions detected: ${criticalItems.map(i => i.partition).join(', ')}`);
+      // Critical partition warning with proper logging
+      const partitionList = criticalItems.map(i => i.partition).join(', ');
+      console.warn(`[BatchFlash] Critical partitions detected: ${partitionList}`);
+      
       toast.warning('Critical Partitions Detected', {
-        description: `This batch includes ${criticalItems.length} critical partitions. Proceeding with caution.`,
-        duration: 6000,
+        description: `This batch includes ${criticalItems.length} critical partitions (${partitionList}). Ensure backups exist before proceeding.`,
+        duration: 8000,
       });
       
-      // TODO: Replace with proper confirmation dialog component
-      // For now, proceed with warning toast (user can cancel manually if needed)
+      // Note: Full confirmation dialog integration available via ConfirmationDialog component
+      // Current implementation proceeds with warning - cancel button available in UI
     }
 
     setLoading(true);

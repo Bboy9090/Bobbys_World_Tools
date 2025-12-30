@@ -18,7 +18,7 @@ import { correlationIdMiddleware, envelopeMiddleware } from './middleware/api-en
 import { deprecationWarningMiddleware } from './middleware/api-versioning.js';
 import { rateLimiter } from './middleware/rate-limiter.js';
 import { requireTrapdoorPasscode } from './middleware/trapdoor-auth.js';
-import { acquireDeviceLock, releaseDeviceLock, LOCK_TIMEOUT } from './locks.js';
+import { acquireDeviceLock, releaseDeviceLock, LOCK_TIMEOUT, getAllActiveLocks, getActiveLockCount } from './locks.js';
 import { getToolPath, isToolAvailable, getToolInfo, getAllToolsInfo, executeTool } from './tools-manager.js';
 import { downloadFirmware, getDownloadStatus, cancelDownload, getActiveDownloads } from './firmware-downloader.js';
 import { readyHandler } from './routes/v1/ready.js';
@@ -48,6 +48,7 @@ import iosLibimobiledeviceRouter from './routes/v1/ios/libimobiledevice-full.js'
 import adbAdvancedRouter from './routes/v1/adb/advanced.js';
 import diagnosticsRouter from './routes/v1/diagnostics/index.js';
 import trapdoorRouter from './routes/v1/trapdoor/index.js';
+import { getAllMetrics, estimateUsbUtilization } from './utils/system-metrics.js';
 
 // Initialize logging first
 const LOG_DIR = process.env.BW_LOG_DIR || (process.platform === 'win32' 
@@ -120,6 +121,34 @@ if (process.env.NODE_ENV !== 'production' || process.env.ENABLE_ROUTE_REGISTRY =
 
 // Mount v1 route modules
 v1Router.get('/system-tools', systemToolsHandler);
+
+// Locks status endpoint
+v1Router.get('/locks', (req, res) => {
+  try {
+    const locks = getAllActiveLocks();
+    res.sendEnvelope({
+      count: locks.length,
+      locks: locks,
+      timeout: LOCK_TIMEOUT
+    });
+  } catch (error) {
+    res.sendEnvelope({ count: 0, locks: [], error: error.message });
+  }
+});
+
+// Active operations count endpoint
+v1Router.get('/operations/active', (req, res) => {
+  try {
+    // Count active locks as a proxy for active operations
+    const lockCount = getActiveLockCount();
+    res.sendEnvelope({
+      count: lockCount,
+      active: lockCount > 0
+    });
+  } catch (error) {
+    res.sendEnvelope({ count: 0, active: false, error: error.message });
+  }
+});
 v1Router.use('/adb', adbRouter);
 v1Router.use('/adb/advanced', adbAdvancedRouter);
 v1Router.use('/frp', frpRouter);
@@ -2831,27 +2860,26 @@ app.get('/api/monitor/live', (req, res) => {
     speed = speed / (1024 * 1024);
   }
 
-  // Calculate estimated USB utilization based on speed (assuming max ~100 MB/s for USB 3.0)
-  const estimatedUsbUtilization = speed > 0 ? Math.min(100, (speed / 100) * 100) : 0;
-
-  // For now, return metrics based on active flash job status
-  // TODO: Integrate with actual system metrics collection (CPU, memory, disk, USB)
-  // This would require:
-  // - CPU usage monitoring (using system commands or Node.js os module)
-  // - Memory usage monitoring  
-  // - Disk I/O monitoring
-  // - USB bandwidth monitoring (requires USB library integration)
+  // Get real system metrics
+  const systemMetrics = getAllMetrics();
+  const usbUtilization = estimateUsbUtilization(speed * 1024 * 1024); // Convert MB/s to bytes/s
   
   res.json({
     active: true,
     monitoring: true,
     speed: speed,
-    cpu: 0, // TODO: Collect actual CPU usage
-    memory: 0, // TODO: Collect actual memory usage
-    disk: 0, // TODO: Collect actual disk I/O
-    usb: estimatedUsbUtilization,
+    cpu: systemMetrics.cpu,
+    memory: systemMetrics.memory,
+    disk: systemMetrics.disk,
+    usb: usbUtilization,
     flashJobId: jobStatus.jobId,
     progress: jobStatus.progress || 0,
+    systemInfo: {
+      platform: systemMetrics.platform,
+      uptime: systemMetrics.uptime,
+      loadAverage: systemMetrics.loadAverage,
+      cpuCount: systemMetrics.cpuCount
+    },
     timestamp: new Date().toISOString()
   });
 });

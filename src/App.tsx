@@ -5,8 +5,15 @@ import { LoadingPage } from "./components/core/LoadingPage";
 import { SplashPage } from "./components/core/SplashPage";
 import { Toaster } from "@/components/ui/sonner";
 import { AppProvider, useApp } from "./lib/app-context";
+import { GlobalDeviceProvider } from "./lib/global-device-state";
 import { checkBackendHealth } from "./lib/backend-health";
 import { soundManager } from "./lib/soundManager";
+import { setupGlobalErrorHandler } from "./lib/error-handler";
+import { initOfflineStorage, networkStatus } from "./lib/offline-storage";
+import { initializeWebSockets, cleanupWebSockets } from "./lib/websocket-hub";
+import { createLogger } from "./lib/debug-logger";
+
+const logger = createLogger('App');
 
 function AppContent() {
     const { isDemoMode, setDemoMode, setBackendAvailable } = useApp();
@@ -19,7 +26,15 @@ function AppContent() {
             try {
                 setIsLoading(true);
                 setInitError(null);
-                console.log('[App] Initializing...');
+                logger.info('Initializing Bobby\'s Workshop...');
+                
+                // Setup global error handler
+                setupGlobalErrorHandler();
+                logger.debug('Error handler initialized');
+                
+                // Initialize offline storage
+                await initOfflineStorage();
+                logger.debug('Offline storage ready');
                 
                 // Simulate system boot
                 await new Promise(resolve => setTimeout(resolve, 800));
@@ -28,27 +43,45 @@ function AppContent() {
                 setBackendAvailable(backendHealthy.isHealthy);
 
                 if (!backendHealthy.isHealthy) {
-                    // Quiet mode - don't spam console
-                    console.log('[App] Backend offline - running in demo mode');
+                    logger.info('Backend offline - running in demo mode');
                     setDemoMode(true);
                 } else {
-                    console.log('[App] Backend connected - production mode');
+                    logger.info('Backend connected - production mode');
                     setDemoMode(false);
+                    // Initialize WebSocket connections
+                    initializeWebSockets();
+                    logger.debug('WebSocket connections initialized');
                 }
                 
+                // Listen for network status changes
+                networkStatus.subscribe((online) => {
+                    if (online && !backendHealthy.isHealthy) {
+                        // Re-check backend when coming online
+                        checkBackendHealth().then(result => {
+                            if (result.isHealthy) {
+                                setBackendAvailable(true);
+                                setDemoMode(false);
+                                initializeWebSockets();
+                            }
+                        });
+                    }
+                });
+                
                 setIsLoading(false);
-                console.log('[App] Initialization complete');
+                logger.info('Initialization complete - Workshop ready!');
             } catch (error) {
-                console.error('[App] Initialization error:', error);
+                logger.error('Initialization error:', error);
                 setInitError(error instanceof Error ? error : new Error(String(error)));
                 setIsLoading(false);
-                setDemoMode(true); // Fallback to demo mode on error
+                setDemoMode(true);
             }
         }
 
         initializeApp();
 
-        // No cleanup needed - mock services removed
+        return () => {
+            cleanupWebSockets();
+        };
     }, [setDemoMode, setBackendAvailable]);
 
     useEffect(() => {
@@ -123,7 +156,9 @@ function AppContent() {
 function App() {
     return (
         <AppProvider>
-            <AppContent />
+            <GlobalDeviceProvider>
+                <AppContent />
+            </GlobalDeviceProvider>
         </AppProvider>
     );
 }

@@ -4,15 +4,64 @@
  * Trapdoor entry gate + room navigation + room workbenches
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TrapdoorEntryGate } from '../trapdoor/TrapdoorEntryGate';
 import { TrapdoorRoomNavigation, type SecretRoomId } from '../trapdoor/TrapdoorRoomNavigation';
 import { TrapdoorUnlockChamber } from '../trapdoor/TrapdoorUnlockChamber';
 import { TrapdoorShadowArchive } from '../trapdoor/TrapdoorShadowArchive';
+import { useApp } from '@/lib/app-context';
+
+interface TrapdoorDevice {
+  serial: string;
+  model?: string;
+  platform: 'android' | 'ios' | 'unknown';
+  state: string;
+}
 
 export function WorkbenchSecretRooms() {
+  const { backendAvailable } = useApp();
   const [passcode, setPasscode] = useState<string | null>(null);
   const [activeRoom, setActiveRoom] = useState<SecretRoomId | null>(null);
+  const [devices, setDevices] = useState<TrapdoorDevice[]>([]);
+
+  // Fetch devices when unlocked
+  useEffect(() => {
+    if (!passcode || !backendAvailable) {
+      setDevices([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function fetchDevices() {
+      try {
+        const response = await fetch('/api/v1/adb/devices');
+        const data = await response.json();
+        
+        if (cancelled) return;
+
+        if (data.ok && data.data?.devices) {
+          setDevices(data.data.devices.map((d: { serial: string; model?: string; state: string }) => ({
+            serial: d.serial,
+            model: d.model || 'Unknown',
+            platform: 'android' as const,
+            state: d.state,
+          })));
+        }
+      } catch {
+        if (cancelled) return;
+        setDevices([]);
+      }
+    }
+
+    fetchDevices();
+    const interval = setInterval(fetchDevices, 5000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [passcode, backendAvailable]);
 
   const handleUnlock = (enteredPasscode: string) => {
     setPasscode(enteredPasscode);
@@ -42,7 +91,7 @@ export function WorkbenchSecretRooms() {
         {activeRoom === 'unlock-chamber' && (
           <TrapdoorUnlockChamber
             passcode={passcode}
-            devices={[]} // TODO: Wire up real devices
+            devices={devices}
           />
         )}
         {activeRoom === 'shadow-archive' && (

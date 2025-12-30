@@ -106,28 +106,98 @@ export function WorkbenchSystemStatus({
     };
   }, [backendAvailable, showCatalog]);
 
-  // Check device locks (if API endpoint exists)
+  // Check device locks from API
   useEffect(() => {
     if (!backendAvailable || !showLocks) {
       setActiveLocks(null);
       return;
     }
 
-    // TODO: Wire up to real locks API endpoint when available
-    // For now, show null (unknown state) instead of fake data
-    setActiveLocks(null);
+    let cancelled = false;
+
+    async function checkLocks() {
+      try {
+        const response = await fetch('/api/v1/locks', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        });
+
+        if (cancelled) return;
+
+        if (!response.ok) {
+          setActiveLocks(null);
+          return;
+        }
+
+        const envelope = await response.json();
+        
+        if (cancelled) return;
+
+        if (envelope.ok && typeof envelope.data?.count === 'number') {
+          setActiveLocks(envelope.data.count);
+        } else {
+          setActiveLocks(null);
+        }
+      } catch {
+        if (cancelled) return;
+        setActiveLocks(null);
+      }
+    }
+
+    checkLocks();
+    const interval = setInterval(checkLocks, 15000); // Check every 15s
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, [backendAvailable, showLocks]);
 
-  // Check active operations (if API endpoint exists)
+  // Check active operations from API
   useEffect(() => {
     if (!backendAvailable || !showActiveOps) {
       setActiveOps(null);
       return;
     }
 
-    // TODO: Wire up to real operations API endpoint when available
-    // For now, show null (unknown state) instead of fake data
-    setActiveOps(null);
+    let cancelled = false;
+
+    async function checkOps() {
+      try {
+        const response = await fetch('/api/v1/operations/active', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        });
+
+        if (cancelled) return;
+
+        if (!response.ok) {
+          setActiveOps(null);
+          return;
+        }
+
+        const envelope = await response.json();
+        
+        if (cancelled) return;
+
+        if (envelope.ok && typeof envelope.data?.count === 'number') {
+          setActiveOps(envelope.data.count);
+        } else {
+          setActiveOps(null);
+        }
+      } catch {
+        if (cancelled) return;
+        setActiveOps(null);
+      }
+    }
+
+    checkOps();
+    const interval = setInterval(checkOps, 10000); // Check every 10s
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, [backendAvailable, showActiveOps]);
 
   const statusItems: StatusItem[] = [
