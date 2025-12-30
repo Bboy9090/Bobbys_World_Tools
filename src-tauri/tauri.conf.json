@@ -33,7 +33,9 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": [],
+    "resources": [
+      "bundle/resources/**/*"
+    ],
     "copyright": "",
     "category": "DeveloperTool",
     "shortDescription": "Bobby's Workshop - Device Flashing & Diagnostics",
