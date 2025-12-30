@@ -232,6 +232,27 @@ class SyncQueue {
     return this.db.getAll();
   }
   
+  /**
+   * Sync a single queued item to the server
+   */
+  private async syncItem(item: SyncQueueItem): Promise<void> {
+    const endpoint = `/api/v1/sync/${item.store}`;
+    
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: item.action,
+        data: item.data,
+        queuedAt: item.createdAt,
+      }),
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Sync failed: ${response.status}`);
+    }
+  }
+  
   async sync(): Promise<void> {
     if (this.isSyncing || !navigator.onLine) return;
     
@@ -243,8 +264,7 @@ class SyncQueue {
       
       for (const item of items) {
         try {
-          // TODO: Implement actual API sync
-          // await this.syncItem(item);
+          await this.syncItem(item);
           await this.db.delete(item.id);
           logger.debug(`Synced item ${item.id}`);
         } catch (e) {
