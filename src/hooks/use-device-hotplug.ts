@@ -3,6 +3,7 @@ import { getWSUrl } from '@/lib/apiConfig';
 import { connectDeviceEvents, type RealtimeConnection } from '@/lib/realtime';
 import { toast } from 'sonner';
 import { useAudioNotifications } from './use-audio-notifications';
+import { useApp } from '@/lib/app-context';
 import type { CorrelationBadge } from '@/types/correlation';
 
 export type DeviceEventType = 'connected' | 'disconnected';
@@ -45,6 +46,10 @@ export function useDeviceHotplug(options: UseDeviceHotplugOptions = {}) {
     onDisconnect,
     onError,
   } = options;
+  
+  const { backendAvailable, isDemoMode } = useApp();
+  // Disable toasts when backend is unavailable or in demo mode
+  const shouldShowToasts = showToasts && backendAvailable && !isDemoMode;
 
   const [isConnected, setIsConnected] = useState(false);
   const [events, setEvents] = useState<DeviceHotplugEvent[]>([]);
@@ -112,7 +117,7 @@ export function useDeviceHotplug(options: UseDeviceHotplugOptions = {}) {
         reconnectAttemptsRef.current = 0;
         clearReconnectTimeout();
         
-        if (showToasts) {
+        if (shouldShowToasts) {
           toast.success('WebSocket Connected', {
             description: 'Live device monitoring active',
           });
@@ -156,7 +161,7 @@ export function useDeviceHotplug(options: UseDeviceHotplugOptions = {}) {
             connect();
           }, delay);
         } else {
-          if (showToasts) {
+          if (shouldShowToasts) {
             toast.error('WebSocket Disconnected', {
               description: 'Failed to reconnect after multiple attempts',
             });
@@ -169,7 +174,7 @@ export function useDeviceHotplug(options: UseDeviceHotplugOptions = {}) {
       console.error('Failed to create WebSocket:', err);
       onError?.(err as Error);
     }
-  }, [wsUrl, showToasts, handleEvent, onError, clearReconnectTimeout]);
+  }, [wsUrl, shouldShowToasts, handleEvent, onError, clearReconnectTimeout, backendAvailable, isDemoMode]);
 
   const disconnect = useCallback(() => {
     clearReconnectTimeout();

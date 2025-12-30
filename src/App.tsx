@@ -91,10 +91,13 @@ function AppContent() {
 
     const handleConnectBackend = async () => {
         const backendHealthy = await checkBackendHealth();
-        if (backendHealthy) {
+        if (backendHealthy.isHealthy) {
             setBackendAvailable(true);
             setDemoMode(false);
-            window.location.reload();
+            initializeWebSockets();
+            logger.info('Backend connected - production mode');
+        } else {
+            logger.warn('Backend still unavailable:', backendHealthy.error);
         }
     };
 
