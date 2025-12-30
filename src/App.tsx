@@ -49,9 +49,10 @@ function AppContent() {
                 } else {
                     logger.info('Backend connected - production mode');
                     setDemoMode(false);
-                    // Initialize WebSocket connections
-                    initializeWebSockets();
-                    logger.debug('WebSocket connections initialized');
+                    // Initialize WebSocket connections (only if backend is available)
+                    initializeWebSockets().catch(err => {
+                        logger.warn('Failed to initialize WebSockets:', err);
+                    });
                 }
                 
                 // Start continuous backend sync monitoring
@@ -61,7 +62,9 @@ function AppContent() {
                     onBackendAvailable: () => {
                         setBackendAvailable(true);
                         setDemoMode(false);
-                        initializeWebSockets();
+                        initializeWebSockets().catch(err => {
+                            logger.warn('Failed to initialize WebSockets:', err);
+                        });
                         logger.debug('Backend available - frontend and backend in sync');
                     },
                     onBackendUnavailable: () => {
@@ -72,7 +75,9 @@ function AppContent() {
                     onBackendRestored: () => {
                         setBackendAvailable(true);
                         setDemoMode(false);
-                        initializeWebSockets();
+                        initializeWebSockets().catch(err => {
+                            logger.warn('Failed to initialize WebSockets:', err);
+                        });
                         logger.info('Backend restored - frontend and backend back in sync');
                     },
                 });
@@ -85,7 +90,9 @@ function AppContent() {
                             if (result.isHealthy) {
                                 setBackendAvailable(true);
                                 setDemoMode(false);
-                                initializeWebSockets();
+                                initializeWebSockets().catch(err => {
+                                    logger.warn('Failed to initialize WebSockets:', err);
+                                });
                             }
                         });
                     }
