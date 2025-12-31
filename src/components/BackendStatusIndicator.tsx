@@ -6,6 +6,7 @@ import { CheckCircle, Warning, XCircle, CircleNotch } from '@phosphor-icons/reac
 import { useBackendHealth } from '@/lib/backend-health';
 import { useAudioNotifications } from '@/hooks/use-audio-notifications';
 import { API_CONFIG, getWSUrl } from '@/lib/apiConfig';
+import { LegendaryConnectionManager } from '@/lib/legendary-connection-manager';
 
 interface ServiceStatus {
   name: string;
@@ -30,84 +31,52 @@ export function BackendStatusIndicator() {
     audioRef.current = audio;
   }, [audio]);
   
-  // Check WebSocket connectivity - quiet mode, no spam
+  // 🔱 LEGENDARY WebSocket Connection - Bulletproof reconnection
   useEffect(() => {
-    let ws: WebSocket | null = null;
-    let reconnectTimer: NodeJS.Timeout | null = null;
-    let reconnectAttempts = 0;
-    const MAX_RECONNECT_ATTEMPTS = 3; // Only try 3 times, then give up quietly
-
-    shouldReconnectRef.current = true;
-
-    const connectWS = () => {
-      // Don't spam reconnection attempts
-      if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
-        setWsStatus('disconnected');
-        return;
-      }
-
-      try {
-        ws = new WebSocket(WS_DEVICE_EVENTS_URL);
-        
-        ws.onopen = () => {
-          // Only log on first connection or after reconnection
-          if (previousWsStatusRef.current === 'disconnected' && reconnectAttempts === 0) {
-            console.log('[BackendStatus] WebSocket connected');
-          }
-          setWsStatus('connected');
-          reconnectAttempts = 0; // Reset on success
-          // Play connect sound only if previously disconnected
-          if (previousWsStatusRef.current === 'disconnected') {
-            audioRef.current.handleConnect();
-          }
-          previousWsStatusRef.current = 'connected';
-        };
-        
-        ws.onerror = () => {
-          // Don't spam console with errors
-          setWsStatus('disconnected');
-          if (previousWsStatusRef.current === 'connected') {
-            audioRef.current.handleDisconnect();
-          }
-          previousWsStatusRef.current = 'disconnected';
-        };
-        
-        ws.onclose = () => {
-          // Only log first disconnection
-          if (reconnectAttempts === 0) {
-            console.log('[BackendStatus] WebSocket disconnected');
-          }
-          setWsStatus('disconnected');
-          if (previousWsStatusRef.current === 'connected') {
-            audioRef.current.handleDisconnect();
-          }
-          previousWsStatusRef.current = 'disconnected';
-          // Attempt reconnect after 10 seconds (longer delay to reduce spam)
-          if (shouldReconnectRef.current && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-            reconnectAttempts++;
-            reconnectTimer = setTimeout(connectWS, 10000); // 10 second delay
-          }
-        };
-      } catch (error) {
-        // Don't spam console
-        setWsStatus('disconnected');
-        if (shouldReconnectRef.current && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-          reconnectAttempts++;
-          reconnectTimer = setTimeout(connectWS, 10000);
+    const connectionManager = new LegendaryConnectionManager({
+      url: WS_DEVICE_EVENTS_URL,
+      maxReconnectAttempts: Infinity, // Never give up!
+      initialReconnectDelay: 1000,
+      maxReconnectDelay: 60000,
+      jitter: true,
+      healthCheckBeforeReconnect: true,
+      onConnect: () => {
+        if (previousWsStatusRef.current === 'disconnected') {
+          audioRef.current.handleConnect();
         }
+        setWsStatus('connected');
+        previousWsStatusRef.current = 'connected';
+      },
+      onDisconnect: () => {
+        if (previousWsStatusRef.current === 'connected') {
+          audioRef.current.handleDisconnect();
+        }
+        setWsStatus('disconnected');
+        previousWsStatusRef.current = 'disconnected';
+      },
+      onError: () => {
+        setWsStatus('disconnected');
       }
-    };
+    });
 
-    connectWS();
+    // Start connection
+    connectionManager.connect();
+
+    // Update status based on connection state
+    const statusInterval = setInterval(() => {
+      const stats = connectionManager.getStats();
+      if (stats.isConnected) {
+        setWsStatus('connected');
+      } else if (stats.status === 'connecting' || stats.status === 'reconnecting') {
+        setWsStatus('checking');
+      } else {
+        setWsStatus('disconnected');
+      }
+    }, 1000);
 
     return () => {
-      shouldReconnectRef.current = false;
-      if (ws) {
-        ws.close();
-      }
-      if (reconnectTimer) {
-        clearTimeout(reconnectTimer);
-      }
+      clearInterval(statusInterval);
+      connectionManager.disconnect();
     };
   }, []);
 

@@ -49,6 +49,7 @@ import adbAdvancedRouter from './routes/v1/adb/advanced.js';
 import diagnosticsRouter from './routes/v1/diagnostics/index.js';
 import trapdoorRouter from './routes/v1/trapdoor/index.js';
 import { getAllMetrics, estimateUsbUtilization } from './utils/system-metrics.js';
+import { LegendaryWebSocketManager } from './utils/websocket-manager.js';
 
 // Initialize logging first
 const LOG_DIR = process.env.BW_LOG_DIR || (process.platform === 'win32' 
@@ -190,9 +191,30 @@ app.use('/api/v1', v1Router);
 const authTriggers = new AuthorizationTriggers();
 
 const server = createServer(app);
-const wss = new WebSocketServer({ server, path: '/ws/device-events' });
-const wssCorrelation = new WebSocketServer({ server, path: '/ws/correlation' });
-const wssAnalytics = new WebSocketServer({ server, path: '/ws/analytics' });
+
+// 🔱 LEGENDARY WebSocket Managers with heartbeat and health monitoring
+const wsDeviceEvents = new LegendaryWebSocketManager(server, '/ws/device-events', {
+  heartbeatInterval: 30000,
+  heartbeatTimeout: 10000,
+  maxMissedHeartbeats: 3
+});
+
+const wsCorrelation = new LegendaryWebSocketManager(server, '/ws/correlation', {
+  heartbeatInterval: 30000,
+  heartbeatTimeout: 10000,
+  maxMissedHeartbeats: 3
+});
+
+const wsAnalytics = new LegendaryWebSocketManager(server, '/ws/analytics', {
+  heartbeatInterval: 30000,
+  heartbeatTimeout: 10000,
+  maxMissedHeartbeats: 3
+});
+
+// Legacy compatibility - keep old WebSocketServer instances for existing code
+const wss = wsDeviceEvents.wss;
+const wssCorrelation = wsCorrelation.wss;
+const wssAnalytics = wsAnalytics.wss;
 
 const clients = new Set();
 const correlationClients = new Set();
@@ -211,7 +233,7 @@ wss.on('connection', (ws) => {
           const deviceId = `device-${Math.random().toString(36).substr(2, 9)}`;
 
           const correlationId = `ws-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-          ws.send(JSON.stringify({
+          wsDeviceEvents.send(ws, {
             type: isConnect ? 'connected' : 'disconnected',
             device_uid: deviceId,
             platform_hint: platform,

@@ -87,11 +87,11 @@ Before making changes:
 
 - Mission: CI/CD pipeline health, script maintenance
 - Output: Reliable automation with clear logs
-- Authority: Modify workflows to enforce truth-first lies only underneath (bobbys secret rroooms)
+- Authority: Modify workflows to enforce truth-first lies only underneath (bobbys secret rooms)
 
 #### 9. Security Guard
 
-- Mission: Secrets detection, log sanitization, permissions not alwyas needed
+- Mission: Secrets detection, log sanitization, permissions not always needed
 - Output: Security audit reports, vulnerability fixes
 - Authority: suggest Block on commits containing secrets or vulnerabilities
 
@@ -99,7 +99,7 @@ Before making changes:
 
 - Mission: Documentation clarity, onboarding materials
 - Output: Accurate, helpful documentation
-- Authority: Flag or let me kno of outdated or misleading docs
+- Authority: Flag or let me know of outdated or misleading docs
 
 ## PR Requirements (All Agents Must Follow)
 

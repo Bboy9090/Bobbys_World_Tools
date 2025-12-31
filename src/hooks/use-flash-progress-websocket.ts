@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
+import { useApp } from '@/lib/app-context';
 
 export interface FlashProgressMessage {
   type: 'flash_started' | 'flash_progress' | 'flash_completed' | 'flash_failed' | 'flash_paused' | 'flash_resumed' | 'ping' | 'pong';
@@ -46,6 +47,10 @@ export function useFlashProgressWebSocket(config: FlashProgressWebSocketConfig) 
     enableNotifications = true,
     autoConnect = true,
   } = config;
+  
+  const { backendAvailable, isDemoMode } = useApp();
+  // Disable notifications when backend is unavailable or in demo mode
+  const shouldNotify = enableNotifications && backendAvailable && !isDemoMode;
 
   const [isConnected, setIsConnected] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected');
@@ -94,7 +99,7 @@ export function useFlashProgressWebSocket(config: FlashProgressWebSocketConfig) 
             return next;
           });
 
-          if (enableNotifications) {
+          if (shouldNotify) {
             toast.info(`Flash started: ${message.deviceId}`, {
               description: 'Device flashing operation initiated',
             });
@@ -138,7 +143,7 @@ export function useFlashProgressWebSocket(config: FlashProgressWebSocketConfig) 
             return next;
           });
 
-          if (enableNotifications) {
+          if (shouldNotify) {
             toast.success(`Flash completed: ${message.deviceId}`, {
               description: 'Device flashing operation finished successfully',
             });
@@ -161,7 +166,7 @@ export function useFlashProgressWebSocket(config: FlashProgressWebSocketConfig) 
             return next;
           });
 
-          if (enableNotifications) {
+          if (shouldNotify) {
             toast.error(`Flash failed: ${message.deviceId}`, {
               description: message.error || 'Device flashing operation failed',
             });
@@ -183,7 +188,7 @@ export function useFlashProgressWebSocket(config: FlashProgressWebSocketConfig) 
             return next;
           });
 
-          if (enableNotifications) {
+          if (shouldNotify) {
             toast.warning(`Flash paused: ${message.deviceId}`);
           }
         }
@@ -203,7 +208,7 @@ export function useFlashProgressWebSocket(config: FlashProgressWebSocketConfig) 
             return next;
           });
 
-          if (enableNotifications) {
+          if (shouldNotify) {
             toast.info(`Flash resumed: ${message.deviceId}`);
           }
         }
@@ -215,7 +220,7 @@ export function useFlashProgressWebSocket(config: FlashProgressWebSocketConfig) 
       default:
         console.warn('Unknown WebSocket message type:', message.type);
     }
-  }, [enableNotifications]);
+  }, [shouldNotify]);
 
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN || wsRef.current?.readyState === WebSocket.CONNECTING) {
@@ -234,7 +239,7 @@ export function useFlashProgressWebSocket(config: FlashProgressWebSocketConfig) 
         setConnectionStatus('connected');
         setReconnectAttempts(0);
         
-        if (enableNotifications) {
+        if (shouldNotify) {
           toast.success('Connected to flash progress server');
         }
 
@@ -271,7 +276,7 @@ export function useFlashProgressWebSocket(config: FlashProgressWebSocketConfig) 
             connect();
           }, reconnectDelay);
         } else {
-          if (enableNotifications) {
+          if (shouldNotify) {
             toast.error('Connection lost', {
               description: 'Max reconnection attempts reached',
             });
@@ -282,7 +287,7 @@ export function useFlashProgressWebSocket(config: FlashProgressWebSocketConfig) 
       console.error('Failed to create WebSocket:', error);
       setConnectionStatus('error');
     }
-  }, [url, reconnectAttempts, maxReconnectAttempts, reconnectDelay, enableNotifications, handleMessage, clearReconnectTimeout, clearPingInterval]);
+  }, [url, reconnectAttempts, maxReconnectAttempts, reconnectDelay, shouldNotify, handleMessage, clearReconnectTimeout, clearPingInterval, backendAvailable, isDemoMode]);
 
   const disconnect = useCallback(() => {
     clearReconnectTimeout();

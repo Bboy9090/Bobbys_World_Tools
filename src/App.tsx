@@ -11,6 +11,7 @@ import { setupGlobalErrorHandler } from "./lib/error-handler";
 import { initOfflineStorage, networkStatus } from "./lib/offline-storage";
 import { initializeWebSockets, cleanupWebSockets } from "./lib/websocket-hub";
 import { createLogger } from "./lib/debug-logger";
+import { startBackendSync, stopBackendSync } from "./lib/backend-sync";
 
 const logger = createLogger('App');
 
@@ -41,26 +42,40 @@ function AppContent() {
                 const backendHealthy = await checkBackendHealth();
                 setBackendAvailable(backendHealthy.isHealthy);
 
-<<<<<<< HEAD
                 if (backendHealthy.isHealthy) {
                     logger.info('Backend connected - production mode');
-                    // Initialize WebSocket connections
-                    initializeWebSockets();
+                    // Initialize WebSocket connections (only if backend is available)
+                    initializeWebSockets().catch(err => {
+                        logger.warn('Failed to initialize WebSockets:', err);
+                    });
                     logger.debug('WebSocket connections initialized');
                 } else {
                     logger.warn('Backend offline - some features may be unavailable');
-=======
-                if (!backendHealthy.isHealthy) {
-                    logger.info('Backend offline - running in demo mode');
-                    setDemoMode(true);
-                } else {
-                    logger.info('Backend connected - production mode');
-                    setDemoMode(false);
-                    // Initialize WebSocket connections
-                    initializeWebSockets();
-                    logger.debug('WebSocket connections initialized');
->>>>>>> 15f56e9d046f8b90a8c21821f5db9289d589f6a7
                 }
+                
+                // Start continuous backend sync monitoring
+                // This keeps frontend and backend in sync at all times
+                startBackendSync({
+                    checkInterval: 10000, // Check every 10 seconds
+                    onBackendAvailable: () => {
+                        setBackendAvailable(true);
+                        initializeWebSockets().catch(err => {
+                            logger.warn('Failed to initialize WebSockets:', err);
+                        });
+                        logger.debug('Backend available - frontend and backend in sync');
+                    },
+                    onBackendUnavailable: () => {
+                        setBackendAvailable(false);
+                        logger.warn('Backend unavailable - frontend and backend out of sync');
+                    },
+                    onBackendRestored: () => {
+                        setBackendAvailable(true);
+                        initializeWebSockets().catch(err => {
+                            logger.warn('Failed to initialize WebSockets:', err);
+                        });
+                        logger.info('Backend restored - frontend and backend back in sync');
+                    },
+                });
                 
                 // Listen for network status changes
                 networkStatus.subscribe((online) => {
@@ -69,11 +84,9 @@ function AppContent() {
                         checkBackendHealth().then(result => {
                             if (result.isHealthy) {
                                 setBackendAvailable(true);
-<<<<<<< HEAD
-=======
-                                setDemoMode(false);
->>>>>>> 15f56e9d046f8b90a8c21821f5db9289d589f6a7
-                                initializeWebSockets();
+                                initializeWebSockets().catch(err => {
+                                    logger.warn('Failed to initialize WebSockets:', err);
+                                });
                             }
                         });
                     }
@@ -85,10 +98,6 @@ function AppContent() {
                 logger.error('Initialization error:', error);
                 setInitError(error instanceof Error ? error : new Error(String(error)));
                 setIsLoading(false);
-<<<<<<< HEAD
-=======
-                setDemoMode(true);
->>>>>>> 15f56e9d046f8b90a8c21821f5db9289d589f6a7
             }
         }
 
@@ -96,18 +105,14 @@ function AppContent() {
 
         return () => {
             cleanupWebSockets();
+            stopBackendSync(); // Stop sync monitoring on unmount
         };
-<<<<<<< HEAD
     }, [setBackendAvailable]);
-=======
-    }, [setDemoMode, setBackendAvailable]);
->>>>>>> 15f56e9d046f8b90a8c21821f5db9289d589f6a7
 
     useEffect(() => {
         soundManager.init();
         return () => soundManager.destroy();
     }, []);
-
 
     // Show error if initialization failed
     if (initError) {
