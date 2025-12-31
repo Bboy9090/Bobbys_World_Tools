@@ -41,6 +41,7 @@ function AppContent() {
                 const backendHealthy = await checkBackendHealth();
                 setBackendAvailable(backendHealthy.isHealthy);
 
+<<<<<<< HEAD
                 if (backendHealthy.isHealthy) {
                     logger.info('Backend connected - production mode');
                     // Initialize WebSocket connections
@@ -48,6 +49,17 @@ function AppContent() {
                     logger.debug('WebSocket connections initialized');
                 } else {
                     logger.warn('Backend offline - some features may be unavailable');
+=======
+                if (!backendHealthy.isHealthy) {
+                    logger.info('Backend offline - running in demo mode');
+                    setDemoMode(true);
+                } else {
+                    logger.info('Backend connected - production mode');
+                    setDemoMode(false);
+                    // Initialize WebSocket connections
+                    initializeWebSockets();
+                    logger.debug('WebSocket connections initialized');
+>>>>>>> 15f56e9d046f8b90a8c21821f5db9289d589f6a7
                 }
                 
                 // Listen for network status changes
@@ -57,6 +69,10 @@ function AppContent() {
                         checkBackendHealth().then(result => {
                             if (result.isHealthy) {
                                 setBackendAvailable(true);
+<<<<<<< HEAD
+=======
+                                setDemoMode(false);
+>>>>>>> 15f56e9d046f8b90a8c21821f5db9289d589f6a7
                                 initializeWebSockets();
                             }
                         });
@@ -69,6 +85,10 @@ function AppContent() {
                 logger.error('Initialization error:', error);
                 setInitError(error instanceof Error ? error : new Error(String(error)));
                 setIsLoading(false);
+<<<<<<< HEAD
+=======
+                setDemoMode(true);
+>>>>>>> 15f56e9d046f8b90a8c21821f5db9289d589f6a7
             }
         }
 
@@ -77,7 +97,11 @@ function AppContent() {
         return () => {
             cleanupWebSockets();
         };
+<<<<<<< HEAD
     }, [setBackendAvailable]);
+=======
+    }, [setDemoMode, setBackendAvailable]);
+>>>>>>> 15f56e9d046f8b90a8c21821f5db9289d589f6a7
 
     useEffect(() => {
         soundManager.init();
