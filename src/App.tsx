@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { DashboardLayout } from "./components/DashboardLayout";
-import { DemoModeBanner } from "./components/DemoModeBanner";
 import { LoadingPage } from "./components/core/LoadingPage";
 import { SplashPage } from "./components/core/SplashPage";
 import { Toaster } from "@/components/ui/sonner";
