@@ -58,14 +58,12 @@ export function backendAutoStart(): Plugin {
           backendProcess = null;
           isBackendStarting = false;
           
-          // Auto-restart if it wasn't a clean shutdown
+          // DISABLED: Auto-restart to prevent infinite loops
+          // If backend crashes, let user manually restart or fix the issue
+          // Auto-restart was causing PowerShell windows to spawn repeatedly
           if (code !== 0 && code !== null) {
-            console.log('[Backend Auto-Start] Backend crashed, will attempt restart in 3 seconds...');
-            setTimeout(() => {
-              if (!backendProcess) {
-                startBackend();
-              }
-            }, 3000);
+            console.error('[Backend Auto-Start] Backend crashed. Auto-restart disabled to prevent loops.');
+            console.error('[Backend Auto-Start] Please check backend logs and fix the issue before restarting.');
           }
         });
 
