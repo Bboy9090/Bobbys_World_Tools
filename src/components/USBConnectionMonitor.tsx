@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -19,9 +19,41 @@ interface ConnectionEvent {
   };
 }
 
+// Helper function outside component for better performance
+const createEventId = (type: string, vendorId: number, productId: number): string => {
+  return `${Date.now()}-${type}-${vendorId}-${productId}`;
+};
+
 export function USBConnectionMonitor() {
   const [events, setEvents] = useState<ConnectionEvent[]>([]);
   const [isMonitoring, setIsMonitoring] = useState(false);
+
+  // Memoized function to create event objects
+  const createEvent = useCallback((device: any, type: 'connect' | 'disconnect'): ConnectionEvent => {
+    return {
+      id: createEventId(type, device.vendorId, device.productId),
+      type,
+      timestamp: Date.now(),
+      deviceInfo: {
+        vendorId: device.vendorId,
+        productId: device.productId,
+        productName: device.productName,
+        manufacturerName: device.manufacturerName,
+        serialNumber: device.serialNumber,
+      }
+    };
+  }, []);
+
+  // Memoized event handlers
+  const handleConnect = useCallback((event: any) => {
+    const newEvent = createEvent(event.device, 'connect');
+    setEvents(prev => [newEvent, ...prev].slice(0, 50));
+  }, [createEvent]);
+
+  const handleDisconnect = useCallback((event: any) => {
+    const newEvent = createEvent(event.device, 'disconnect');
+    setEvents(prev => [newEvent, ...prev].slice(0, 50));
+  }, [createEvent]);
 
   useEffect(() => {
     const nav = navigator as any;
@@ -31,42 +63,6 @@ export function USBConnectionMonitor() {
 
     setIsMonitoring(true);
 
-    const handleConnect = (event: any) => {
-      const device = event.device;
-      const newEvent: ConnectionEvent = {
-        id: `${Date.now()}-connect-${device.vendorId}-${device.productId}`,
-        type: 'connect',
-        timestamp: Date.now(),
-        deviceInfo: {
-          vendorId: device.vendorId,
-          productId: device.productId,
-          productName: device.productName,
-          manufacturerName: device.manufacturerName,
-          serialNumber: device.serialNumber,
-        }
-      };
-
-      setEvents(prev => [newEvent, ...prev].slice(0, 50));
-    };
-
-    const handleDisconnect = (event: any) => {
-      const device = event.device;
-      const newEvent: ConnectionEvent = {
-        id: `${Date.now()}-disconnect-${device.vendorId}-${device.productId}`,
-        type: 'disconnect',
-        timestamp: Date.now(),
-        deviceInfo: {
-          vendorId: device.vendorId,
-          productId: device.productId,
-          productName: device.productName,
-          manufacturerName: device.manufacturerName,
-          serialNumber: device.serialNumber,
-        }
-      };
-
-      setEvents(prev => [newEvent, ...prev].slice(0, 50));
-    };
-
     nav.usb.addEventListener('connect', handleConnect);
     nav.usb.addEventListener('disconnect', handleDisconnect);
 
@@ -75,11 +71,11 @@ export function USBConnectionMonitor() {
       nav.usb?.removeEventListener('connect', handleConnect);
       nav.usb?.removeEventListener('disconnect', handleDisconnect);
     };
-  }, []);
+  }, [handleConnect, handleDisconnect]);
 
-  const clearHistory = () => {
+  const clearHistory = useCallback(() => {
     setEvents([]);
-  };
+  }, []);
 
   const formatTimestamp = (timestamp: number) => {
     const date = new Date(timestamp);
