@@ -9,6 +9,10 @@
 
 import express from 'express';
 import unlockRouter from './unlock.js';
+import flashRouter from './flash.js';
+import iosRouter from './ios.js';
+import rootRouter from './root.js';
+import bypassRouter from './bypass.js';
 import workflowsRouter from './workflows.js';
 import logsRouter from './logs.js';
 
@@ -153,6 +157,10 @@ router.get('/status', (req, res) => {
 
 // Mount Secret Room routers
 router.use('/unlock', unlockRouter);
+router.use('/flash', flashRouter);
+router.use('/ios', iosRouter);
+router.use('/root', rootRouter);
+router.use('/bypass', bypassRouter);
 router.use('/workflows', workflowsRouter);
 router.use('/logs', logsRouter);
 
