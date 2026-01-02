@@ -9,7 +9,7 @@
 
 import express from 'express';
 import { safeSpawn, commandExistsSafe } from '../../../utils/safe-exec.js';
-import { ADBLibrary } from '../../../../core/lib/adb.js';
+import ADBLibrary from '../../../../core/lib/adb.js';
 
 const router = express.Router();
 
@@ -88,11 +88,11 @@ async function getADBBootloaderStatus(deviceSerial) {
 
     const props = properties.properties;
     const checks = {
-      ro.boot.verifiedbootstate: props['ro.boot.verifiedbootstate'], // 'green', 'yellow', 'orange', 'red'
-      ro.boot.flash.locked: props['ro.boot.flash.locked'], // '1' = locked, '0' = unlocked
-      ro.boot.vbmeta.device_state: props['ro.boot.vbmeta.device_state'], // 'locked' or 'unlocked'
-      ro.crypto.state: props['ro.crypto.state'], // Encryption state (may indicate unlock)
-      ro.debuggable: props['ro.debuggable'] // '1' = debuggable (often unlocked)
+      'ro.boot.verifiedbootstate': props['ro.boot.verifiedbootstate'], // 'green', 'yellow', 'orange', 'red'
+      'ro.boot.flash.locked': props['ro.boot.flash.locked'], // '1' = locked, '0' = unlocked
+      'ro.boot.vbmeta.device_state': props['ro.boot.vbmeta.device_state'], // 'locked' or 'unlocked'
+      'ro.crypto.state': props['ro.crypto.state'], // Encryption state (may indicate unlock)
+      'ro.debuggable': props['ro.debuggable'] // '1' = debuggable (often unlocked)
     };
 
     // Determine unlock status

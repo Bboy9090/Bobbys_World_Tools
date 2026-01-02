@@ -49,6 +49,7 @@ import adbAdvancedRouter from './routes/v1/adb/advanced.js';
 import diagnosticsRouter from './routes/v1/diagnostics/index.js';
 import trapdoorRouter from './routes/v1/trapdoor/index.js';
 import { getAllMetrics, estimateUsbUtilization } from './utils/system-metrics.js';
+import { LegendaryWebSocketManager } from './utils/websocket-manager.js';
 
 // Initialize logging first
 const LOG_DIR = process.env.BW_LOG_DIR || (process.platform === 'win32' 
@@ -190,9 +191,30 @@ app.use('/api/v1', v1Router);
 const authTriggers = new AuthorizationTriggers();
 
 const server = createServer(app);
-const wss = new WebSocketServer({ server, path: '/ws/device-events' });
-const wssCorrelation = new WebSocketServer({ server, path: '/ws/correlation' });
-const wssAnalytics = new WebSocketServer({ server, path: '/ws/analytics' });
+
+// 🔱 LEGENDARY WebSocket Managers with heartbeat and health monitoring
+const wsDeviceEvents = new LegendaryWebSocketManager(server, '/ws/device-events', {
+  heartbeatInterval: 30000,
+  heartbeatTimeout: 10000,
+  maxMissedHeartbeats: 3
+});
+
+const wsCorrelation = new LegendaryWebSocketManager(server, '/ws/correlation', {
+  heartbeatInterval: 30000,
+  heartbeatTimeout: 10000,
+  maxMissedHeartbeats: 3
+});
+
+const wsAnalytics = new LegendaryWebSocketManager(server, '/ws/analytics', {
+  heartbeatInterval: 30000,
+  heartbeatTimeout: 10000,
+  maxMissedHeartbeats: 3
+});
+
+// Legacy compatibility - keep old WebSocketServer instances for existing code
+const wss = wsDeviceEvents.wss;
+const wssCorrelation = wsCorrelation.wss;
+const wssAnalytics = wsAnalytics.wss;
 
 const clients = new Set();
 const correlationClients = new Set();
@@ -211,7 +233,7 @@ wss.on('connection', (ws) => {
           const deviceId = `device-${Math.random().toString(36).substr(2, 9)}`;
 
           const correlationId = `ws-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-          ws.send(JSON.stringify({
+          wsDeviceEvents.send(ws, {
             type: isConnect ? 'connected' : 'disconnected',
             device_uid: deviceId,
             platform_hint: platform,
@@ -547,7 +569,14 @@ function broadcastCorrelation(message) {
 
 function safeExec(cmd) {
   try {
-    return execSync(cmd, { encoding: "utf-8", timeout: 5000 }).trim();
+    // On Windows, hide the window to prevent PowerShell windows from popping up
+    const options = {
+      encoding: "utf-8",
+      timeout: 5000,
+      windowsHide: true, // Hide the window on Windows
+      stdio: ['ignore', 'pipe', 'pipe'] // Suppress all output to prevent window flashing
+    };
+    return execSync(cmd, options).trim();
   } catch {
     return null;
   }
@@ -631,9 +660,22 @@ function parseUsbVidPidFromPnpDeviceId(pnpDeviceId) {
   };
 }
 
+// Cache USB device scan results to prevent excessive PowerShell calls
+let usbDeviceCache = {
+  data: [],
+  timestamp: 0,
+  TTL: 2000 // Cache for 2 seconds to prevent rapid-fire PowerShell windows
+};
+
 function getConnectedUsbDevices() {
   if (!IS_WINDOWS) {
     return [];
+  }
+
+  // Use cache if recent enough
+  const now = Date.now();
+  if (usbDeviceCache.timestamp && (now - usbDeviceCache.timestamp) < usbDeviceCache.TTL) {
+    return usbDeviceCache.data;
   }
 
   const ps = [
@@ -642,13 +684,17 @@ function getConnectedUsbDevices() {
     "$devs | ConvertTo-Json -Compress"
   ].join('; ');
 
-  const raw = safeExec(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${ps}"`);
-  if (!raw) return [];
+  const raw = safeExec(`powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -NonInteractive -Command "${ps}"`);
+  if (!raw) {
+    // Cache empty result to prevent repeated failed calls
+    usbDeviceCache = { data: [], timestamp: now, TTL: usbDeviceCache.TTL };
+    return [];
+  }
 
   try {
     const parsed = JSON.parse(raw);
     const items = Array.isArray(parsed) ? parsed : [parsed];
-    return items
+    const result = items
       .filter(Boolean)
       .map(d => {
         const name = d.Name || null;
@@ -664,7 +710,13 @@ function getConnectedUsbDevices() {
         };
       })
       .filter(d => d.pnpDeviceId || d.name);
+    
+    // Update cache
+    usbDeviceCache = { data: result, timestamp: now, TTL: usbDeviceCache.TTL };
+    return result;
   } catch {
+    // Cache empty result on error
+    usbDeviceCache = { data: [], timestamp: now, TTL: usbDeviceCache.TTL };
     return [];
   }
 }
@@ -709,9 +761,9 @@ function commandExists(cmd) {
 
   try {
     if (IS_WINDOWS) {
-      execSync(`where ${cmd}`, { stdio: 'ignore', timeout: 2000 });
+      execSync(`where ${cmd}`, { stdio: 'ignore', timeout: 2000, windowsHide: true });
     } else {
-      execSync(`command -v ${cmd}`, { stdio: "ignore", timeout: 2000 });
+      execSync(`command -v ${cmd}`, { stdio: "ignore", timeout: 2000, windowsHide: true });
     }
     return true;
   } catch {
@@ -741,7 +793,9 @@ function runBootForgeUsbScanJson() {
   const output = execSync(`${cmd}${args ? ` ${args}` : ''}`, {
     encoding: 'utf-8',
     timeout: 10000,
-    maxBuffer: 10 * 1024 * 1024
+    maxBuffer: 10 * 1024 * 1024,
+    windowsHide: true,
+    stdio: ['ignore', 'pipe', 'pipe']
   });
 
   const devices = JSON.parse(output);
