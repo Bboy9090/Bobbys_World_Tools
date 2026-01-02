@@ -24,54 +24,53 @@ const createEventId = (type: string, vendorId: number, productId: number): strin
   return `${Date.now()}-${type}-${vendorId}-${productId}`;
 };
 
+const createEventFromDevice = (device: any, type: 'connect' | 'disconnect'): ConnectionEvent => {
+  return {
+    id: createEventId(type, device.vendorId, device.productId),
+    type,
+    timestamp: Date.now(),
+    deviceInfo: {
+      vendorId: device.vendorId,
+      productId: device.productId,
+      productName: device.productName,
+      manufacturerName: device.manufacturerName,
+      serialNumber: device.serialNumber,
+    }
+  };
+};
+
 export function USBConnectionMonitor() {
   const [events, setEvents] = useState<ConnectionEvent[]>([]);
-  const [isMonitoring, setIsMonitoring] = useState(false);
-
-  // Memoized function to create event objects
-  const createEvent = useCallback((device: any, type: 'connect' | 'disconnect'): ConnectionEvent => {
-    return {
-      id: createEventId(type, device.vendorId, device.productId),
-      type,
-      timestamp: Date.now(),
-      deviceInfo: {
-        vendorId: device.vendorId,
-        productId: device.productId,
-        productName: device.productName,
-        manufacturerName: device.manufacturerName,
-        serialNumber: device.serialNumber,
-      }
-    };
-  }, []);
-
-  // Memoized event handlers
-  const handleConnect = useCallback((event: any) => {
-    const newEvent = createEvent(event.device, 'connect');
-    setEvents(prev => [newEvent, ...prev].slice(0, 50));
-  }, [createEvent]);
-
-  const handleDisconnect = useCallback((event: any) => {
-    const newEvent = createEvent(event.device, 'disconnect');
-    setEvents(prev => [newEvent, ...prev].slice(0, 50));
-  }, [createEvent]);
+  
+  // Derive monitoring state from USB API availability
+  const nav = navigator as any;
+  const isMonitoring = Boolean(nav.usb);
 
   useEffect(() => {
-    const nav = navigator as any;
-    if (!nav.usb) {
+    const navInEffect = navigator as any;
+    if (!navInEffect.usb) {
       return;
     }
 
-    setIsMonitoring(true);
+    // Event handlers defined inside effect to avoid stale closures
+    const handleConnect = (event: any) => {
+      const newEvent = createEventFromDevice(event.device, 'connect');
+      setEvents(prev => [newEvent, ...prev].slice(0, 50));
+    };
 
-    nav.usb.addEventListener('connect', handleConnect);
-    nav.usb.addEventListener('disconnect', handleDisconnect);
+    const handleDisconnect = (event: any) => {
+      const newEvent = createEventFromDevice(event.device, 'disconnect');
+      setEvents(prev => [newEvent, ...prev].slice(0, 50));
+    };
+
+    navInEffect.usb.addEventListener('connect', handleConnect);
+    navInEffect.usb.addEventListener('disconnect', handleDisconnect);
 
     return () => {
-      setIsMonitoring(false);
-      nav.usb?.removeEventListener('connect', handleConnect);
-      nav.usb?.removeEventListener('disconnect', handleDisconnect);
+      navInEffect.usb?.removeEventListener('connect', handleConnect);
+      navInEffect.usb?.removeEventListener('disconnect', handleDisconnect);
     };
-  }, [handleConnect, handleDisconnect]);
+  }, []); // Empty deps is correct - USB API is a global singleton
 
   const clearHistory = useCallback(() => {
     setEvents([]);
