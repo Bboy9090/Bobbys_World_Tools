@@ -210,7 +210,12 @@ export function getToolInfo(toolName) {
       const fullCommand = path.includes('/') || path.includes('\\') 
         ? `"${path}" ${tool.versionCommand}` 
         : `${path} ${tool.versionCommand}`;
-      version = execSync(fullCommand, { encoding: 'utf-8', timeout: 5000 }).trim();
+      version = execSync(fullCommand, { 
+        encoding: 'utf-8', 
+        timeout: 5000,
+        windowsHide: true,
+        stdio: ['ignore', 'pipe', 'pipe']
+      }).trim();
     } catch {
       // Version check failed, ignore
     }
@@ -260,6 +265,8 @@ export function executeTool(toolName, args = [], options = {}) {
     encoding: 'utf-8',
     timeout: 300000, // 5 minutes default
     maxBuffer: 50 * 1024 * 1024, // 50MB
+    windowsHide: true,
+    stdio: ['ignore', 'pipe', 'pipe'],
     ...options
   };
   

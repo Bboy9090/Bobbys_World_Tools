@@ -43,11 +43,21 @@ function resolveToolPath(toolBaseName) {
 
   try {
     if (IS_WINDOWS) {
-      const out = execSync(`where ${toolBaseName}`, { stdio: 'pipe', timeout: 2000, encoding: 'utf8' });
+      const out = execSync(`where ${toolBaseName}`, { 
+        stdio: 'pipe', 
+        timeout: 2000, 
+        encoding: 'utf8',
+        windowsHide: true
+      });
       const first = out.split(/\r?\n/).map(l => l.trim()).filter(Boolean)[0];
       return first || null;
     }
-    const out = execSync(`command -v ${toolBaseName}`, { stdio: 'pipe', timeout: 2000, encoding: 'utf8' });
+    const out = execSync(`command -v ${toolBaseName}`, { 
+      stdio: 'pipe', 
+      timeout: 2000, 
+      encoding: 'utf8',
+      windowsHide: true
+    });
     const resolved = out.trim();
     return resolved || null;
   } catch {
@@ -75,7 +85,9 @@ async function executeCommand(command, timeoutMs = COMMAND_TIMEOUT) {
   try {
     const { stdout, stderr } = await execAsync(command, {
       timeout: timeoutMs,
-      encoding: 'utf8'
+      encoding: 'utf8',
+      windowsHide: true,
+      stdio: ['ignore', 'pipe', 'pipe']
     });
     return {
       success: true,

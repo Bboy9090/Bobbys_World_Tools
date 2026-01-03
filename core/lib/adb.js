@@ -10,6 +10,8 @@ async function safeExec(cmd, options = {}) {
   try {
     const { stdout, stderr } = await execAsync(cmd, {
       timeout: options.timeout ?? 10000,
+      windowsHide: true,
+      stdio: ['ignore', 'pipe', 'pipe'],
       ...options,
     });
     return {
@@ -33,7 +35,10 @@ const ADBLibrary = {
    */
   async isAvailable() {
     try {
-      const { stdout, stderr } = await execAsync('adb version');
+      const { stdout, stderr } = await execAsync('adb version', {
+        windowsHide: true,
+        stdio: ['ignore', 'pipe', 'pipe']
+      });
       const version = (stdout || stderr || '').toString().trim();
       return { success: true, version };
     } catch (error) {

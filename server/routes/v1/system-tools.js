@@ -8,7 +8,12 @@ import { execSync } from 'child_process';
 
 function safeExec(cmd) {
   try {
-    return execSync(cmd, { encoding: "utf-8", timeout: 5000 }).trim();
+    return execSync(cmd, { 
+      encoding: "utf-8", 
+      timeout: 5000,
+      windowsHide: true,
+      stdio: ['ignore', 'pipe', 'pipe']
+    }).trim();
   } catch {
     return null;
   }
@@ -17,9 +22,17 @@ function safeExec(cmd) {
 function commandExists(cmd) {
   try {
     if (process.platform === 'win32') {
-      execSync(`where ${cmd}`, { stdio: 'ignore', timeout: 2000 });
+      execSync(`where ${cmd}`, { 
+        stdio: 'ignore', 
+        timeout: 2000,
+        windowsHide: true
+      });
     } else {
-      execSync(`which ${cmd}`, { stdio: 'ignore', timeout: 2000 });
+      execSync(`which ${cmd}`, { 
+        stdio: 'ignore', 
+        timeout: 2000,
+        windowsHide: true
+      });
     }
     return true;
   } catch {
@@ -35,7 +48,12 @@ function getAndroidToolDiagnostics(toolName) {
 
   let version = null;
   try {
-    const output = execSync(`${toolName} --version`, { encoding: "utf-8", timeout: 5000 });
+    const output = execSync(`${toolName} --version`, { 
+      encoding: "utf-8", 
+      timeout: 5000,
+      windowsHide: true,
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
     version = output.trim().split('\n')[0];
   } catch {
     // Version check failed
@@ -44,10 +62,20 @@ function getAndroidToolDiagnostics(toolName) {
   let path = null;
   try {
     if (process.platform === 'win32') {
-      const output = execSync(`where ${toolName}`, { encoding: "utf-8", timeout: 2000 });
+      const output = execSync(`where ${toolName}`, { 
+        encoding: "utf-8", 
+        timeout: 2000,
+        windowsHide: true,
+        stdio: ['ignore', 'pipe', 'pipe']
+      });
       path = output.trim().split('\n')[0];
     } else {
-      const output = execSync(`which ${toolName}`, { encoding: "utf-8", timeout: 2000 });
+      const output = execSync(`which ${toolName}`, { 
+        encoding: "utf-8", 
+        timeout: 2000,
+        windowsHide: true,
+        stdio: ['ignore', 'pipe', 'pipe']
+      });
       path = output.trim();
     }
   } catch {

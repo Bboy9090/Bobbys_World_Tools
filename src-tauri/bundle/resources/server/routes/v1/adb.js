@@ -9,7 +9,13 @@ const router = express.Router();
 
 function safeExec(cmd, options = {}) {
   try {
-    return execSync(cmd, { encoding: "utf-8", timeout: 5000, ...options }).trim();
+    return execSync(cmd, { 
+      encoding: "utf-8", 
+      timeout: 5000,
+      windowsHide: true,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      ...options 
+    }).trim();
   } catch (error) {
     return null;
   }
@@ -18,9 +24,17 @@ function safeExec(cmd, options = {}) {
 function commandExists(cmd) {
   try {
     if (process.platform === 'win32') {
-      execSync(`where ${cmd}`, { stdio: 'ignore', timeout: 2000 });
+      execSync(`where ${cmd}`, { 
+        stdio: 'ignore', 
+        timeout: 2000,
+        windowsHide: true
+      });
     } else {
-      execSync(`which ${cmd}`, { stdio: 'ignore', timeout: 2000 });
+      execSync(`which ${cmd}`, { 
+        stdio: 'ignore', 
+        timeout: 2000,
+        windowsHide: true
+      });
     }
     return true;
   } catch {

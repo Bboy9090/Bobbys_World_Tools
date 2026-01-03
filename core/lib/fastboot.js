@@ -10,6 +10,8 @@ function safeExec(cmd, options = {}) {
       stdout: execSync(cmd, { 
         encoding: 'utf-8', 
         timeout: options.timeout || 30000,
+        windowsHide: true,
+        stdio: ['ignore', 'pipe', 'pipe'],
         ...options
       }).trim()
     };
@@ -24,7 +26,11 @@ function safeExec(cmd, options = {}) {
 
 function commandExists(cmd) {
   try {
-    execSync(`command -v ${cmd}`, { stdio: 'ignore', timeout: 2000 });
+    execSync(`command -v ${cmd}`, { 
+      stdio: 'ignore', 
+      timeout: 2000,
+      windowsHide: true
+    });
     return true;
   } catch {
     return false;
