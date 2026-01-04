@@ -66,7 +66,7 @@ const XIAOMI_MODELS = [
 ];
 
 export function XiaomiEDLFlashPanel() {
-  // Demo mode removed - production only
+  const { isDemoMode } = useApp();
   const [devices, setDevices] = useState<EDLDevice[]>([]);
   const [selectedDevice, setSelectedDevice] = useState<string>('');
   const [operations, setOperations] = useState<EDLOperation[]>([]);

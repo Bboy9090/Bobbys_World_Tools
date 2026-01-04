@@ -278,13 +278,25 @@ export function useFlashProgressWebSocket(config: FlashProgressWebSocketConfig) 
         setConnectionStatus('disconnected');
         clearPingInterval();
 
+        // Only attempt reconnection if backend is still ready
+        if (!isBackendReady) {
+          clearReconnectTimeout();
+          return;
+        }
+
         if (reconnectAttempts < maxReconnectAttempts) {
           reconnectTimeoutRef.current = setTimeout(() => {
-            setReconnectAttempts(prev => prev + 1);
-            connect();
+            // Check again before reconnecting (backend might have gone offline)
+            if (isBackendReady) {
+              setReconnectAttempts(prev => prev + 1);
+              connect();
+            } else {
+              clearReconnectTimeout();
+            }
           }, reconnectDelay);
         } else {
-          if (shouldNotify) {
+          // Only show error toast once when max attempts reached
+          if (shouldNotify && reconnectAttempts === maxReconnectAttempts) {
             toast.error('Connection lost', {
               description: 'Max reconnection attempts reached',
             });

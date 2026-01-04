@@ -49,7 +49,7 @@ export function useDeviceHotplug(options: UseDeviceHotplugOptions = {}) {
   
   const { backendAvailable } = useApp();
   const isBackendReady = backendAvailable;
-  // Disable toasts when backend is unavailable - prevent pop-up spam
+  // Disable toasts when backend is unavailable
   const shouldShowToasts = showToasts && isBackendReady;
 
   const [isConnected, setIsConnected] = useState(false);
@@ -123,8 +123,7 @@ export function useDeviceHotplug(options: UseDeviceHotplugOptions = {}) {
         reconnectAttemptsRef.current = 0;
         clearReconnectTimeout();
         
-        // Only show connection toast on first connect, not on reconnects
-        if (shouldShowToasts && reconnectAttemptsRef.current === 0) {
+        if (shouldShowToasts) {
           toast.success('WebSocket Connected', {
             description: 'Live device monitoring active',
           });
@@ -158,20 +157,32 @@ export function useDeviceHotplug(options: UseDeviceHotplugOptions = {}) {
         setIsConnected(false);
         wsRef.current = null;
 
+        // Only attempt reconnection if backend is still ready
+        if (!isBackendReady) {
+          clearReconnectTimeout();
+          return;
+        }
+
         const maxAttempts = 5;
-        if (reconnectAttemptsRef.current < maxAttempts && canConnect) {
+        if (reconnectAttemptsRef.current < maxAttempts) {
           const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 30000);
           reconnectAttemptsRef.current += 1;
           
           reconnectTimeoutRef.current = setTimeout(() => {
-            // Silent reconnect - no console spam
-            connect();
+            // Check again before reconnecting (backend might have gone offline)
+            if (isBackendReady) {
+              connect();
+            } else {
+              clearReconnectTimeout();
+            }
           }, delay);
-        } else if (reconnectAttemptsRef.current >= maxAttempts && shouldShowToasts) {
+        } else {
           // Only show error toast once when max attempts reached
-          toast.error('WebSocket Disconnected', {
-            description: 'Failed to reconnect after multiple attempts',
-          });
+          if (shouldShowToasts && reconnectAttemptsRef.current === maxAttempts) {
+            toast.error('WebSocket Disconnected', {
+              description: 'Failed to reconnect after multiple attempts',
+            });
+          }
         }
       };
 

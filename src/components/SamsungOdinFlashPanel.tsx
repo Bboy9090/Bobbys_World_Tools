@@ -69,7 +69,7 @@ interface FirmwareFiles {
 }
 
 export function SamsungOdinFlashPanel() {
-  // Demo mode removed - production only
+  const { isDemoMode } = useApp();
   const [devices, setDevices] = useState<SamsungDevice[]>([]);
   const [selectedDevice, setSelectedDevice] = useState<string>('');
   const [operations, setOperations] = useState<OdinOperation[]>([]);

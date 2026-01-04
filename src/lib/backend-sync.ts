@@ -85,25 +85,24 @@ class BackendSyncManager {
         this.restartAttempts = 0; // Reset restart attempts on success
 
         if (!wasHealthy) {
-          // Backend just came back online - only call callback on state change
+          // Backend just came back online
           logger.info('Backend restored - frontend and backend are now in sync');
           this.onBackendRestored?.();
+        } else {
+          // Backend was already healthy, just confirm
+          this.onBackendAvailable?.();
         }
-        // Don't call onBackendAvailable on every check - only on state changes
       } else {
         // Backend is unhealthy
         this.consecutiveFailures++;
         
         if (wasHealthy) {
-          // Backend just went offline - only call callback on state change
+          // Backend just went offline
           logger.warn('Backend went offline - frontend and backend are out of sync');
           this.onBackendUnavailable?.();
         } else {
-          // Backend was already offline - don't spam callbacks
-          // Only log every 10th failure to reduce noise
-          if (this.consecutiveFailures % 10 === 0) {
-            logger.debug(`Backend still offline (${this.consecutiveFailures} consecutive failures)`);
-          }
+          // Backend was already offline
+          logger.debug(`Backend still offline (${this.consecutiveFailures} consecutive failures)`);
         }
 
         // Attempt to restore backend (in web mode, this will just keep checking)

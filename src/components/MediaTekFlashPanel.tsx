@@ -50,7 +50,7 @@ export function MediaTekFlashPanel() {
   const [imageFiles, setImageFiles] = useState<string[]>([]);
   const [isScanning, setIsScanning] = useState(false);
   const [currentJob, setCurrentJob] = useState<MTKFlashJob | null>(null);
-  // Demo mode removed - production only
+  const { isDemoMode } = useApp();
 
   const {
     isConnected,

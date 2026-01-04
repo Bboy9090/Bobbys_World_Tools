@@ -23,6 +23,8 @@ function AppContent() {
     const [initError, setInitError] = useState<Error | null>(null);
 
     useEffect(() => {
+        let unsubscribeNetwork: (() => void) | undefined;
+
         async function initializeApp() {
             try {
                 setIsLoading(true);
@@ -44,7 +46,8 @@ function AppContent() {
                 setBackendAvailable(backendHealthy.isHealthy);
 
                 if (!backendHealthy.isHealthy) {
-                    logger.error('Backend offline - connection failed');
+                    logger.warn('Backend offline - some features may be unavailable');
+                    cleanupWebSockets(); // Ensure WebSockets are closed when backend is offline
                 } else {
                     logger.info('Backend connected - production mode');
                     // Initialize WebSocket connections (only if backend is available)
@@ -66,6 +69,7 @@ function AppContent() {
                     },
                     onBackendUnavailable: () => {
                         setBackendAvailable(false);
+                        cleanupWebSockets(); // Close WebSockets when backend becomes unavailable
                         logger.warn('Backend unavailable - connection lost');
                     },
                     onBackendRestored: () => {
@@ -77,32 +81,25 @@ function AppContent() {
                     },
                 });
                 
-                // Listen for network status changes - debounced to prevent spam
-                let networkCheckTimeout: NodeJS.Timeout | null = null;
-                const unsubscribeNetwork = networkStatus.subscribe((online) => {
-                    // Debounce network status checks to prevent repeated pop-ups
-                    if (networkCheckTimeout) {
-                        clearTimeout(networkCheckTimeout);
+                // Listen for network status changes with proper cleanup
+                unsubscribeNetwork = networkStatus.subscribe((online) => {
+                    if (!online) {
+                        setBackendAvailable(false);
+                        cleanupWebSockets(); // Close WebSockets when network goes offline
+                        return;
                     }
-                    
-                    networkCheckTimeout = setTimeout(() => {
-                        if (online) {
-                            // Only check if we were offline before
-                            checkBackendHealth().then(result => {
-                                if (result.isHealthy) {
-                                    setBackendAvailable(true);
-                                    initializeWebSockets().catch(err => {
-                                        logger.warn('Failed to initialize WebSockets:', err);
-                                    });
-                                } else {
-                                    setBackendAvailable(false);
-                                }
+
+                    // Re-check backend when coming online (debounced to prevent spam)
+                    checkBackendHealth().then(result => {
+                        setBackendAvailable(result.isHealthy);
+                        if (result.isHealthy) {
+                            initializeWebSockets().catch(err => {
+                                logger.warn('Failed to initialize WebSockets:', err);
                             });
                         } else {
-                            setBackendAvailable(false);
                             cleanupWebSockets();
                         }
-                    }, 2000); // 2 second debounce
+                    });
                 });
                 
                 setIsLoading(false);
