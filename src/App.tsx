@@ -90,16 +90,16 @@ function AppContent() {
                     }
 
                     // Re-check backend when coming online (debounced to prevent spam)
-                    checkBackendHealth().then(result => {
+                        checkBackendHealth().then(result => {
                         setBackendAvailable(result.isHealthy);
-                        if (result.isHealthy) {
-                            initializeWebSockets().catch(err => {
-                                logger.warn('Failed to initialize WebSockets:', err);
-                            });
+                            if (result.isHealthy) {
+                                initializeWebSockets().catch(err => {
+                                    logger.warn('Failed to initialize WebSockets:', err);
+                                });
                         } else {
                             cleanupWebSockets();
-                        }
-                    });
+                            }
+                        });
                 });
                 
                 setIsLoading(false);
