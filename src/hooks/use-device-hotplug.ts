@@ -48,8 +48,9 @@ export function useDeviceHotplug(options: UseDeviceHotplugOptions = {}) {
   } = options;
   
   const { backendAvailable, isDemoMode } = useApp();
+  const isBackendReady = backendAvailable && !isDemoMode;
   // Disable toasts when backend is unavailable or in demo mode
-  const shouldShowToasts = showToasts && backendAvailable && !isDemoMode;
+  const shouldShowToasts = showToasts && isBackendReady;
 
   const [isConnected, setIsConnected] = useState(false);
   const [events, setEvents] = useState<DeviceHotplugEvent[]>([]);
@@ -82,7 +83,7 @@ export function useDeviceHotplug(options: UseDeviceHotplugOptions = {}) {
         newStats.currentDevices += 1;
         onConnect?.(event);
         
-        if (showToasts) {
+        if (shouldShowToasts) {
           toast.success('Device Connected', {
             description: event.display_name || event.device_uid,
           });
@@ -92,7 +93,7 @@ export function useDeviceHotplug(options: UseDeviceHotplugOptions = {}) {
         newStats.currentDevices = Math.max(0, newStats.currentDevices - 1);
         onDisconnect?.(event);
         
-        if (showToasts) {
+        if (shouldShowToasts) {
           toast.info('Device Disconnected', {
             description: event.display_name || event.device_uid,
           });
@@ -106,6 +107,11 @@ export function useDeviceHotplug(options: UseDeviceHotplugOptions = {}) {
 
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === 1 || wsRef.current?.readyState === 0) {
+      return;
+    }
+
+    if (!isBackendReady) {
+      disconnect();
       return;
     }
 
@@ -174,7 +180,7 @@ export function useDeviceHotplug(options: UseDeviceHotplugOptions = {}) {
       console.error('Failed to create WebSocket:', err);
       onError?.(err as Error);
     }
-  }, [wsUrl, shouldShowToasts, handleEvent, onError, clearReconnectTimeout, backendAvailable, isDemoMode]);
+  }, [wsUrl, shouldShowToasts, handleEvent, onError, clearReconnectTimeout, disconnect, isBackendReady]);
 
   const disconnect = useCallback(() => {
     clearReconnectTimeout();
@@ -202,14 +208,16 @@ export function useDeviceHotplug(options: UseDeviceHotplugOptions = {}) {
   }, []);
 
   useEffect(() => {
-    if (autoConnect) {
+    if (autoConnect && isBackendReady) {
       connect();
+    } else {
+      disconnect();
     }
 
     return () => {
       disconnect();
     };
-  }, [autoConnect]);
+  }, [autoConnect, isBackendReady, connect, disconnect]);
 
   return {
     isConnected,
