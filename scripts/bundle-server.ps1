@@ -47,6 +47,20 @@ if (-not (Test-Path $ServerDir)) {
 # Copy entire server directory to target
 Copy-Item -Recurse -Force $ServerDir $TargetServerDir -ErrorAction Stop
 
+# Copy core directory (required by server imports)
+$CoreDir = Join-Path $RootDir "core"
+$TargetCoreDir = Join-Path $ResourcesDir "core"
+if (Test-Path $CoreDir) {
+    Write-Host "Copying core library to $TargetCoreDir..." -ForegroundColor Cyan
+    if (Test-Path $TargetCoreDir) {
+        Remove-Item -Recurse -Force $TargetCoreDir
+    }
+    Copy-Item -Recurse -Force $CoreDir $TargetCoreDir -ErrorAction Stop
+    Write-Host "Core library copied successfully" -ForegroundColor Green
+} else {
+    Write-Host "Warning: Core directory not found at $CoreDir" -ForegroundColor Yellow
+}
+
 # Verify copy succeeded
 if (-not (Test-Path $TargetServerDir)) {
     throw "Failed to copy server directory to $TargetServerDir"

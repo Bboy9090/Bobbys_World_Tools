@@ -22,6 +22,8 @@ export async function safeSpawn(command, args = [], options = {}) {
       cwd,
       timeout,
       encoding: 'utf8',
+      windowsHide: true,
+      stdio: options.stdio || ['ignore', 'pipe', 'pipe'],
       ...options
     });
 

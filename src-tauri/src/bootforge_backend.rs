@@ -6,6 +6,9 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Manager, State};
 
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
+
 #[derive(Clone)]
 pub struct BootForgeState {
     flash_jobs: Arc<Mutex<HashMap<String, FlashOperation>>>,
@@ -193,9 +196,13 @@ fn run_tool_lines(
 }
 
 fn run_adb_devices() -> Result<Vec<String>, String> {
-    let output = Command::new("adb")
-        .args(["devices", "-l"])
-        .output()
+    let mut cmd = Command::new("adb");
+    cmd.args(["devices", "-l"]);
+    #[cfg(target_os = "windows")]
+    {
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
+    let output = cmd.output()
         .map_err(|e| format!("Failed to run adb: {e}. Install Android platform-tools and ensure adb is on PATH."))?;
 
     if !output.status.success() {
@@ -233,9 +240,13 @@ fn run_adb_devices() -> Result<Vec<String>, String> {
 }
 
 fn run_fastboot_devices() -> Result<Vec<String>, String> {
-    let output = Command::new("fastboot")
-        .arg("devices")
-        .output()
+    let mut cmd = Command::new("fastboot");
+    cmd.arg("devices");
+    #[cfg(target_os = "windows")]
+    {
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
+    let output = cmd.output()
         .map_err(|e| format!("Failed to run fastboot: {e}. Install Android platform-tools and ensure fastboot is on PATH."))?;
 
     if !output.status.success() {
@@ -547,6 +558,10 @@ fn run_fastboot_flash_job(
         cmd.args(["-s", &config.device_serial, "flash", &part.name, &part.image_path])
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
+        #[cfg(target_os = "windows")]
+        {
+            cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+        }
 
         let child = match cmd.spawn() {
             Ok(c) => c,
@@ -655,9 +670,13 @@ fn run_fastboot_flash_job(
     }
 
     if config.auto_reboot {
-        let _ = Command::new("fastboot")
-            .args(["-s", &config.device_serial, "reboot"])
-            .output();
+        let mut cmd = Command::new("fastboot");
+        cmd.args(["-s", &config.device_serial, "reboot"]);
+        #[cfg(target_os = "windows")]
+        {
+            cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+        }
+        let _ = cmd.output();
         append_log(&state, &job_id, "Issued fastboot reboot".to_string());
     }
 

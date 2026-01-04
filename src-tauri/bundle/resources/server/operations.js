@@ -69,9 +69,17 @@ function checkToolsAvailable(requiredTools) {
   for (const tool of requiredTools) {
     try {
       if (IS_WINDOWS) {
-        execSync(`where ${tool}`, { stdio: 'ignore', timeout: 2000 });
+        execSync(`where ${tool}`, { 
+          stdio: 'ignore', 
+          timeout: 2000,
+          windowsHide: true
+        });
       } else {
-        execSync(`command -v ${tool}`, { stdio: 'ignore', timeout: 2000 });
+        execSync(`command -v ${tool}`, { 
+          stdio: 'ignore', 
+          timeout: 2000,
+          windowsHide: true
+        });
       }
     } catch {
       missing.push(tool);

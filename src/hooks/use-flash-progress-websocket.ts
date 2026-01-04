@@ -48,9 +48,10 @@ export function useFlashProgressWebSocket(config: FlashProgressWebSocketConfig) 
     autoConnect = true,
   } = config;
   
-  const { backendAvailable, isDemoMode } = useApp();
-  // Disable notifications when backend is unavailable or in demo mode
-  const shouldNotify = enableNotifications && backendAvailable && !isDemoMode;
+  const { backendAvailable } = useApp();
+  const isBackendReady = backendAvailable;
+  // Disable notifications when backend is unavailable
+  const shouldNotify = enableNotifications && isBackendReady;
 
   const [isConnected, setIsConnected] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected');
@@ -227,6 +228,13 @@ export function useFlashProgressWebSocket(config: FlashProgressWebSocketConfig) 
       return;
     }
 
+    if (!isBackendReady) {
+      clearReconnectTimeout();
+      clearPingInterval();
+      setConnectionStatus('disconnected');
+      return;
+    }
+
     clearReconnectTimeout();
     setConnectionStatus('connecting');
 
@@ -270,13 +278,25 @@ export function useFlashProgressWebSocket(config: FlashProgressWebSocketConfig) 
         setConnectionStatus('disconnected');
         clearPingInterval();
 
+        // Only attempt reconnection if backend is still ready
+        if (!isBackendReady) {
+          clearReconnectTimeout();
+          return;
+        }
+
         if (reconnectAttempts < maxReconnectAttempts) {
           reconnectTimeoutRef.current = setTimeout(() => {
-            setReconnectAttempts(prev => prev + 1);
-            connect();
+            // Check again before reconnecting (backend might have gone offline)
+            if (isBackendReady) {
+              setReconnectAttempts(prev => prev + 1);
+              connect();
+            } else {
+              clearReconnectTimeout();
+            }
           }, reconnectDelay);
         } else {
-          if (shouldNotify) {
+          // Only show error toast once when max attempts reached
+          if (shouldNotify && reconnectAttempts === maxReconnectAttempts) {
             toast.error('Connection lost', {
               description: 'Max reconnection attempts reached',
             });
@@ -287,7 +307,7 @@ export function useFlashProgressWebSocket(config: FlashProgressWebSocketConfig) 
       console.error('Failed to create WebSocket:', error);
       setConnectionStatus('error');
     }
-  }, [url, reconnectAttempts, maxReconnectAttempts, reconnectDelay, shouldNotify, handleMessage, clearReconnectTimeout, clearPingInterval, backendAvailable, isDemoMode]);
+  }, [url, reconnectAttempts, maxReconnectAttempts, reconnectDelay, shouldNotify, handleMessage, clearReconnectTimeout, clearPingInterval, isBackendReady]);
 
   const disconnect = useCallback(() => {
     clearReconnectTimeout();
@@ -327,14 +347,17 @@ export function useFlashProgressWebSocket(config: FlashProgressWebSocketConfig) 
   }, []);
 
   useEffect(() => {
-    if (autoConnect) {
+    if (autoConnect && isBackendReady) {
       connect();
+    } else {
+      disconnect();
+      setReconnectAttempts(0);
     }
 
     return () => {
       disconnect();
     };
-  }, [autoConnect, connect, disconnect]);
+  }, [autoConnect, isBackendReady, connect, disconnect]);
 
   return {
     isConnected,
