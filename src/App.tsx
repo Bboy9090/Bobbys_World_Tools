@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { DashboardLayout } from "./components/DashboardLayout";
-import { DemoModeBanner } from "./components/DemoModeBanner";
+// DemoModeBanner removed - production mode only
 import { LoadingPage } from "./components/core/LoadingPage";
 import { SplashPage } from "./components/core/SplashPage";
 import { Toaster } from "@/components/ui/sonner";
@@ -17,7 +17,7 @@ import { startBackendSync, stopBackendSync } from "./lib/backend-sync";
 const logger = createLogger('App');
 
 function AppContent() {
-    const { isDemoMode, setDemoMode, setBackendAvailable } = useApp();
+    const { setBackendAvailable } = useApp();
     const [isLoading, setIsLoading] = useState(true);
     const [showSplash, setShowSplash] = useState(true);
     const [initError, setInitError] = useState<Error | null>(null);
@@ -44,11 +44,9 @@ function AppContent() {
                 setBackendAvailable(backendHealthy.isHealthy);
 
                 if (!backendHealthy.isHealthy) {
-                    logger.info('Backend offline - running in demo mode');
-                    setDemoMode(true);
+                    logger.error('Backend offline - connection failed');
                 } else {
                     logger.info('Backend connected - production mode');
-                    setDemoMode(false);
                     // Initialize WebSocket connections (only if backend is available)
                     initializeWebSockets().catch(err => {
                         logger.warn('Failed to initialize WebSockets:', err);
@@ -61,7 +59,6 @@ function AppContent() {
                     checkInterval: 10000, // Check every 10 seconds
                     onBackendAvailable: () => {
                         setBackendAvailable(true);
-                        setDemoMode(false);
                         initializeWebSockets().catch(err => {
                             logger.warn('Failed to initialize WebSockets:', err);
                         });
@@ -69,12 +66,10 @@ function AppContent() {
                     },
                     onBackendUnavailable: () => {
                         setBackendAvailable(false);
-                        setDemoMode(true);
-                        logger.warn('Backend unavailable - frontend and backend out of sync');
+                        logger.warn('Backend unavailable - connection lost');
                     },
                     onBackendRestored: () => {
                         setBackendAvailable(true);
-                        setDemoMode(false);
                         initializeWebSockets().catch(err => {
                             logger.warn('Failed to initialize WebSockets:', err);
                         });
@@ -82,20 +77,32 @@ function AppContent() {
                     },
                 });
                 
-                // Listen for network status changes
-                networkStatus.subscribe((online) => {
-                    if (online && !backendHealthy.isHealthy) {
-                        // Re-check backend when coming online
-                        checkBackendHealth().then(result => {
-                            if (result.isHealthy) {
-                                setBackendAvailable(true);
-                                setDemoMode(false);
-                                initializeWebSockets().catch(err => {
-                                    logger.warn('Failed to initialize WebSockets:', err);
-                                });
-                            }
-                        });
+                // Listen for network status changes - debounced to prevent spam
+                let networkCheckTimeout: NodeJS.Timeout | null = null;
+                const unsubscribeNetwork = networkStatus.subscribe((online) => {
+                    // Debounce network status checks to prevent repeated pop-ups
+                    if (networkCheckTimeout) {
+                        clearTimeout(networkCheckTimeout);
                     }
+                    
+                    networkCheckTimeout = setTimeout(() => {
+                        if (online) {
+                            // Only check if we were offline before
+                            checkBackendHealth().then(result => {
+                                if (result.isHealthy) {
+                                    setBackendAvailable(true);
+                                    initializeWebSockets().catch(err => {
+                                        logger.warn('Failed to initialize WebSockets:', err);
+                                    });
+                                } else {
+                                    setBackendAvailable(false);
+                                }
+                            });
+                        } else {
+                            setBackendAvailable(false);
+                            cleanupWebSockets();
+                        }
+                    }, 2000); // 2 second debounce
                 });
                 
                 setIsLoading(false);
@@ -104,7 +111,6 @@ function AppContent() {
                 logger.error('Initialization error:', error);
                 setInitError(error instanceof Error ? error : new Error(String(error)));
                 setIsLoading(false);
-                setDemoMode(true);
             }
         }
 
@@ -113,8 +119,9 @@ function AppContent() {
         return () => {
             cleanupWebSockets();
             stopBackendSync(); // Stop sync monitoring on unmount
+            unsubscribeNetwork?.(); // Clean up network subscription
         };
-    }, [setDemoMode, setBackendAvailable]);
+    }, [setBackendAvailable]);
 
     useEffect(() => {
         soundManager.init();
@@ -125,7 +132,6 @@ function AppContent() {
         const backendHealthy = await checkBackendHealth();
         if (backendHealthy.isHealthy) {
             setBackendAvailable(true);
-            setDemoMode(false);
             initializeWebSockets();
             logger.info('Backend connected - production mode');
         } else {
@@ -167,7 +173,7 @@ function AppContent() {
     try {
         return (
             <>
-                {isDemoMode && <DemoModeBanner onDisable={handleConnectBackend} />}
+                {/* Demo mode disabled in production */}
                 <DashboardLayout />
                 <Toaster />
             </>

@@ -35,8 +35,7 @@ export function correlationIdMiddleware(req, res, next) {
  * Create success envelope
  */
 export function createSuccessEnvelope(data, req, options = {}) {
-  const isDemo = process.env.DEMO_MODE === '1';
-  
+  // Production mode: No demo flag
   return {
     ok: true,
     data,
@@ -44,7 +43,6 @@ export function createSuccessEnvelope(data, req, options = {}) {
       ts: new Date().toISOString(),
       correlationId: req.correlationId || getCorrelationId(req),
       apiVersion: API_VERSION,
-      ...(isDemo && { demo: true }),
       ...options.meta
     }
   };
@@ -54,8 +52,7 @@ export function createSuccessEnvelope(data, req, options = {}) {
  * Create error envelope
  */
 export function createErrorEnvelope(code, message, req, details = null) {
-  const isDemo = process.env.DEMO_MODE === '1';
-  
+  // Production mode: No demo flag
   return {
     ok: false,
     error: {
@@ -66,8 +63,7 @@ export function createErrorEnvelope(code, message, req, details = null) {
     meta: {
       ts: new Date().toISOString(),
       correlationId: req.correlationId || getCorrelationId(req),
-      apiVersion: API_VERSION,
-      ...(isDemo && { demo: true })
+      apiVersion: API_VERSION
     }
   };
 }

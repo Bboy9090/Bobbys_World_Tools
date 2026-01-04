@@ -47,12 +47,12 @@ try {
  * Feature flags based on environment and tool availability
  */
 function getFeatureFlags() {
-  const demoMode = process.env.DEMO_MODE === '1';
+  // Production mode: Demo mode disabled
   const allowBootloaderUnlock = process.env.ALLOW_BOOTLOADER_UNLOCK === '1';
   const allowFirmwareDownload = process.env.ALLOW_FIRMWARE_DOWNLOAD === '1';
   
   return {
-    demoMode,
+    demoMode: false, // Always false in production
     trapdoorEnabled: true, // Always enabled (gated by auth)
     iosEnabled: true, // iOS tooling available if libimobiledevice present
     androidEnabled: true, // Android tooling available if adb/fastboot present

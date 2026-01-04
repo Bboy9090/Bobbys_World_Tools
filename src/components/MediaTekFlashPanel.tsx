@@ -50,7 +50,7 @@ export function MediaTekFlashPanel() {
   const [imageFiles, setImageFiles] = useState<string[]>([]);
   const [isScanning, setIsScanning] = useState(false);
   const [currentJob, setCurrentJob] = useState<MTKFlashJob | null>(null);
-  const { isDemoMode } = useApp();
+  // Demo mode removed - production only
 
   const {
     isConnected,
@@ -85,29 +85,12 @@ export function MediaTekFlashPanel() {
         throw new Error('Backend unavailable');
       }
     } catch (error) {
-      // Fall back to demo mode if available
-      console.warn('[MediaTekFlashPanel] Backend scan failed:', error);
-      if (isDemoMode) {
-        const demoDevices: MTKDevice[] = [
-          {
-            id: '[DEMO] mtk-001',
-            name: '[DEMO] MediaTek MT6765 (Helio P35)',
-            chipset: 'MT6765',
-            port: 'COM3',
-            mode: 'preloader',
-            detected: true,
-          },
-        ];
-
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        setDevices(demoDevices);
-        toast.info('Running in demo mode with simulated devices');
-      } else {
-        setDevices([]);
-        toast.error('Device scan failed', {
-          description: 'Backend API unavailable - cannot scan for MediaTek devices',
-        });
-      }
+      // Production mode: No demo fallback
+      console.error('[MediaTekFlashPanel] Backend scan failed:', error);
+      setDevices([]);
+      toast.error('Device scan failed', {
+        description: 'Backend API unavailable - cannot scan for MediaTek devices',
+      });
     } finally {
       setIsScanning(false);
     }

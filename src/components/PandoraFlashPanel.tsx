@@ -33,7 +33,7 @@ interface FlashOperation {
 const API_BASE = 'http://localhost:3001';
 
 export function PandoraFlashPanel() {
-  const { isDemoMode } = useApp();
+  // Demo mode removed - production only
   const [operations, setOperations] = useState<FlashOperation[]>([]);
   const [history, setHistory] = useState<FlashOperation[]>([]);
   const [loading, setLoading] = useState(false);
