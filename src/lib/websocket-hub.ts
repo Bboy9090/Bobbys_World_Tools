@@ -6,7 +6,6 @@
  */
 
 import { createLogger } from '@/lib/debug-logger';
-import { checkBackendHealth } from './backend-health';
 
 const logger = createLogger('WebSocketHub');
 
@@ -37,15 +36,8 @@ class WebSocketHub {
   /**
    * Connect to WebSocket server
    */
-  async connect(): Promise<void> {
+  connect(): void {
     if (this.ws?.readyState === WebSocket.OPEN || this.isConnecting) {
-      return;
-    }
-
-    // Check if backend is available before connecting
-    const health = await checkBackendHealth();
-    if (!health.isHealthy) {
-      logger.debug('Backend unavailable, skipping WebSocket connection');
       return;
     }
 
@@ -119,25 +111,17 @@ class WebSocketHub {
    */
   private scheduleReconnect(): void {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      logger.debug('Max reconnection attempts reached, will retry when backend is available');
+      logger.error('Max reconnection attempts reached');
       return;
     }
 
     const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts);
     this.reconnectAttempts++;
     
-    logger.debug(`Scheduling reconnect in ${delay}ms (attempt ${this.reconnectAttempts})`);
+    logger.info(`Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})`);
     
-    setTimeout(async () => {
-      // Check backend health before attempting reconnect
-      const health = await checkBackendHealth();
-      if (health.isHealthy) {
-        this.connect();
-      } else {
-        logger.debug('Backend still unavailable, will retry later');
-        // Reset attempts so we keep checking
-        this.reconnectAttempts = Math.max(0, this.reconnectAttempts - 1);
-      }
+    setTimeout(() => {
+      this.connect();
     }, delay);
   }
 
@@ -233,15 +217,10 @@ export const deviceEventsHub = new WebSocketHub('ws://localhost:3001/ws/device-e
 export const correlationHub = new WebSocketHub('ws://localhost:3001/ws/correlation');
 export const analyticsHub = new WebSocketHub('ws://localhost:3001/ws/analytics');
 
-// Initialize connections (only if backend is available)
-export async function initializeWebSockets(): Promise<void> {
-  const health = await checkBackendHealth();
-  if (health.isHealthy) {
-    deviceEventsHub.connect();
-    correlationHub.connect();
-  } else {
-    logger.debug('Backend unavailable, skipping WebSocket initialization');
-  }
+// Initialize connections
+export function initializeWebSockets(): void {
+  deviceEventsHub.connect();
+  correlationHub.connect();
 }
 
 // Cleanup connections

@@ -49,7 +49,6 @@ import adbAdvancedRouter from './routes/v1/adb/advanced.js';
 import diagnosticsRouter from './routes/v1/diagnostics/index.js';
 import trapdoorRouter from './routes/v1/trapdoor/index.js';
 import { getAllMetrics, estimateUsbUtilization } from './utils/system-metrics.js';
-import { LegendaryWebSocketManager } from './utils/websocket-manager.js';
 
 // Initialize logging first
 const LOG_DIR = process.env.BW_LOG_DIR || (process.platform === 'win32' 
@@ -86,8 +85,9 @@ const logger = {
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const DEMO_MODE = process.env.DEMO_MODE === '1';
 
-logger.info(`Backend starting on port ${PORT} (PRODUCTION MODE)`);
+logger.info(`Backend starting on port ${PORT}`);
 logger.info(`Log directory: ${LOG_DIR}`);
 logger.info(`Log file: ${LOG_FILE}`);
 
@@ -190,30 +190,9 @@ app.use('/api/v1', v1Router);
 const authTriggers = new AuthorizationTriggers();
 
 const server = createServer(app);
-
-// 🔱 LEGENDARY WebSocket Managers with heartbeat and health monitoring
-const wsDeviceEvents = new LegendaryWebSocketManager(server, '/ws/device-events', {
-  heartbeatInterval: 30000,
-  heartbeatTimeout: 10000,
-  maxMissedHeartbeats: 3
-});
-
-const wsCorrelation = new LegendaryWebSocketManager(server, '/ws/correlation', {
-  heartbeatInterval: 30000,
-  heartbeatTimeout: 10000,
-  maxMissedHeartbeats: 3
-});
-
-const wsAnalytics = new LegendaryWebSocketManager(server, '/ws/analytics', {
-  heartbeatInterval: 30000,
-  heartbeatTimeout: 10000,
-  maxMissedHeartbeats: 3
-});
-
-// Legacy compatibility - keep old WebSocketServer instances for existing code
-const wss = wsDeviceEvents.wss;
-const wssCorrelation = wsCorrelation.wss;
-const wssAnalytics = wsAnalytics.wss;
+const wss = new WebSocketServer({ server, path: '/ws/device-events' });
+const wssCorrelation = new WebSocketServer({ server, path: '/ws/correlation' });
+const wssAnalytics = new WebSocketServer({ server, path: '/ws/analytics' });
 
 const clients = new Set();
 const correlationClients = new Set();
@@ -223,7 +202,52 @@ wss.on('connection', (ws) => {
   console.log('WebSocket client connected (device-events)');
   clients.add(ws);
 
-  // Production mode: No demo data, only real device events
+  const interval = DEMO_MODE
+    ? setInterval(() => {
+        if (ws.readyState === ws.OPEN) {
+          const isConnect = Math.random() > 0.5;
+          const platforms = ['android', 'ios', 'unknown'];
+          const platform = platforms[Math.floor(Math.random() * platforms.length)];
+          const deviceId = `device-${Math.random().toString(36).substr(2, 9)}`;
+
+          const correlationId = `ws-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          ws.send(JSON.stringify({
+            type: isConnect ? 'connected' : 'disconnected',
+            device_uid: deviceId,
+            platform_hint: platform,
+            mode: isConnect ? 'Normal OS (Confirmed)' : 'Disconnected',
+            confidence: 0.85 + Math.random() * 0.15,
+            timestamp: Date.now(),
+            serverTs: new Date().toISOString(),
+            apiVersion: 'v1',
+            correlationId,
+            display_name: `${platform.charAt(0).toUpperCase() + platform.slice(1)} Device`,
+            matched_tool_ids: Math.random() > 0.5 ? [deviceId] : [],
+            correlation_badge: Math.random() > 0.5 ? 'CORRELATED' : 'LIKELY'
+          }));
+        }
+      }, 8000)
+    : null;
+
+  if (DEMO_MODE) {
+    ws.send(
+      JSON.stringify({
+        type: 'connected',
+        device_uid: 'demo-device-001',
+        platform_hint: 'android',
+        mode: 'Normal OS (Confirmed)',
+        confidence: 0.95,
+        timestamp: Date.now(),
+        serverTs: new Date().toISOString(),
+        apiVersion: 'v1',
+        correlationId: `ws-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        display_name: 'Demo Android Device',
+        matched_tool_ids: ['ABC123XYZ'],
+        correlation_badge: 'CORRELATED',
+        correlation_notes: ['Per-device correlation present']
+      })
+    );
+  }
 
   ws.on('close', () => {
     console.log('WebSocket client disconnected (device-events)');
@@ -250,10 +274,109 @@ wssCorrelation.on('connection', (ws) => {
     correlationId: `ws-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
   }));
 
-  // Production mode: No demo correlation data - only real device events
-  const interval = null;
+  const interval = DEMO_MODE
+    ? setInterval(() => {
+        if (ws.readyState === ws.OPEN) {
+          const eventType = Math.random();
+          const platforms = ['android', 'ios'];
+          const platform = platforms[Math.floor(Math.random() * platforms.length)];
+          const deviceId = `device-${Math.random().toString(36).substr(2, 9)}`;
+          const confidence = 0.75 + Math.random() * 0.25;
+          const hasMatchedIds = Math.random() > 0.4;
 
-  // Production mode: No demo data sent
+          const badges = ['CORRELATED', 'CORRELATED (WEAK)', 'SYSTEM-CONFIRMED', 'LIKELY', 'UNCONFIRMED'];
+          let badge;
+          let matchedIds = [];
+          let notes = [];
+
+          if (hasMatchedIds && confidence >= 0.90) {
+            badge = 'CORRELATED';
+            matchedIds = [deviceId, `${platform}-${deviceId}`];
+            notes = ['Per-device correlation present (matched tool ID(s)).'];
+          } else if (hasMatchedIds) {
+            badge = 'CORRELATED (WEAK)';
+            matchedIds = [deviceId];
+            notes = ['Matched tool ID(s) present, but mode not strongly confirmed.'];
+          } else if (confidence >= 0.90) {
+            badge = 'SYSTEM-CONFIRMED';
+            notes = ['System-level confirmation exists, but not mapped to this specific USB record.'];
+          } else if (confidence >= 0.75) {
+            badge = 'LIKELY';
+            notes = [];
+          } else {
+            badge = 'UNCONFIRMED';
+            notes = [];
+          }
+
+          if (eventType < 0.33) {
+            ws.send(
+              JSON.stringify({
+                type: 'device_connected',
+                deviceId: deviceId,
+                device: {
+                  id: deviceId,
+                  serial: Math.random() > 0.3 ? deviceId.substring(0, 10).toUpperCase() : undefined,
+                  platform: platform,
+                  mode: `confirmed_${platform}_os`,
+                  confidence: confidence,
+                  correlationBadge: badge,
+                  matchedIds: matchedIds,
+                  correlationNotes: notes,
+                  vendorId: platform === 'android' ? 0x18d1 : 0x05ac,
+                  productId: platform === 'android' ? 0x4ee7 : 0x12a8
+                },
+                timestamp: Date.now()
+              })
+            );
+          } else if (eventType < 0.66) {
+            ws.send(
+              JSON.stringify({
+                type: 'correlation_update',
+                deviceId: deviceId,
+                device: {
+                  correlationBadge: badge,
+                  matchedIds: matchedIds,
+                  confidence: confidence,
+                  correlationNotes: notes
+                },
+                timestamp: Date.now()
+              })
+            );
+          } else {
+            ws.send(
+              JSON.stringify({
+                type: 'device_disconnected',
+                deviceId: deviceId,
+                timestamp: Date.now()
+              })
+            );
+          }
+        }
+      }, 5000)
+    : null;
+
+  if (DEMO_MODE) {
+    ws.send(
+      JSON.stringify({
+        type: 'batch_update',
+        devices: [
+          {
+            id: 'demo-android-001',
+            serial: 'ABC123XYZ',
+            platform: 'android',
+            mode: 'confirmed_android_os',
+            confidence: 0.95,
+            correlationBadge: 'CORRELATED',
+            matchedIds: ['ABC123XYZ', 'adb-ABC123XYZ'],
+            correlationNotes: ['Per-device correlation present (matched tool ID(s)).'],
+            vendorId: 0x18d1,
+            productId: 0x4ee7
+          }
+        ],
+        timestamp: Date.now()
+      })
+    );
+  }
   
   ws.on('message', (data) => {
     try {
@@ -298,8 +421,103 @@ wssAnalytics.on('connection', (ws) => {
     correlationId: `ws-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
   }));
 
-  // Production mode: No demo analytics data - only real metrics
-  const analyticsInterval = null;
+  const analyticsInterval = DEMO_MODE
+    ? (() => {
+        const mockDevices = [
+          {
+            deviceId: 'device-001',
+            deviceName: 'Android Test Device',
+            platform: 'android',
+            status: 'online',
+            cpuUsage: 45,
+            memoryUsage: 62,
+            storageUsage: 78,
+            temperature: 42,
+            batteryLevel: 85,
+            networkLatency: 15,
+            workflows: { running: 1, completed: 5, failed: 0 }
+          },
+          {
+            deviceId: 'device-002',
+            deviceName: 'iOS Test Device',
+            platform: 'ios',
+            status: 'online',
+            cpuUsage: 32,
+            memoryUsage: 54,
+            storageUsage: 65,
+            temperature: 38,
+            batteryLevel: 92,
+            networkLatency: 12,
+            workflows: { running: 0, completed: 3, failed: 0 }
+          }
+        ];
+
+        mockDevices.forEach(device => {
+          ws.send(
+            JSON.stringify({
+              type: 'device_metrics',
+              deviceId: device.deviceId,
+              metrics: device
+            })
+          );
+        });
+
+        return setInterval(() => {
+          if (ws.readyState === ws.OPEN) {
+            mockDevices.forEach(device => {
+              const updatedMetrics = {
+                ...device,
+                cpuUsage: Math.max(5, Math.min(95, device.cpuUsage + (Math.random() - 0.5) * 10)),
+                memoryUsage: Math.max(10, Math.min(90, device.memoryUsage + (Math.random() - 0.5) * 5)),
+                temperature: Math.max(30, Math.min(70, device.temperature + (Math.random() - 0.5) * 2)),
+                networkLatency: Math.max(5, Math.min(100, device.networkLatency + (Math.random() - 0.5) * 10))
+              };
+
+              const correlationId = `ws-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+              ws.send(
+                JSON.stringify({
+                  type: 'device_metrics',
+                  deviceId: device.deviceId,
+                  metrics: updatedMetrics,
+                  timestamp: Date.now(),
+                  serverTs: new Date().toISOString(),
+                  apiVersion: 'v1',
+                  correlationId
+                })
+              );
+
+              Object.assign(device, updatedMetrics);
+            });
+
+            if (Math.random() > 0.7) {
+              const device = mockDevices[Math.floor(Math.random() * mockDevices.length)];
+              const correlationId = `ws-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+              ws.send(
+                JSON.stringify({
+                  type: 'workflow_event',
+                  event: {
+                    id: `workflow-${Date.now()}`,
+                    workflowName: ['ADB Diagnostics', 'Battery Health Check', 'Storage Analysis'][
+                      Math.floor(Math.random() * 3)
+                    ],
+                    deviceId: device.deviceId,
+                    status: ['started', 'running', 'completed'][Math.floor(Math.random() * 3)],
+                    progress: Math.floor(Math.random() * 100),
+                    currentStep: ['Initializing', 'Running diagnostics', 'Collecting data', 'Analyzing results'][
+                      Math.floor(Math.random() * 4)
+                    ]
+                  },
+                  timestamp: Date.now(),
+                  serverTs: new Date().toISOString(),
+                  apiVersion: 'v1',
+                  correlationId
+                })
+              );
+            }
+          }
+        }, 2000);
+      })()
+    : null;
 
   ws.on('close', () => {
     console.log('WebSocket client disconnected (live analytics)');
@@ -329,12 +547,7 @@ function broadcastCorrelation(message) {
 
 function safeExec(cmd) {
   try {
-    return execSync(cmd, { 
-      encoding: "utf-8", 
-      timeout: 5000,
-      windowsHide: true,
-      stdio: ['ignore', 'pipe', 'pipe']
-    }).trim();
+    return execSync(cmd, { encoding: "utf-8", timeout: 5000 }).trim();
   } catch {
     return null;
   }
@@ -418,22 +631,9 @@ function parseUsbVidPidFromPnpDeviceId(pnpDeviceId) {
   };
 }
 
-// Cache USB device scan results to prevent excessive PowerShell calls
-let usbDeviceCache = {
-  data: [],
-  timestamp: 0,
-  TTL: 2000 // Cache for 2 seconds to prevent rapid-fire PowerShell windows
-};
-
 function getConnectedUsbDevices() {
   if (!IS_WINDOWS) {
     return [];
-  }
-
-  // Use cache if recent enough
-  const now = Date.now();
-  if (usbDeviceCache.timestamp && (now - usbDeviceCache.timestamp) < usbDeviceCache.TTL) {
-    return usbDeviceCache.data;
   }
 
   const ps = [
@@ -442,17 +642,13 @@ function getConnectedUsbDevices() {
     "$devs | ConvertTo-Json -Compress"
   ].join('; ');
 
-  const raw = safeExec(`powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -NonInteractive -Command "${ps}"`);
-  if (!raw) {
-    // Cache empty result to prevent repeated failed calls
-    usbDeviceCache = { data: [], timestamp: now, TTL: usbDeviceCache.TTL };
-    return [];
-  }
+  const raw = safeExec(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${ps}"`);
+  if (!raw) return [];
 
   try {
     const parsed = JSON.parse(raw);
     const items = Array.isArray(parsed) ? parsed : [parsed];
-    const result = items
+    return items
       .filter(Boolean)
       .map(d => {
         const name = d.Name || null;
@@ -468,13 +664,7 @@ function getConnectedUsbDevices() {
         };
       })
       .filter(d => d.pnpDeviceId || d.name);
-    
-    // Update cache
-    usbDeviceCache = { data: result, timestamp: now, TTL: usbDeviceCache.TTL };
-    return result;
   } catch {
-    // Cache empty result on error
-    usbDeviceCache = { data: [], timestamp: now, TTL: usbDeviceCache.TTL };
     return [];
   }
 }
@@ -519,17 +709,9 @@ function commandExists(cmd) {
 
   try {
     if (IS_WINDOWS) {
-      execSync(`where ${cmd}`, { 
-        stdio: 'ignore', 
-        timeout: 2000,
-        windowsHide: true
-      });
+      execSync(`where ${cmd}`, { stdio: 'ignore', timeout: 2000 });
     } else {
-      execSync(`command -v ${cmd}`, { 
-        stdio: "ignore", 
-        timeout: 2000,
-        windowsHide: true
-      });
+      execSync(`command -v ${cmd}`, { stdio: "ignore", timeout: 2000 });
     }
     return true;
   } catch {
@@ -559,9 +741,7 @@ function runBootForgeUsbScanJson() {
   const output = execSync(`${cmd}${args ? ` ${args}` : ''}`, {
     encoding: 'utf-8',
     timeout: 10000,
-    maxBuffer: 10 * 1024 * 1024,
-    windowsHide: true,
-    stdio: ['ignore', 'pipe', 'pipe']
+    maxBuffer: 10 * 1024 * 1024
   });
 
   const devices = JSON.parse(output);
@@ -1016,9 +1196,7 @@ app.post('/api/adb/trigger-auth', (req, res) => {
   try {
     execSync(`${adbCmd} -s ${resolvedSerial} shell echo "auth_trigger" 2>&1`, { 
       encoding: "utf-8", 
-      timeout: 3000,
-      windowsHide: true,
-      stdio: ['ignore', 'pipe', 'pipe']
+      timeout: 3000 
     });
     
     res.json({
@@ -1588,9 +1766,14 @@ app.post('/api/fastboot/erase', requireDeviceLock, (req, res) => {
 });
 
 app.get('/api/bootforgeusb/scan', (req, res) => {
-  // Production mode: No demo data support
+  const useDemoData = req.query.demo === 'true';
+  
   const cmd = getBootForgeUsbCommand();
   if (!cmd) {
+    if (useDemoData) {
+      return res.json(generateDemoBootForgeData());
+    }
+    
     return res.status(503).json({ 
       error: "BootForgeUSB not available",
       message: "BootForgeUSB CLI tool is not installed or not in PATH",
@@ -1612,6 +1795,9 @@ app.get('/api/bootforgeusb/scan', (req, res) => {
     });
   } catch (error) {
     if (error.code === 'CLI_NOT_FOUND') {
+      if (useDemoData) {
+        return res.json(generateDemoBootForgeData());
+      }
       return res.status(503).json({
         error: "BootForgeUSB not available",
         message: error.message,
@@ -1630,6 +1816,10 @@ app.get('/api/bootforgeusb/scan', (req, res) => {
     
     console.error('BootForgeUSB scan error:', error);
     
+    if (useDemoData) {
+      return res.json(generateDemoBootForgeData());
+    }
+    
     res.status(500).json({
       error: 'BootForgeUSB scan failed',
       details: error.message,
@@ -1639,10 +1829,7 @@ app.get('/api/bootforgeusb/scan', (req, res) => {
   }
 });
 
-// Production mode: Demo data generation removed
 function generateDemoBootForgeData() {
-  // This function is disabled in production mode
-  throw new Error('Demo data generation is disabled in production mode');
   const demoDevices = [
     {
       device_uid: "usb-18d1:4ee7-3-2",
