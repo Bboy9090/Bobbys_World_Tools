@@ -22,6 +22,8 @@ function AppContent() {
     const [initError, setInitError] = useState<Error | null>(null);
 
     useEffect(() => {
+        let unsubscribeNetwork: (() => void) | undefined;
+
         async function initializeApp() {
             try {
                 setIsLoading(true);
@@ -77,19 +79,26 @@ function AppContent() {
                     },
                 });
                 
-                // Listen for network status changes
-                networkStatus.subscribe((online) => {
-                    if (online && !backendHealthy.isHealthy) {
-                        // Re-check backend when coming online
+                // Listen for network status changes with proper cleanup
+                unsubscribeNetwork = networkStatus.subscribe((online) => {
+                    if (!online) {
+                        setBackendAvailable(false);
+                        cleanupWebSockets(); // Close WebSockets when network goes offline
+                        return;
+                    }
+
+                    // Re-check backend when coming online (debounced to prevent spam)
                         checkBackendHealth().then(result => {
+                        setBackendAvailable(result.isHealthy);
                             if (result.isHealthy) {
                                 setBackendAvailable(true);
                                 initializeWebSockets().catch(err => {
                                     logger.warn('Failed to initialize WebSockets:', err);
                                 });
+                        } else {
+                            cleanupWebSockets();
                             }
                         });
-                    }
                 });
                 
                 setIsLoading(false);
@@ -106,6 +115,7 @@ function AppContent() {
         return () => {
             cleanupWebSockets();
             stopBackendSync(); // Stop sync monitoring on unmount
+            unsubscribeNetwork?.(); // Clean up network subscription
         };
     }, [setBackendAvailable]);
 

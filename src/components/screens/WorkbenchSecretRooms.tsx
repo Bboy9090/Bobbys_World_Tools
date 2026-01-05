@@ -8,6 +8,11 @@ import React, { useState, useEffect } from 'react';
 import { TrapdoorEntryGate } from '../trapdoor/TrapdoorEntryGate';
 import { TrapdoorRoomNavigation, type SecretRoomId } from '../trapdoor/TrapdoorRoomNavigation';
 import { TrapdoorUnlockChamber } from '../trapdoor/TrapdoorUnlockChamber';
+import { TrapdoorFlashForge } from '../trapdoor/TrapdoorFlashForge';
+import { TrapdoorJailbreakSanctum } from '../trapdoor/TrapdoorJailbreakSanctum';
+import { TrapdoorRootVault } from '../trapdoor/TrapdoorRootVault';
+import { TrapdoorBypassLaboratory } from '../trapdoor/TrapdoorBypassLaboratory';
+import { TrapdoorWorkflowEngine } from '../trapdoor/TrapdoorWorkflowEngine';
 import { TrapdoorShadowArchive } from '../trapdoor/TrapdoorShadowArchive';
 import { useApp } from '@/lib/app-context';
 
@@ -94,15 +99,32 @@ export function WorkbenchSecretRooms() {
             devices={devices}
           />
         )}
+        {activeRoom === 'flash-forge' && (
+          <TrapdoorFlashForge
+            passcode={passcode}
+            devices={devices}
+          />
+        )}
+        {activeRoom === 'jailbreak-sanctum' && (
+          <TrapdoorJailbreakSanctum passcode={passcode} />
+        )}
+        {activeRoom === 'root-vault' && (
+          <TrapdoorRootVault
+            passcode={passcode}
+            devices={devices}
+          />
+        )}
+        {activeRoom === 'bypass-laboratory' && (
+          <TrapdoorBypassLaboratory
+            passcode={passcode}
+            devices={devices}
+          />
+        )}
+        {activeRoom === 'workflow-engine' && (
+          <TrapdoorWorkflowEngine passcode={passcode} />
+        )}
         {activeRoom === 'shadow-archive' && (
           <TrapdoorShadowArchive passcode={passcode} />
-        )}
-        {activeRoom && activeRoom !== 'unlock-chamber' && activeRoom !== 'shadow-archive' && (
-          <div className="h-full flex items-center justify-center text-ink-muted">
-            <p className="text-sm font-mono">
-              {activeRoom} — Coming soon
-            </p>
-          </div>
         )}
         {!activeRoom && (
           <div className="h-full flex items-center justify-center text-ink-muted">

@@ -21,6 +21,7 @@ import { TerminalCommandPreview } from '../core/TerminalCommandPreview';
 import { TerminalLogStream, LogEntry } from '../core/TerminalLogStream';
 import { ToolboxDangerLever } from '../toolbox/ToolboxDangerLever';
 import { DeviceIcon } from '../core/DeviceIcon';
+import { TrapdoorInstructionsPanel } from './TrapdoorInstructionsPanel';
 import { useApp } from '@/lib/app-context';
 
 interface Device {
@@ -269,6 +270,92 @@ export function TrapdoorUnlockChamber({
               impactedPartitions={impactedPartitions}
               riskLevel="destructive"
               expectedOutput="... OKAY\n... finished. total time: 2.345s"
+            />
+
+            <TrapdoorInstructionsPanel
+              title="Bootloader Unlock Instructions & Requirements"
+              description="Complete guide for unlocking Android device bootloader"
+              prerequisites={[
+                'Enable Developer Options and USB Debugging on device',
+                'OEM Unlock must be enabled in Developer Options (if available)',
+                'Backup all important data (unlock will erase device)',
+                'Device must be charged (50%+ recommended)',
+                'USB drivers installed for your device'
+              ]}
+              requiredFiles={[
+                {
+                  name: 'ADB & Fastboot',
+                  description: 'Android SDK Platform Tools (includes fastboot)',
+                  downloadUrl: 'https://developer.android.com/tools/releases/platform-tools',
+                  required: true
+                },
+                {
+                  name: 'USB Drivers',
+                  description: 'Device manufacturer USB drivers (Samsung, Xiaomi, etc.)',
+                  downloadUrl: 'https://developer.android.com/studio/run/oem-usb',
+                  required: true
+                }
+              ]}
+              steps={[
+                {
+                  number: 1,
+                  title: 'Enable Developer Options',
+                  description: 'Go to Settings > About Phone > Tap Build Number 7 times'
+                },
+                {
+                  number: 2,
+                  title: 'Enable USB Debugging',
+                  description: 'Settings > Developer Options > Enable USB Debugging'
+                },
+                {
+                  number: 3,
+                  title: 'Enable OEM Unlock',
+                  description: 'Settings > Developer Options > Enable OEM Unlocking (if available)',
+                  warning: 'Some devices do not have this option - unlock may not be possible'
+                },
+                {
+                  number: 4,
+                  title: 'Connect Device',
+                  description: 'Connect device via USB, authorize computer when prompted',
+                  command: 'adb devices'
+                },
+                {
+                  number: 5,
+                  title: 'Reboot to Bootloader',
+                  description: 'Reboot device to fastboot/bootloader mode',
+                  command: 'adb reboot bootloader'
+                },
+                {
+                  number: 6,
+                  title: 'Verify Fastboot Connection',
+                  description: 'Check device is detected in fastboot mode',
+                  command: 'fastboot devices'
+                },
+                {
+                  number: 7,
+                  title: 'Execute Unlock',
+                  description: 'Run unlock command (this will erase all data)',
+                  command: 'fastboot oem unlock\n# OR\nfastboot flashing unlock'
+                },
+                {
+                  number: 8,
+                  title: 'Confirm on Device',
+                  description: 'Use volume keys to confirm unlock on device screen (if prompted)'
+                },
+                {
+                  number: 9,
+                  title: 'Wait for Completion',
+                  description: 'Device will reboot and perform factory reset. Wait for completion.'
+                }
+              ]}
+              warnings={[
+                'This will permanently erase all user data',
+                'Bootloader unlock may void warranty',
+                'Some devices cannot be unlocked (carrier-locked, etc.)',
+                'Incorrect unlock process can brick device',
+                'Keep device charged during process',
+                'Do not disconnect device during unlock'
+              ]}
             />
 
             {/* Confirmation Gates */}

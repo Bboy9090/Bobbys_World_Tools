@@ -14,6 +14,9 @@ use std::env;
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicU64, Ordering};
 
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -236,6 +239,11 @@ fn emit_device_event(app_handle: &AppHandle, event: DeviceHotplugEvent) {
 }
 
 fn run_command_capture_lines(mut cmd: Command) -> Result<Vec<String>, String> {
+    // Hide console window on Windows
+    #[cfg(target_os = "windows")]
+    {
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
     let output = cmd.output().map_err(|e| format!("Failed to spawn: {e}"))?;
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
@@ -252,21 +260,29 @@ fn run_command_capture_lines(mut cmd: Command) -> Result<Vec<String>, String> {
 }
 
 fn fastboot_exists() -> bool {
-    Command::new("fastboot")
-        .arg("--version")
+    let mut cmd = Command::new("fastboot");
+    cmd.arg("--version")
         .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
+        .stderr(Stdio::null());
+    #[cfg(target_os = "windows")]
+    {
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
+    cmd.status()
         .map(|s| s.success())
         .unwrap_or(false)
 }
 
 fn adb_exists() -> bool {
-    Command::new("adb")
-        .arg("version")
+    let mut cmd = Command::new("adb");
+    cmd.arg("version")
         .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
+        .stderr(Stdio::null());
+    #[cfg(target_os = "windows")]
+    {
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
+    cmd.status()
         .map(|s| s.success())
         .unwrap_or(false)
 }
@@ -274,6 +290,10 @@ fn adb_exists() -> bool {
 fn adb_list_serials() -> Vec<String> {
     let mut cmd = Command::new("adb");
     cmd.args(["devices"]);
+    #[cfg(target_os = "windows")]
+    {
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
     let lines = match run_command_capture_lines(cmd) {
         Ok(l) => l,
         Err(_) => return vec![],
@@ -301,6 +321,10 @@ fn adb_list_serials() -> Vec<String> {
 fn fastboot_list_serials() -> Vec<String> {
     let mut cmd = Command::new("fastboot");
     cmd.args(["devices"]);
+    #[cfg(target_os = "windows")]
+    {
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
     let lines = match run_command_capture_lines(cmd) {
         Ok(l) => l,
         Err(_) => return vec![],
@@ -555,6 +579,10 @@ fn flash_start(app_handle: AppHandle, state: tauri::State<'_, AppState>, config:
             push_log("[tauri-fastboot] fastboot -w");
             let mut cmd = Command::new("fastboot");
             cmd.arg("-s").arg(&config.deviceSerial).arg("-w");
+            #[cfg(target_os = "windows")]
+            {
+                cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+            }
             match cmd.output() {
                 Ok(out) => {
                     let combined = format!("{}{}", String::from_utf8_lossy(&out.stdout), String::from_utf8_lossy(&out.stderr));
@@ -603,6 +631,10 @@ fn flash_start(app_handle: AppHandle, state: tauri::State<'_, AppState>, config:
             let mut cmd = Command::new("fastboot");
             cmd.arg("-s").arg(&config.deviceSerial);
             cmd.arg("flash").arg(&p.name).arg(&p.imagePath);
+            #[cfg(target_os = "windows")]
+            {
+                cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+            }
 
             match cmd.output() {
                 Ok(out) => {
@@ -651,6 +683,10 @@ fn flash_start(app_handle: AppHandle, state: tauri::State<'_, AppState>, config:
             push_log("[tauri-fastboot] fastboot reboot");
             let mut cmd = Command::new("fastboot");
             cmd.arg("-s").arg(&config.deviceSerial).arg("reboot");
+            #[cfg(target_os = "windows")]
+            {
+                cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+            }
             let _ = cmd.output().map(|out| {
                 let combined = format!("{}{}", String::from_utf8_lossy(&out.stdout), String::from_utf8_lossy(&out.stderr));
                 for line in combined.lines() {
@@ -941,7 +977,13 @@ fn find_node_executable(app_handle: &AppHandle) -> Option<PathBuf> {
     println!("[Tauri] Bundled Node.js not found, trying system Node.js...");
     
     // Try to find Node.js in system PATH
-    if let Ok(output) = Command::new("node").arg("--version").output() {
+    let mut node_cmd = Command::new("node");
+    node_cmd.arg("--version");
+    #[cfg(target_os = "windows")]
+    {
+        node_cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
+    if let Ok(output) = node_cmd.output() {
         if output.status.success() {
             println!("[Tauri] Found system Node.js in PATH");
             return Some(PathBuf::from("node"));
@@ -1090,6 +1132,12 @@ fn start_backend_server(app_handle: &AppHandle) -> Result<Child, std::io::Error>
         .current_dir(resource_dir.join("server"))
         .env("PORT", port.to_string())
         .env("BW_LOG_DIR", log_dir.to_string_lossy().to_string());
+    
+    // Hide console window on Windows
+    #[cfg(target_os = "windows")]
+    {
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
     
     // In production, redirect stdout/stderr to log file
     // In development, inherit for debugging

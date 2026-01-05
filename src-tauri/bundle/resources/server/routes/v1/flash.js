@@ -16,7 +16,13 @@ let flashJobCounter = sharedJobCounter || 1;
 // Helper functions (similar to server/index.js)
 function safeExec(cmd, options = {}) {
   try {
-    return execSync(cmd, { encoding: "utf-8", timeout: 5000, ...options }).trim();
+    return execSync(cmd, { 
+      encoding: "utf-8", 
+      timeout: 5000,
+      windowsHide: true,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      ...options 
+    }).trim();
   } catch {
     return null;
   }
@@ -25,9 +31,17 @@ function safeExec(cmd, options = {}) {
 function commandExists(cmd) {
   try {
     if (process.platform === 'win32') {
-      execSync(`where ${cmd}`, { stdio: 'ignore', timeout: 2000 });
+      execSync(`where ${cmd}`, { 
+        stdio: 'ignore', 
+        timeout: 2000,
+        windowsHide: true
+      });
     } else {
-      execSync(`command -v ${cmd}`, { stdio: 'ignore', timeout: 2000 });
+      execSync(`command -v ${cmd}`, { 
+        stdio: 'ignore', 
+        timeout: 2000,
+        windowsHide: true
+      });
     }
     return true;
   } catch {

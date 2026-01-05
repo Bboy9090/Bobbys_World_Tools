@@ -46,9 +46,9 @@ export function useDeviceHotplug(options: UseDeviceHotplugOptions = {}) {
     onError,
   } = options;
   
-  const { backendAvailable, isDemoMode } = useApp();
-  const isBackendReady = backendAvailable && !isDemoMode;
-  // Disable toasts when backend is unavailable or in demo mode
+  const { backendAvailable } = useApp();
+  const isBackendReady = backendAvailable;
+  // Disable toasts when backend is unavailable
   const shouldShowToasts = showToasts && isBackendReady;
 
   const [isConnected, setIsConnected] = useState(false);
@@ -156,17 +156,28 @@ export function useDeviceHotplug(options: UseDeviceHotplugOptions = {}) {
         setIsConnected(false);
         wsRef.current = null;
 
+        // Only attempt reconnection if backend is still ready
+        if (!isBackendReady) {
+          clearReconnectTimeout();
+          return;
+        }
+
         const maxAttempts = 5;
         if (reconnectAttemptsRef.current < maxAttempts) {
           const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 30000);
           reconnectAttemptsRef.current += 1;
           
           reconnectTimeoutRef.current = setTimeout(() => {
-            console.log(`Attempting to reconnect (${reconnectAttemptsRef.current}/${maxAttempts})...`);
-            connect();
+            // Check again before reconnecting (backend might have gone offline)
+            if (isBackendReady) {
+              connect();
+            } else {
+              clearReconnectTimeout();
+            }
           }, delay);
         } else {
-          if (shouldShowToasts) {
+          // Only show error toast once when max attempts reached
+          if (shouldShowToasts && reconnectAttemptsRef.current === maxAttempts) {
             toast.error('WebSocket Disconnected', {
               description: 'Failed to reconnect after multiple attempts',
             });

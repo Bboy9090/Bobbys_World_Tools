@@ -39,8 +39,9 @@ export function backendAutoStart(): Plugin {
         // Start backend server
         backendProcess = spawn('node', ['index.js'], {
           cwd: serverDir,
-          stdio: 'inherit',
-          shell: true,
+          stdio: ['ignore', 'pipe', 'pipe'],
+          shell: false,
+          windowsHide: true,
           env: {
             ...process.env,
             PORT: '3001',

@@ -25,7 +25,8 @@ function safeExec(cmd, timeout = 2000) {
     const result = execSync(cmd, {
       encoding: 'utf-8',
       timeout,
-      stdio: ['pipe', 'pipe', 'pipe']
+      stdio: ['ignore', 'pipe', 'pipe'],
+      windowsHide: true
     });
     return result.trim();
   } catch (error) {
@@ -42,9 +43,17 @@ function safeExec(cmd, timeout = 2000) {
 function commandExists(cmd) {
   try {
     if (IS_WINDOWS) {
-      execSync(`where ${cmd}`, { stdio: 'ignore', timeout: 2000 });
+      execSync(`where ${cmd}`, { 
+        stdio: 'ignore', 
+        timeout: 2000,
+        windowsHide: true
+      });
     } else {
-      execSync(`command -v ${cmd}`, { stdio: 'ignore', timeout: 2000 });
+      execSync(`command -v ${cmd}`, { 
+        stdio: 'ignore', 
+        timeout: 2000,
+        windowsHide: true
+      });
     }
     return true;
   } catch {

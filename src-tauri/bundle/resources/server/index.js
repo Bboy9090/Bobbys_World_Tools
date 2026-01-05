@@ -86,9 +86,8 @@ const logger = {
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-const DEMO_MODE = process.env.DEMO_MODE === '1';
 
-logger.info(`Backend starting on port ${PORT}`);
+logger.info(`Backend starting on port ${PORT} (PRODUCTION MODE)`);
 logger.info(`Log directory: ${LOG_DIR}`);
 logger.info(`Log file: ${LOG_FILE}`);
 
@@ -296,109 +295,10 @@ wssCorrelation.on('connection', (ws) => {
     correlationId: `ws-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
   }));
 
-  const interval = DEMO_MODE
-    ? setInterval(() => {
-        if (ws.readyState === ws.OPEN) {
-          const eventType = Math.random();
-          const platforms = ['android', 'ios'];
-          const platform = platforms[Math.floor(Math.random() * platforms.length)];
-          const deviceId = `device-${Math.random().toString(36).substr(2, 9)}`;
-          const confidence = 0.75 + Math.random() * 0.25;
-          const hasMatchedIds = Math.random() > 0.4;
+  // Production mode: No demo correlation data - only real device events
+  const interval = null;
 
-          const badges = ['CORRELATED', 'CORRELATED (WEAK)', 'SYSTEM-CONFIRMED', 'LIKELY', 'UNCONFIRMED'];
-          let badge;
-          let matchedIds = [];
-          let notes = [];
-
-          if (hasMatchedIds && confidence >= 0.90) {
-            badge = 'CORRELATED';
-            matchedIds = [deviceId, `${platform}-${deviceId}`];
-            notes = ['Per-device correlation present (matched tool ID(s)).'];
-          } else if (hasMatchedIds) {
-            badge = 'CORRELATED (WEAK)';
-            matchedIds = [deviceId];
-            notes = ['Matched tool ID(s) present, but mode not strongly confirmed.'];
-          } else if (confidence >= 0.90) {
-            badge = 'SYSTEM-CONFIRMED';
-            notes = ['System-level confirmation exists, but not mapped to this specific USB record.'];
-          } else if (confidence >= 0.75) {
-            badge = 'LIKELY';
-            notes = [];
-          } else {
-            badge = 'UNCONFIRMED';
-            notes = [];
-          }
-
-          if (eventType < 0.33) {
-            ws.send(
-              JSON.stringify({
-                type: 'device_connected',
-                deviceId: deviceId,
-                device: {
-                  id: deviceId,
-                  serial: Math.random() > 0.3 ? deviceId.substring(0, 10).toUpperCase() : undefined,
-                  platform: platform,
-                  mode: `confirmed_${platform}_os`,
-                  confidence: confidence,
-                  correlationBadge: badge,
-                  matchedIds: matchedIds,
-                  correlationNotes: notes,
-                  vendorId: platform === 'android' ? 0x18d1 : 0x05ac,
-                  productId: platform === 'android' ? 0x4ee7 : 0x12a8
-                },
-                timestamp: Date.now()
-              })
-            );
-          } else if (eventType < 0.66) {
-            ws.send(
-              JSON.stringify({
-                type: 'correlation_update',
-                deviceId: deviceId,
-                device: {
-                  correlationBadge: badge,
-                  matchedIds: matchedIds,
-                  confidence: confidence,
-                  correlationNotes: notes
-                },
-                timestamp: Date.now()
-              })
-            );
-          } else {
-            ws.send(
-              JSON.stringify({
-                type: 'device_disconnected',
-                deviceId: deviceId,
-                timestamp: Date.now()
-              })
-            );
-          }
-        }
-      }, 5000)
-    : null;
-
-  if (DEMO_MODE) {
-    ws.send(
-      JSON.stringify({
-        type: 'batch_update',
-        devices: [
-          {
-            id: 'demo-android-001',
-            serial: 'ABC123XYZ',
-            platform: 'android',
-            mode: 'confirmed_android_os',
-            confidence: 0.95,
-            correlationBadge: 'CORRELATED',
-            matchedIds: ['ABC123XYZ', 'adb-ABC123XYZ'],
-            correlationNotes: ['Per-device correlation present (matched tool ID(s)).'],
-            vendorId: 0x18d1,
-            productId: 0x4ee7
-          }
-        ],
-        timestamp: Date.now()
-      })
-    );
-  }
+  // Production mode: No demo data sent
   
   ws.on('message', (data) => {
     try {
@@ -443,103 +343,8 @@ wssAnalytics.on('connection', (ws) => {
     correlationId: `ws-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
   }));
 
-  const analyticsInterval = DEMO_MODE
-    ? (() => {
-        const mockDevices = [
-          {
-            deviceId: 'device-001',
-            deviceName: 'Android Test Device',
-            platform: 'android',
-            status: 'online',
-            cpuUsage: 45,
-            memoryUsage: 62,
-            storageUsage: 78,
-            temperature: 42,
-            batteryLevel: 85,
-            networkLatency: 15,
-            workflows: { running: 1, completed: 5, failed: 0 }
-          },
-          {
-            deviceId: 'device-002',
-            deviceName: 'iOS Test Device',
-            platform: 'ios',
-            status: 'online',
-            cpuUsage: 32,
-            memoryUsage: 54,
-            storageUsage: 65,
-            temperature: 38,
-            batteryLevel: 92,
-            networkLatency: 12,
-            workflows: { running: 0, completed: 3, failed: 0 }
-          }
-        ];
-
-        mockDevices.forEach(device => {
-          ws.send(
-            JSON.stringify({
-              type: 'device_metrics',
-              deviceId: device.deviceId,
-              metrics: device
-            })
-          );
-        });
-
-        return setInterval(() => {
-          if (ws.readyState === ws.OPEN) {
-            mockDevices.forEach(device => {
-              const updatedMetrics = {
-                ...device,
-                cpuUsage: Math.max(5, Math.min(95, device.cpuUsage + (Math.random() - 0.5) * 10)),
-                memoryUsage: Math.max(10, Math.min(90, device.memoryUsage + (Math.random() - 0.5) * 5)),
-                temperature: Math.max(30, Math.min(70, device.temperature + (Math.random() - 0.5) * 2)),
-                networkLatency: Math.max(5, Math.min(100, device.networkLatency + (Math.random() - 0.5) * 10))
-              };
-
-              const correlationId = `ws-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-              ws.send(
-                JSON.stringify({
-                  type: 'device_metrics',
-                  deviceId: device.deviceId,
-                  metrics: updatedMetrics,
-                  timestamp: Date.now(),
-                  serverTs: new Date().toISOString(),
-                  apiVersion: 'v1',
-                  correlationId
-                })
-              );
-
-              Object.assign(device, updatedMetrics);
-            });
-
-            if (Math.random() > 0.7) {
-              const device = mockDevices[Math.floor(Math.random() * mockDevices.length)];
-              const correlationId = `ws-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-              ws.send(
-                JSON.stringify({
-                  type: 'workflow_event',
-                  event: {
-                    id: `workflow-${Date.now()}`,
-                    workflowName: ['ADB Diagnostics', 'Battery Health Check', 'Storage Analysis'][
-                      Math.floor(Math.random() * 3)
-                    ],
-                    deviceId: device.deviceId,
-                    status: ['started', 'running', 'completed'][Math.floor(Math.random() * 3)],
-                    progress: Math.floor(Math.random() * 100),
-                    currentStep: ['Initializing', 'Running diagnostics', 'Collecting data', 'Analyzing results'][
-                      Math.floor(Math.random() * 4)
-                    ]
-                  },
-                  timestamp: Date.now(),
-                  serverTs: new Date().toISOString(),
-                  apiVersion: 'v1',
-                  correlationId
-                })
-              );
-            }
-          }
-        }, 2000);
-      })()
-    : null;
+  // Production mode: No demo analytics data - only real metrics
+  const analyticsInterval = null;
 
   ws.on('close', () => {
     console.log('WebSocket client disconnected (live analytics)');
@@ -1250,7 +1055,9 @@ app.post('/api/adb/trigger-auth', (req, res) => {
   try {
     execSync(`${adbCmd} -s ${resolvedSerial} shell echo "auth_trigger" 2>&1`, { 
       encoding: "utf-8", 
-      timeout: 3000 
+      timeout: 3000,
+      windowsHide: true,
+      stdio: ['ignore', 'pipe', 'pipe']
     });
     
     res.json({
@@ -1820,14 +1627,9 @@ app.post('/api/fastboot/erase', requireDeviceLock, (req, res) => {
 });
 
 app.get('/api/bootforgeusb/scan', (req, res) => {
-  const useDemoData = req.query.demo === 'true';
-  
+  // Production mode: No demo data support
   const cmd = getBootForgeUsbCommand();
   if (!cmd) {
-    if (useDemoData) {
-      return res.json(generateDemoBootForgeData());
-    }
-    
     return res.status(503).json({ 
       error: "BootForgeUSB not available",
       message: "BootForgeUSB CLI tool is not installed or not in PATH",
@@ -1849,9 +1651,6 @@ app.get('/api/bootforgeusb/scan', (req, res) => {
     });
   } catch (error) {
     if (error.code === 'CLI_NOT_FOUND') {
-      if (useDemoData) {
-        return res.json(generateDemoBootForgeData());
-      }
       return res.status(503).json({
         error: "BootForgeUSB not available",
         message: error.message,
@@ -1870,10 +1669,6 @@ app.get('/api/bootforgeusb/scan', (req, res) => {
     
     console.error('BootForgeUSB scan error:', error);
     
-    if (useDemoData) {
-      return res.json(generateDemoBootForgeData());
-    }
-    
     res.status(500).json({
       error: 'BootForgeUSB scan failed',
       details: error.message,
@@ -1883,7 +1678,10 @@ app.get('/api/bootforgeusb/scan', (req, res) => {
   }
 });
 
+// Production mode: Demo data generation removed
 function generateDemoBootForgeData() {
+  // This function is disabled in production mode
+  throw new Error('Demo data generation is disabled in production mode');
   const demoDevices = [
     {
       device_uid: "usb-18d1:4ee7-3-2",

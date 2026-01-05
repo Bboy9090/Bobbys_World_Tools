@@ -42,9 +42,9 @@ export function WorkbenchDashboard() {
   // Log backend status on mount
   useEffect(() => {
     if (backendAvailable) {
-      addLog('info', '[SYSTEM] Backend connected - real mode active');
+      addLog('info', '[SYSTEM] Backend connected - production mode active');
     } else {
-      addLog('warn', '[SYSTEM] Backend offline - running in demo mode');
+      addLog('warn', '[SYSTEM] Backend offline - attempting to reconnect...');
     }
   }, [backendAvailable, addLog]);
 
@@ -53,7 +53,7 @@ export function WorkbenchDashboard() {
     addLog('info', '[ACTION] Scanning for connected devices...');
     
     if (!backendAvailable) {
-      setTimeout(() => addLog('warn', '[SCAN] Backend offline - cannot scan'), 500);
+      setTimeout(() => addLog('error', '[SCAN] Backend unavailable - please check connection'), 500);
       return;
     }
 

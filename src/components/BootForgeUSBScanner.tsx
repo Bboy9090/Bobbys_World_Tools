@@ -195,8 +195,8 @@ export function BootForgeUSBScanner() {
     setScanning(true);
     setError(null);
     try {
-      const useDemoFallback = !forceReal;
-      const res = await fetch(getAPIUrl(`/api/bootforgeusb/scan${useDemoFallback ? '?demo=true' : ''}`));
+      // Production mode: No demo fallback
+      const res = await fetch(getAPIUrl('/api/bootforgeusb/scan'));
       const data: ScanResponse = await res.json();
       
       if (!res.ok) {
@@ -271,7 +271,7 @@ export function BootForgeUSBScanner() {
               )}
               Refresh Status
             </Button>
-            {status?.cli.installed ? (
+            {status?.cli.installed && (
               <Button
                 onClick={() => scanDevices(true)}
                 disabled={scanning}
@@ -283,20 +283,6 @@ export function BootForgeUSBScanner() {
                   <MagnifyingGlass className="w-4 h-4" />
                 )}
                 Scan Real Devices
-              </Button>
-            ) : (
-              <Button
-                onClick={() => scanDevices(false)}
-                disabled={scanning}
-                size="sm"
-                variant="secondary"
-              >
-                {scanning ? (
-                  <CircleNotch className="w-4 h-4 animate-spin" />
-                ) : (
-                  <MagnifyingGlass className="w-4 h-4" />
-                )}
-                View Demo Data
               </Button>
             )}
           </div>
