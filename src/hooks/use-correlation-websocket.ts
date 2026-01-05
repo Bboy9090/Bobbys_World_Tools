@@ -227,7 +227,6 @@ export function useCorrelationWebSocket(config: CorrelationWebSocketConfig) {
       connect();
     } else {
       disconnect();
-      setReconnectAttempts(0);
     }
 
     return () => {
