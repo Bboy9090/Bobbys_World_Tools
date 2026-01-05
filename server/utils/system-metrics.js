@@ -73,9 +73,7 @@ export function getDiskUsage() {
       // Windows: use wmic
       const output = execSync('wmic logicaldisk get size,freespace,caption', { 
         encoding: 'utf8',
-        timeout: 5000,
-        windowsHide: true,
-        stdio: ['ignore', 'pipe', 'pipe']
+        timeout: 5000 
       });
       const lines = output.trim().split('\n').slice(1);
       let totalSpace = 0;
@@ -100,8 +98,6 @@ export function getDiskUsage() {
       // Unix-like: use df
       const output = execSync('df -k / | tail -1', { 
         encoding: 'utf8',
-        windowsHide: true,
-        stdio: ['ignore', 'pipe', 'pipe'],
         timeout: 5000 
       });
       const parts = output.trim().split(/\s+/);
