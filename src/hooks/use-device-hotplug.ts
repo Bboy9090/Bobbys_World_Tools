@@ -2,7 +2,6 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { getWSUrl } from '@/lib/apiConfig';
 import { connectDeviceEvents, type RealtimeConnection } from '@/lib/realtime';
 import { toast } from 'sonner';
-import { useAudioNotifications } from './use-audio-notifications';
 import { useApp } from '@/lib/app-context';
 import type { CorrelationBadge } from '@/types/correlation';
 
