@@ -7,6 +7,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { getValidationResults } from '../../utils/startup-validation.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -66,7 +67,8 @@ function getFeatureFlags() {
 
 export function readyHandler(req, res) {
   const featureFlags = getFeatureFlags();
-  
+  const validationResults = getValidationResults();
+
   const response = {
     serverVersion,
     apiVersion: API_VERSION,
@@ -74,9 +76,15 @@ export function readyHandler(req, res) {
     featureFlags,
     requiredFrontendMinVersion: FRONTEND_MIN_VERSION,
     compatibleFrontendRange: `>=${FRONTEND_MIN_VERSION}`, // Semver range
+    startupValidation: {
+      performed: validationResults.performed,
+      status: validationResults.overallStatus,
+      criticalFailures: validationResults.criticalFailures?.length || 0,
+      timestamp: validationResults.timestamp
+    },
     timestamp: new Date().toISOString()
   };
-  
+
   res.sendEnvelope(response);
 }
 

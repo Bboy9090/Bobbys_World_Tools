@@ -233,7 +233,7 @@ class FirmwareLibraryManager {
       if (type) params.set('type', type);
       if (platform) params.set('platform', platform);
 
-      const response = await fetch(`/api/v1/firmware/search?${params}`);
+      const response = await fetch(`/api/v1/firmware/library/search?${params}`);
       if (!response.ok) throw new Error('API error');
       const data = await response.json();
       return data.data?.results || [];
@@ -265,7 +265,7 @@ class FirmwareLibraryManager {
     if (cached) return cached;
 
     const apiResult = await safeAsync(async () => {
-      const response = await fetch(`/api/v1/firmware/${id}`);
+      const response = await fetch(`/api/v1/firmware/library/${id}`);
       if (!response.ok) throw new Error('Not found');
       const data = await response.json();
       return data.data;

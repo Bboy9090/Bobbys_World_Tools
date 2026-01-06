@@ -7,7 +7,7 @@
 import { spawn } from 'child_process';
 import { promisify } from 'util';
 import { withReliability, getCircuitBreakerStatus, resetCircuitBreaker } from './retry-circuit-breaker.js';
-import { createLogger } from '../../src/lib/debug-logger.js';
+import { createLogger } from './bundled-logger.js';
 
 const logger = createLogger('SafeExec');
 

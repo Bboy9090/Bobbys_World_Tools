@@ -1213,6 +1213,32 @@ app.get('/api/adb/devices', (req, res) => {
   });
 });
 
+// Alias: /api/android/devices -> /api/adb/devices for API consistency
+app.get('/api/android/devices', (req, res) => {
+  // Redirect internally to /api/adb/devices handler
+  req.url = '/api/adb/devices';
+  app._router.handle(req, res, () => {});
+});
+
+// Plugins API stub (for plugin marketplace)
+app.get('/api/plugins', (req, res) => {
+  res.json({
+    success: true,
+    plugins: [],
+    count: 0,
+    message: 'Plugin marketplace is available. No plugins installed.',
+    timestamp: new Date().toISOString()
+  });
+});
+
+app.get('/api/plugins/:id', (req, res) => {
+  res.status(404).json({
+    success: false,
+    error: 'Plugin not found',
+    pluginId: req.params.id
+  });
+});
+
 app.get('/api/devices/scan', (req, res) => {
   const scanned = [];
   const seenUids = new Set();
@@ -2993,6 +3019,24 @@ app.get('/api/standards', (req, res) => {
 app.get('/api/hotplug/events', (req, res) => {
   res.json({
     events: [],
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Sync API for offline storage
+app.post('/api/v1/sync/:store', (req, res) => {
+  const { store } = req.params;
+  const { action, data, queuedAt } = req.body;
+  
+  // In production, this would persist to database
+  // For now, acknowledge receipt and log
+  console.log(`[Sync] Store: ${store}, Action: ${action}, Queued: ${queuedAt}`);
+  
+  res.json({
+    success: true,
+    synced: true,
+    store,
+    action,
     timestamp: new Date().toISOString()
   });
 });

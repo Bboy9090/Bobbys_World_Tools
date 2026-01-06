@@ -1129,7 +1129,7 @@ fn start_backend_server(app_handle: &AppHandle) -> Result<Child, std::io::Error>
     // Start the Node.js server with log directory environment variable
     let mut cmd = Command::new(&node_exe);
     cmd.arg(&server_path)
-        .current_dir(resource_dir.join("server"))
+        .current_dir(&resource_dir)
         .env("PORT", port.to_string())
         .env("BW_LOG_DIR", log_dir.to_string_lossy().to_string());
     
