@@ -46,39 +46,7 @@ async function runBootForgeUsbScanJson() {
   return { cmd, devices };
 }
 
-function generateDemoBootForgeData() {
-  const demoDevices = [
-    {
-      device_uid: "usb-18d1:4ee7-3-2",
-      platform_hint: "android",
-      mode: "Normal OS (Confirmed)",
-      confidence: 0.95,
-      evidence: {
-        usb: {
-          vid: "0x18d1",
-          pid: "0x4ee7",
-          manufacturer: "Google Inc.",
-          product: "Pixel 6",
-          serial: "1A2B3C4D5E6F",
-          bus: 3,
-          address: 2
-        }
-      },
-      matched_tool_ids: ["1A2B3C4D5E6F"],
-      correlation_badge: "CORRELATED"
-    }
-  ];
-
-  return {
-    success: true,
-    count: demoDevices.length,
-    devices: demoDevices,
-    timestamp: new Date().toISOString(),
-    available: false,
-    demo: true,
-    message: "Showing demo data - BootForgeUSB CLI not available"
-  };
-}
+// REMOVED: generateDemoBootForgeData - Demo data is disabled in production mode
 
 /**
  * GET /api/v1/bootforgeusb/scan

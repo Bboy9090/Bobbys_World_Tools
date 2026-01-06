@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { DashboardLayout } from "./components/DashboardLayout";
-import { DemoModeBanner } from "./components/DemoModeBanner";
 import { LoadingPage } from "./components/core/LoadingPage";
 import { SplashPage } from "./components/core/SplashPage";
 import { Toaster } from "@/components/ui/sonner";
@@ -16,10 +15,11 @@ import { createLogger } from "./lib/debug-logger";
 const logger = createLogger('App');
 
 function AppContent() {
-    const { isDemoMode, setDemoMode, setBackendAvailable } = useApp();
+    const { setBackendAvailable } = useApp();
     const [isLoading, setIsLoading] = useState(true);
     const [showSplash, setShowSplash] = useState(true);
     const [initError, setInitError] = useState<Error | null>(null);
+    const [backendConnected, setBackendConnected] = useState(false);
 
     useEffect(() => {
         async function initializeApp() {
@@ -36,18 +36,17 @@ function AppContent() {
                 await initOfflineStorage();
                 logger.debug('Offline storage ready');
                 
-                // Simulate system boot
-                await new Promise(resolve => setTimeout(resolve, 800));
+                // Brief initialization delay
+                await new Promise(resolve => setTimeout(resolve, 500));
                 
                 const backendHealthy = await checkBackendHealth();
                 setBackendAvailable(backendHealthy.isHealthy);
+                setBackendConnected(backendHealthy.isHealthy);
 
                 if (!backendHealthy.isHealthy) {
-                    logger.info('Backend offline - running in demo mode');
-                    setDemoMode(true);
+                    logger.warn('Backend not available - please start the backend server');
                 } else {
-                    logger.info('Backend connected - production mode');
-                    setDemoMode(false);
+                    logger.info('Backend connected - production mode active');
                     // Initialize WebSocket connections
                     initializeWebSockets();
                     logger.debug('WebSocket connections initialized');
@@ -55,12 +54,12 @@ function AppContent() {
                 
                 // Listen for network status changes
                 networkStatus.subscribe((online) => {
-                    if (online && !backendHealthy.isHealthy) {
+                    if (online) {
                         // Re-check backend when coming online
                         checkBackendHealth().then(result => {
                             if (result.isHealthy) {
                                 setBackendAvailable(true);
-                                setDemoMode(false);
+                                setBackendConnected(true);
                                 initializeWebSockets();
                             }
                         });
@@ -73,7 +72,6 @@ function AppContent() {
                 logger.error('Initialization error:', error);
                 setInitError(error instanceof Error ? error : new Error(String(error)));
                 setIsLoading(false);
-                setDemoMode(true);
             }
         }
 
@@ -82,19 +80,19 @@ function AppContent() {
         return () => {
             cleanupWebSockets();
         };
-    }, [setDemoMode, setBackendAvailable]);
+    }, [setBackendAvailable]);
 
     useEffect(() => {
         soundManager.init();
         return () => soundManager.destroy();
     }, []);
 
-    const handleConnectBackend = async () => {
+    const handleRetryConnection = async () => {
         const backendHealthy = await checkBackendHealth();
-        if (backendHealthy) {
+        if (backendHealthy.isHealthy) {
             setBackendAvailable(true);
-            setDemoMode(false);
-            window.location.reload();
+            setBackendConnected(true);
+            initializeWebSockets();
         }
     };
 
@@ -129,28 +127,26 @@ function AppContent() {
         return <SplashPage onComplete={() => setShowSplash(false)} />;
     }
 
-    try {
-        return (
-            <>
-                {isDemoMode && <DemoModeBanner onDisable={handleConnectBackend} />}
-                <DashboardLayout />
-                <Toaster />
-            </>
-        );
-    } catch (error) {
-        console.error('[AppContent] Render error:', error);
-        return (
-            <div className="min-h-screen bg-midnight-room flex items-center justify-center p-4">
-                <div className="max-w-md w-full bg-workbench-steel border border-panel rounded-lg p-6">
-                    <h1 className="text-xl font-bold text-ink-primary mb-2 font-mono">Render Error</h1>
-                    <p className="text-sm text-ink-muted mb-4">Failed to render the application.</p>
-                    <pre className="text-xs text-state-danger bg-midnight-room p-3 rounded border overflow-auto max-h-32 font-mono">
-                        {error instanceof Error ? error.message : String(error)}
-                    </pre>
+    // Show backend connection warning if not connected (non-blocking)
+    return (
+        <>
+            {!backendConnected && (
+                <div className="fixed top-0 left-0 right-0 z-50 bg-amber-900/90 border-b border-amber-600 px-4 py-2 flex items-center justify-between">
+                    <span className="text-amber-100 text-sm font-medium">
+                        ⚠️ Backend server not connected. Some features may be unavailable.
+                    </span>
+                    <button
+                        onClick={handleRetryConnection}
+                        className="px-3 py-1 bg-amber-600 text-white text-xs rounded hover:bg-amber-500 transition-colors"
+                    >
+                        Retry Connection
+                    </button>
                 </div>
-            </div>
-        );
-    }
+            )}
+            <DashboardLayout />
+            <Toaster />
+        </>
+    );
 }
 
 function App() {

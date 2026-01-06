@@ -1766,14 +1766,9 @@ app.post('/api/fastboot/erase', requireDeviceLock, (req, res) => {
 });
 
 app.get('/api/bootforgeusb/scan', (req, res) => {
-  const useDemoData = req.query.demo === 'true';
-  
+  // Production mode - no demo data allowed
   const cmd = getBootForgeUsbCommand();
   if (!cmd) {
-    if (useDemoData) {
-      return res.json(generateDemoBootForgeData());
-    }
-    
     return res.status(503).json({ 
       error: "BootForgeUSB not available",
       message: "BootForgeUSB CLI tool is not installed or not in PATH",
@@ -1795,9 +1790,6 @@ app.get('/api/bootforgeusb/scan', (req, res) => {
     });
   } catch (error) {
     if (error.code === 'CLI_NOT_FOUND') {
-      if (useDemoData) {
-        return res.json(generateDemoBootForgeData());
-      }
       return res.status(503).json({
         error: "BootForgeUSB not available",
         message: error.message,
@@ -1816,10 +1808,6 @@ app.get('/api/bootforgeusb/scan', (req, res) => {
     
     console.error('BootForgeUSB scan error:', error);
     
-    if (useDemoData) {
-      return res.json(generateDemoBootForgeData());
-    }
-    
     res.status(500).json({
       error: 'BootForgeUSB scan failed',
       details: error.message,
@@ -1829,217 +1817,7 @@ app.get('/api/bootforgeusb/scan', (req, res) => {
   }
 });
 
-function generateDemoBootForgeData() {
-  const demoDevices = [
-    {
-      device_uid: "usb-18d1:4ee7-3-2",
-      platform_hint: "android",
-      mode: "Normal OS (Confirmed)",
-      confidence: 0.95,
-      evidence: {
-        usb: {
-          vid: "0x18d1",
-          pid: "0x4ee7",
-          manufacturer: "Google Inc.",
-          product: "Pixel 6",
-          serial: "1A2B3C4D5E6F",
-          bus: 3,
-          address: 2,
-          interface_hints: [
-            { class: 255, subclass: 66, protocol: 1 },
-            { class: 255, subclass: 66, protocol: 3 }
-          ]
-        },
-        tools: {
-          adb: {
-            present: true,
-            seen: true,
-            raw: "1A2B3C4D5E6F device",
-            device_ids: ["1A2B3C4D5E6F"]
-          },
-          fastboot: {
-            present: true,
-            seen: false,
-            raw: "",
-            device_ids: []
-          },
-          idevice_id: {
-            present: false,
-            seen: false,
-            raw: "",
-            device_ids: []
-          }
-        }
-      },
-      notes: [
-        "USB VID/PID matches Google Android Debug Bridge",
-        "ADB tool detected device with serial 1A2B3C4D5E6F",
-        "USB interface class 0xFF (Vendor Specific) with ADB-standard protocol",
-        "Device confirmed in normal Android OS mode via ADB"
-      ],
-      matched_tool_ids: ["1A2B3C4D5E6F"],
-      correlation_badge: "CORRELATED",
-      correlation_notes: ["Per-device correlation present (matched tool ID(s))."]
-    },
-    {
-      device_uid: "usb-05ac:12a8-1-5",
-      platform_hint: "ios",
-      mode: "Normal OS (Likely)",
-      confidence: 0.88,
-      evidence: {
-        usb: {
-          vid: "0x05ac",
-          pid: "0x12a8",
-          manufacturer: "Apple Inc.",
-          product: "iPhone",
-          serial: null,
-          bus: 1,
-          address: 5,
-          interface_hints: [
-            { class: 255, subclass: 254, protocol: 2 }
-          ]
-        },
-        tools: {
-          adb: {
-            present: true,
-            seen: false,
-            raw: "",
-            device_ids: []
-          },
-          fastboot: {
-            present: true,
-            seen: false,
-            raw: "",
-            device_ids: []
-          },
-          idevice_id: {
-            present: false,
-            seen: false,
-            raw: "",
-            device_ids: []
-          }
-        }
-      },
-      notes: [
-        "USB VID matches Apple Inc. (0x05ac)",
-        "PID 0x12a8 is standard iPhone enumeration",
-        "No idevice_id tool available to confirm",
-        "Classification based on USB evidence only"
-      ],
-      matched_tool_ids: [],
-      correlation_badge: "LIKELY",
-      correlation_notes: []
-    },
-    {
-      device_uid: "usb-18d1:d00d-2-7",
-      platform_hint: "android",
-      mode: "Fastboot (Confirmed)",
-      confidence: 0.92,
-      evidence: {
-        usb: {
-          vid: "0x18d1",
-          pid: "0xd00d",
-          manufacturer: "Google Inc.",
-          product: "Fastboot Device",
-          serial: "FASTBOOT123ABC",
-          bus: 2,
-          address: 7,
-          interface_hints: [
-            { class: 255, subclass: 66, protocol: 3 }
-          ]
-        },
-        tools: {
-          adb: {
-            present: true,
-            seen: false,
-            raw: "",
-            device_ids: []
-          },
-          fastboot: {
-            present: true,
-            seen: true,
-            raw: "FASTBOOT123ABC fastboot",
-            device_ids: ["FASTBOOT123ABC"]
-          },
-          idevice_id: {
-            present: false,
-            seen: false,
-            raw: "",
-            device_ids: []
-          }
-        }
-      },
-      notes: [
-        "USB VID/PID matches Google Fastboot protocol",
-        "Fastboot tool detected device with serial FASTBOOT123ABC",
-        "Device is in bootloader/fastboot mode",
-        "Ready for flashing operations"
-      ],
-      matched_tool_ids: ["FASTBOOT123ABC"],
-      correlation_badge: "CORRELATED",
-      correlation_notes: ["Per-device correlation present (matched tool ID(s))."]
-    },
-    {
-      device_uid: "usb-2717:ff48-3-4",
-      platform_hint: "android",
-      mode: "Normal OS (Likely)",
-      confidence: 0.78,
-      evidence: {
-        usb: {
-          vid: "0x2717",
-          pid: "0xff48",
-          manufacturer: "Xiaomi",
-          product: "Mi Device",
-          serial: "XIAOMI987654",
-          bus: 3,
-          address: 4,
-          interface_hints: [
-            { class: 255, subclass: 66, protocol: 1 }
-          ]
-        },
-        tools: {
-          adb: {
-            present: true,
-            seen: false,
-            raw: "",
-            device_ids: []
-          },
-          fastboot: {
-            present: true,
-            seen: false,
-            raw: "",
-            device_ids: []
-          },
-          idevice_id: {
-            present: false,
-            seen: false,
-            raw: "",
-            device_ids: []
-          }
-        }
-      },
-      notes: [
-        "USB VID matches Xiaomi manufacturer code",
-        "Interface class suggests Android ADB protocol",
-        "ADB tool present but device not visible (possible USB authorization pending)",
-        "Classification confidence reduced due to lack of tool confirmation"
-      ],
-      matched_tool_ids: [],
-      correlation_badge: "LIKELY",
-      correlation_notes: []
-    }
-  ];
-
-  return {
-    success: true,
-    count: demoDevices.length,
-    devices: demoDevices,
-    timestamp: new Date().toISOString(),
-    available: false,
-    demo: true,
-    message: "Showing demo data - BootForgeUSB CLI not available"
-  };
-}
+// REMOVED: generateDemoBootForgeData - Demo data is disabled in production mode
 
 app.get('/api/bootforgeusb/status', (req, res) => {
   const cmd = getBootForgeUsbCommand();
