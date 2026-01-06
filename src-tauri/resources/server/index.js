@@ -49,6 +49,10 @@ import adbAdvancedRouter from './routes/v1/adb/advanced.js';
 import diagnosticsRouter from './routes/v1/diagnostics/index.js';
 import trapdoorRouter from './routes/v1/trapdoor/index.js';
 import { getAllMetrics, estimateUsbUtilization } from './utils/system-metrics.js';
+import { getCircuitBreakerStatus, resetCircuitBreaker, getHealthStatus } from './utils/retry-circuit-breaker.js';
+import { getResourceStatus, canExecuteOperation, acquireOperationSlot, releaseOperationSlot, forceCleanup } from './utils/resource-limits.js';
+import { performStartupValidation, getValidationResults, isValidationPassed } from './utils/startup-validation.js';
+import { performanceMiddleware, getPerformanceMetrics, OperationTimer } from './utils/performance-monitor.js';
 
 // Initialize logging first
 const LOG_DIR = process.env.BW_LOG_DIR || (process.platform === 'win32' 
@@ -87,17 +91,171 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 const DEMO_MODE = process.env.DEMO_MODE === '1';
 
+// 🔧 BACKEND RELIABILITY ENHANCEMENTS
+
+// Global error handling - prevent backend crashes
+process.on('uncaughtException', (error) => {
+  logger.error(`🚨 UNCAUGHT EXCEPTION: ${error.message}`);
+  logger.error(`Stack trace: ${error.stack}`);
+  // Don't exit immediately - try to recover
+  setTimeout(() => {
+    logger.error('🔄 Attempting graceful recovery after uncaught exception...');
+    // Log critical state
+    try {
+      const activeLocks = getActiveLockCount();
+      logger.error(`Active device locks: ${activeLocks}`);
+
+      const activeDownloads = getActiveDownloads ? getActiveDownloads().length : 0;
+      logger.error(`Active firmware downloads: ${activeDownloads}`);
+    } catch (logError) {
+      logger.error(`Failed to log recovery state: ${logError.message}`);
+    }
+  }, 1000);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error(`🚨 UNHANDLED PROMISE REJECTION: ${reason}`);
+  logger.error(`Promise: ${promise}`);
+  // Don't crash on unhandled rejections - log and continue
+});
+
+process.on('warning', (warning) => {
+  logger.error(`⚠️  PROCESS WARNING: ${warning.name} - ${warning.message}`);
+});
+
+// Memory monitoring
+const memCheckInterval = setInterval(() => {
+  const memUsage = process.memoryUsage();
+  const memUsageMB = {
+    rss: Math.round(memUsage.rss / 1024 / 1024),
+    heapTotal: Math.round(memUsage.heapTotal / 1024 / 1024),
+    heapUsed: Math.round(memUsage.heapUsed / 1024 / 1024),
+    external: Math.round(memUsage.external / 1024 / 1024)
+  };
+
+  // Warn if memory usage is high
+  if (memUsageMB.heapUsed > 500) {
+    logger.error(`🚨 HIGH MEMORY USAGE: ${JSON.stringify(memUsageMB)}`);
+  }
+
+  // Force garbage collection if available and memory is high
+  if (global.gc && memUsageMB.heapUsed > 700) {
+    logger.error('🗑️  Triggering garbage collection due to high memory usage');
+    global.gc();
+  }
+}, 30000); // Check every 30 seconds
+
+// Graceful shutdown handling
+let isShuttingDown = false;
+const gracefulShutdown = (signal) => {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+
+  logger.info(`🛑 Received ${signal} - initiating graceful shutdown...`);
+
+  // Stop accepting new connections
+  server.close((err) => {
+    if (err) {
+      logger.error(`Error during server close: ${err.message}`);
+      process.exit(1);
+    }
+
+    logger.info('✅ Server closed successfully');
+
+    // Clean up resources
+    clearInterval(memCheckInterval);
+
+    // Release all device locks
+    try {
+      const activeLocks = getAllActiveLocks();
+      activeLocks.forEach(lock => {
+        logger.info(`Releasing lock for device ${lock.deviceSerial} (${lock.operation})`);
+        releaseDeviceLock(lock.deviceSerial);
+      });
+    } catch (lockError) {
+      logger.error(`Error releasing locks: ${lockError.message}`);
+    }
+
+    // Cancel active downloads
+    try {
+      if (getActiveDownloads) {
+        const downloads = getActiveDownloads();
+        downloads.forEach(download => {
+          logger.info(`Cancelling download: ${download.id}`);
+          cancelDownload(download.id);
+        });
+      }
+    } catch (downloadError) {
+      logger.error(`Error cancelling downloads: ${downloadError.message}`);
+    }
+
+    // Close WebSocket connections
+    try {
+      if (wss) {
+        logger.info('Closing WebSocket server...');
+        wss.close();
+      }
+    } catch (wsError) {
+      logger.error(`Error closing WebSocket server: ${wsError.message}`);
+    }
+
+    logger.info('✅ Graceful shutdown complete');
+    process.exit(0);
+  });
+
+  // Force exit after 30 seconds
+  setTimeout(() => {
+    logger.error('⏰ Force exiting after 30 seconds');
+    process.exit(1);
+  }, 30000);
+};
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// Handle Windows-specific signals
+if (process.platform === 'win32') {
+  process.on('SIGHUP', () => gracefulShutdown('SIGHUP'));
+}
+
 logger.info(`Backend starting on port ${PORT}`);
 logger.info(`Log directory: ${LOG_DIR}`);
 logger.info(`Log file: ${LOG_FILE}`);
+logger.info(`Process PID: ${process.pid}`);
+logger.info(`Node.js version: ${process.version}`);
+logger.info(`Platform: ${process.platform} ${process.arch}`);
+
+// Perform startup validation
+logger.info('🚀 Performing startup validation...');
+try {
+  const validationResult = await performStartupValidation();
+
+  if (!isValidationPassed()) {
+    logger.error('❌ STARTUP VALIDATION FAILED - Server will start in degraded mode');
+    logger.error('Critical failures:');
+    validationResult.criticalFailures.forEach(failure => {
+      logger.error(`  - ${failure.component}: ${failure.message}`);
+    });
+
+    // In a production system, you might want to exit here
+    // But for Bobby's Workshop, we'll allow startup in degraded mode
+    logger.warn('⚠️  Continuing startup despite validation failures (degraded mode)');
+  } else {
+    logger.info('✅ Startup validation passed - all systems nominal');
+  }
+} catch (validationError) {
+  logger.error(`💥 Startup validation error: ${validationError.message}`);
+  logger.error('Continuing startup despite validation error');
+}
 
 app.use(cors());
 app.use(express.json());
 
-// Apply middleware in order: correlation ID, envelope, audit logging
+// Apply middleware in order: correlation ID, envelope, audit logging, performance
 app.use(correlationIdMiddleware);
 app.use(envelopeMiddleware);
 app.use(auditLogMiddleware);
+app.use(performanceMiddleware);
 
 // API versioning: warn on non-v1 routes
 app.use('/api', deprecationWarningMiddleware);
@@ -3819,6 +3977,215 @@ app.get('/api/tools/:toolName', (req, res) => {
   res.json(toolInfo);
 });
 
+// Health monitoring endpoint
+app.get('/api/health', async (req, res) => {
+  try {
+    const startTime = Date.now();
+
+    // Check critical dependencies
+    const healthChecks = {
+      server: {
+        status: 'healthy',
+        uptime: process.uptime(),
+        memory: process.memoryUsage(),
+        version: process.version,
+        pid: process.pid
+      },
+      database: {
+        status: 'unknown', // We don't use a database, but check file system
+        available: true
+      },
+      filesystem: {
+        status: 'healthy',
+        writable: false,
+        readable: false
+      },
+      tools: {},
+      circuitBreakers: getCircuitBreakerStatus()
+    };
+
+    // Check filesystem access
+    try {
+      fs.accessSync(LOG_DIR, fs.constants.W_OK);
+      healthChecks.filesystem.writable = true;
+      fs.accessSync(LOG_DIR, fs.constants.R_OK);
+      healthChecks.filesystem.readable = true;
+    } catch (fsError) {
+      healthChecks.filesystem.status = 'degraded';
+      healthChecks.filesystem.error = fsError.message;
+    }
+
+    // Check critical tools
+    const criticalTools = ['adb', 'fastboot', 'node', 'npm'];
+    for (const tool of criticalTools) {
+      try {
+        const available = await commandExistsSafe(tool);
+        healthChecks.tools[tool] = {
+          available,
+          status: available ? 'healthy' : 'unavailable'
+        };
+      } catch (error) {
+        healthChecks.tools[tool] = {
+          available: false,
+          status: 'error',
+          error: error.message
+        };
+      }
+    }
+
+    // Check active operations
+    const activeLocks = getActiveLockCount();
+    const activeDownloads = getActiveDownloads ? getActiveDownloads().length : 0;
+    const resourceStatus = await getResourceStatus();
+
+    // Overall health assessment
+    const circuitBreakerHealth = getHealthStatus();
+    const hasUnhealthyTools = Object.values(healthChecks.tools).some(t => t.status !== 'healthy');
+    const hasOpenCircuits = circuitBreakerHealth.unhealthyCount > 0;
+
+    let overallStatus = 'healthy';
+    if (hasOpenCircuits || hasUnhealthyTools) {
+      overallStatus = 'degraded';
+    }
+    if (healthChecks.filesystem.status !== 'healthy') {
+      overallStatus = 'unhealthy';
+    }
+
+    const responseTime = Date.now() - startTime;
+
+    const healthResponse = {
+      status: overallStatus,
+      timestamp: new Date().toISOString(),
+      responseTime: `${responseTime}ms`,
+      checks: healthChecks,
+      activeOperations: {
+        deviceLocks: activeLocks,
+        firmwareDownloads: activeDownloads
+      },
+      resources: resourceStatus,
+      circuitBreakerHealth,
+      warnings: [],
+      recommendations: []
+    };
+
+    // Add warnings and recommendations
+    if (hasOpenCircuits) {
+      healthResponse.warnings.push(`${circuitBreakerHealth.unhealthyCount} circuit breaker(s) are open`);
+      healthResponse.recommendations.push('Check circuit breaker status and reset if services have recovered');
+    }
+
+    if (hasUnhealthyTools) {
+      const unhealthyTools = Object.entries(healthChecks.tools)
+        .filter(([_, status]) => status.status !== 'healthy')
+        .map(([tool]) => tool);
+      healthResponse.warnings.push(`Tools unavailable: ${unhealthyTools.join(', ')}`);
+      healthResponse.recommendations.push('Ensure Android SDK Platform Tools are installed and in PATH');
+    }
+
+    if (healthChecks.filesystem.status !== 'healthy') {
+      healthResponse.warnings.push('Filesystem access issues detected');
+      healthResponse.recommendations.push('Check disk space and permissions for log directory');
+    }
+
+    // Return appropriate status code
+    const statusCode = overallStatus === 'healthy' ? 200 :
+                      overallStatus === 'degraded' ? 206 : 503;
+
+    res.status(statusCode).json(healthResponse);
+
+  } catch (error) {
+    logger.error(`Health check failed: ${error.message}`);
+    res.status(503).json({
+      status: 'unhealthy',
+      timestamp: new Date().toISOString(),
+      error: 'Health check failed',
+      details: error.message
+    });
+  }
+});
+
+// Circuit breaker management endpoint (admin)
+app.get('/api/admin/circuit-breakers', (req, res) => {
+  const status = getCircuitBreakerStatus();
+  res.json({
+    circuitBreakers: status,
+    timestamp: new Date().toISOString()
+  });
+});
+
+app.post('/api/admin/circuit-breakers/:name/reset', (req, res) => {
+  const { name } = req.params;
+  const success = resetCircuitBreaker(name);
+
+  if (success) {
+    logger.info(`Circuit breaker ${name} reset by admin`);
+    res.json({
+      success: true,
+      message: `Circuit breaker ${name} has been reset`,
+      timestamp: new Date().toISOString()
+    });
+  } else {
+    res.status(404).json({
+      success: false,
+      error: `Circuit breaker ${name} not found`,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Resource status endpoint
+app.get('/api/admin/resources', async (req, res) => {
+  try {
+    const resourceStatus = await getResourceStatus();
+    res.json(resourceStatus);
+  } catch (error) {
+    logger.error(`Resource status check failed: ${error.message}`);
+    res.status(500).json({
+      error: 'Failed to get resource status',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Force cleanup endpoint (emergency)
+app.post('/api/admin/cleanup', (req, res) => {
+  try {
+    const maxAge = req.body.maxAge ? parseInt(req.body.maxAge) : 900000; // 15 minutes default
+    const cleaned = forceCleanup(maxAge);
+
+    logger.info(`Admin cleanup performed: ${cleaned} operations cleaned`);
+    res.json({
+      success: true,
+      operationsCleaned: cleaned,
+      maxAge,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    logger.error(`Admin cleanup failed: ${error.message}`);
+    res.status(500).json({
+      error: 'Cleanup failed',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Performance monitoring endpoint
+app.get('/api/admin/performance', (req, res) => {
+  try {
+    const metrics = getPerformanceMetrics();
+    res.json(metrics);
+  } catch (error) {
+    logger.error(`Performance metrics retrieval failed: ${error.message}`);
+    res.status(500).json({
+      error: 'Failed to get performance metrics',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // Catalog API - Tool catalog and capabilities
 app.use('/api/catalog', catalogRouter);
 
@@ -3828,9 +4195,49 @@ app.use('/api/operations', operationsRouter);
 // Trapdoor API - Secure endpoints for sensitive operations (Bobby's Secret Workshop)
 app.use('/api/trapdoor', requireTrapdoorPasscode, trapdoorRouter);
 
+// Enhanced error middleware with envelope support and detailed logging
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ error: 'Internal server error' });
+  // Log the full error with correlation ID
+  const correlationId = req.correlationId || 'unknown';
+  const errorId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+  logger.error(`💥 ERROR [${errorId}] Correlation: ${correlationId}`);
+  logger.error(`   Message: ${err.message}`);
+  logger.error(`   Stack: ${err.stack}`);
+  logger.error(`   URL: ${req.method} ${req.originalUrl}`);
+  logger.error(`   User-Agent: ${req.get('User-Agent') || 'unknown'}`);
+  logger.error(`   IP: ${req.ip || req.connection.remoteAddress}`);
+
+  // Don't expose internal errors in production
+  const isDevelopment = process.env.NODE_ENV === 'development';
+
+  const errorResponse = {
+    errorId,
+    message: isDevelopment ? err.message : 'Internal server error',
+    ...(isDevelopment && { stack: err.stack }),
+    timestamp: new Date().toISOString(),
+    correlationId
+  };
+
+  // Use envelope format for consistency
+  if (res.sendError) {
+    res.sendError('INTERNAL_ERROR', 'An unexpected error occurred', errorResponse, 500);
+  } else {
+    // Fallback if envelope middleware failed
+    res.status(500).json({
+      ok: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'An unexpected error occurred',
+        details: errorResponse
+      },
+      meta: {
+        ts: new Date().toISOString(),
+        correlationId,
+        apiVersion: 'v1'
+      }
+    });
+  }
 });
 
 server.listen(PORT, '127.0.0.1', () => {

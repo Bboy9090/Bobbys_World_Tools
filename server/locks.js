@@ -1,9 +1,11 @@
 /**
  * Device Lock Manager
- * 
- * Atomic locking with mutex guarantees.
+ *
+ * Atomic locking with mutex guarantees and resource limit integration.
  * No race conditions. No silent failures. No excuses.
  */
+
+import { acquireOperationSlot, releaseOperationSlot } from './utils/resource-limits.js';
 
 const deviceLocks = new Map();
 const pendingLocks = new Map();
@@ -18,7 +20,7 @@ export const LOCK_ACQUIRE_TIMEOUT = 10000; // 10 seconds max wait
  * @param {Object} options - Lock options
  * @returns {{acquired: boolean, lockId?: string, reason?: string, lockedBy?: string, lockedAt?: number}}
  */
-export function acquireDeviceLock(deviceSerial, operation, options = {}) {
+export async function acquireDeviceLock(deviceSerial, operation, options = {}) {
   if (!deviceSerial || typeof deviceSerial !== 'string') {
     return { acquired: false, reason: 'INVALID_SERIAL' };
   }
@@ -27,18 +29,29 @@ export function acquireDeviceLock(deviceSerial, operation, options = {}) {
     return { acquired: false, reason: 'INVALID_OPERATION' };
   }
 
+  // Check resource limits before acquiring device lock
+  try {
+    const resourceCheck = await acquireOperationSlot(`${deviceSerial}-${operation}`, 'device');
+    if (!resourceCheck) {
+      return { acquired: false, reason: 'RESOURCE_LIMIT_EXCEEDED' };
+    }
+  } catch (error) {
+    return { acquired: false, reason: 'RESOURCE_LIMIT_EXCEEDED', details: error.message };
+  }
+
   const now = Date.now();
   const existingLock = deviceLocks.get(deviceSerial);
-  
+
   // Check existing lock
   if (existingLock) {
     const age = now - existingLock.lockedAt;
-    
+
     // Expired lock - clean up
     if (age > LOCK_TIMEOUT) {
       deviceLocks.delete(deviceSerial);
     } else {
-      // Active lock - deny
+      // Active lock - deny - but we already acquired resource slot, release it
+      releaseOperationSlot(`${deviceSerial}-${operation}`);
       return {
         acquired: false,
         reason: 'DEVICE_LOCKED',
@@ -60,13 +73,14 @@ export function acquireDeviceLock(deviceSerial, operation, options = {}) {
     operation,
     lockedAt: now,
     expiresAt: now + LOCK_TIMEOUT,
-    metadata: options.metadata || {}
+    metadata: options.metadata || {},
+    resourceSlot: `${deviceSerial}-${operation}`
   };
 
   deviceLocks.set(deviceSerial, lock);
 
-  return { 
-    acquired: true, 
+  return {
+    acquired: true,
     lockId,
     expiresAt: lock.expiresAt
   };
@@ -108,18 +122,23 @@ export async function acquireDeviceLockWithWait(deviceSerial, operation, timeout
  */
 export function releaseDeviceLock(deviceSerial, lockId = null) {
   const lock = deviceLocks.get(deviceSerial);
-  
+
   if (!lock) {
     return { released: true, reason: 'NO_LOCK_EXISTS' };
   }
 
   // If lockId provided, validate it matches
   if (lockId && lock.lockId !== lockId) {
-    return { 
-      released: false, 
+    return {
+      released: false,
       reason: 'LOCK_ID_MISMATCH',
       currentLockId: lock.lockId
     };
+  }
+
+  // Release resource slot if it was acquired
+  if (lock.resourceSlot) {
+    releaseOperationSlot(lock.resourceSlot);
   }
 
   deviceLocks.delete(deviceSerial);
