@@ -1110,12 +1110,20 @@ fn start_backend_server(app_handle: &AppHandle) -> Result<Child, std::io::Error>
     
     let server_path = resource_dir.join("server").join("index.js");
     
-    println!("[Tauri] Server path: {:?}", server_path);
+    // Convert paths to string, stripping Windows long path prefix if present
+    let server_path_str = server_path.to_string_lossy().to_string()
+        .trim_start_matches(r"\\?\")
+        .to_string();
+    let resource_dir_str = resource_dir.to_string_lossy().to_string()
+        .trim_start_matches(r"\\?\")
+        .to_string();
+    
+    println!("[Tauri] Server path: {}", server_path_str);
     
     if !server_path.exists() {
         return Err(std::io::Error::new(
             std::io::ErrorKind::NotFound,
-            format!("Server files not found at {:?}", server_path)
+            format!("Server files not found at {}", server_path_str)
         ));
     }
     
@@ -1127,9 +1135,11 @@ fn start_backend_server(app_handle: &AppHandle) -> Result<Child, std::io::Error>
     std::fs::create_dir_all(&log_dir).ok();
     
     // Start the Node.js server with log directory environment variable
+    // Working directory must be server folder for relative imports to work
+    let server_dir_str = format!("{}/server", resource_dir_str.replace("\\", "/"));
     let mut cmd = Command::new(&node_exe);
-    cmd.arg(&server_path)
-        .current_dir(&resource_dir)
+    cmd.arg(&server_path_str)
+        .current_dir(&server_dir_str)
         .env("PORT", port.to_string())
         .env("BW_LOG_DIR", log_dir.to_string_lossy().to_string());
     

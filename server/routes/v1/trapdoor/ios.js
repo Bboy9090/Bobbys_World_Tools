@@ -43,7 +43,7 @@ router.post('/jailbreak', async (req, res) => {
   }
 
   // Acquire device lock
-  const lockResult = acquireDeviceLock(udid, 'trapdoor_ios_jailbreak');
+  const lockResult = await acquireDeviceLock(udid, 'trapdoor_ios_jailbreak');
   if (!lockResult.acquired) {
     return res.sendDeviceLocked(lockResult.reason, {
       lockedBy: lockResult.lockedBy

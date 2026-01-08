@@ -3,7 +3,7 @@
  * Logs all operations to audit trail (console for normal ops, shadow logger for sensitive)
  */
 
-import ShadowLogger from '../core/lib/shadow-logger.js';
+import ShadowLogger from '../../core/lib/shadow-logger.js';
 
 const shadowLogger = new ShadowLogger();
 

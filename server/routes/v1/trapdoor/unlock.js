@@ -11,8 +11,8 @@
  */
 
 import express from 'express';
-import ShadowLogger from '../../../core/lib/shadow-logger.js';
-import ADBLibrary from '../../../core/lib/adb.js';
+import ShadowLogger from '../../../../core/lib/shadow-logger.js';
+import ADBLibrary from '../../../../core/lib/adb.js';
 import { safeSpawn, commandExistsSafe } from '../../../utils/safe-exec.js';
 import { acquireDeviceLock, releaseDeviceLock } from '../../../locks.js';
 
@@ -46,7 +46,7 @@ router.post('/bootloader', async (req, res) => {
   }
 
   // Acquire device lock
-  const lockResult = acquireDeviceLock(deviceSerial, 'trapdoor_bootloader_unlock');
+  const lockResult = await acquireDeviceLock(deviceSerial, 'trapdoor_bootloader_unlock');
   if (!lockResult.acquired) {
     return res.sendDeviceLocked(lockResult.reason, {
       lockedBy: lockResult.lockedBy
@@ -164,7 +164,7 @@ router.post('/frp', async (req, res) => {
   }
 
   // Acquire device lock
-  const lockResult = acquireDeviceLock(deviceSerial, 'trapdoor_frp_bypass');
+  const lockResult = await acquireDeviceLock(deviceSerial, 'trapdoor_frp_bypass');
   if (!lockResult.acquired) {
     return res.sendDeviceLocked(lockResult.reason, {
       lockedBy: lockResult.lockedBy

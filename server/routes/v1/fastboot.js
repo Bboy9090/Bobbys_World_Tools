@@ -67,7 +67,7 @@ function requireDeviceLock(req, res, next) {
   }
 
   const operation = `fastboot_${req.path.replace('/', '_').replace(/\//g, '_')}`;
-  const lockResult = acquireDeviceLock(deviceSerial, operation);
+  const lockResult = await acquireDeviceLock(deviceSerial, operation);
 
   if (!lockResult.acquired) {
     return res.sendDeviceLocked(lockResult.reason, {

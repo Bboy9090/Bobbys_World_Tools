@@ -45,7 +45,7 @@ router.post('/', async (req, res) => {
   }
 
   // Acquire device lock
-  const lockResult = acquireDeviceLock(deviceSerial, 'trapdoor_flash');
+  const lockResult = await acquireDeviceLock(deviceSerial, 'trapdoor_flash');
   if (!lockResult.acquired) {
     return res.sendDeviceLocked(lockResult.reason, {
       lockedBy: lockResult.lockedBy

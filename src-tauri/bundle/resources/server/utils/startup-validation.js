@@ -4,7 +4,9 @@
  * Performs comprehensive validation before server accepts requests
  */
 
-import { commandExistsSafe } from './safe-exec.js';
+import fs from 'fs';
+import os from 'os';
+import { commandExistsSafe, safeSpawn } from './safe-exec.js';
 import { createLogger } from './bundled-logger.js';
 
 const logger = createLogger('StartupValidation');
@@ -39,7 +41,6 @@ const CRITICAL_COMPONENTS = [
   {
     name: 'File System',
     check: async () => {
-      const fs = require('fs');
       const testFile = './.startup-test.tmp';
 
       try {
@@ -55,7 +56,7 @@ const CRITICAL_COMPONENTS = [
     name: 'Memory',
     check: async () => {
       const memUsage = process.memoryUsage();
-      const totalMemory = require('os').totalmem();
+      const totalMemory = os.totalmem();
 
       // Require at least 512MB available
       const availableMemory = totalMemory - memUsage.heapUsed;
@@ -80,7 +81,7 @@ const OPTIONAL_COMPONENTS = [
       let version = 'unknown';
       if (available) {
         try {
-          const result = await require('./safe-exec.js').safeSpawn('adb', ['version']);
+          const result = await safeSpawn('adb', ['version']);
           if (result.success) {
             const match = result.stdout.match(/version\s+([\d.]+)/i);
             version = match ? match[1] : 'detected';

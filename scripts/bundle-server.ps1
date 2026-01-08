@@ -61,6 +61,13 @@ if (Test-Path $CoreDir) {
     Write-Host "Warning: Core directory not found at $CoreDir" -ForegroundColor Yellow
 }
 
+# Copy package.json to resources root (needed by ready.js)
+$PackageJson = Join-Path $RootDir "package.json"
+if (Test-Path $PackageJson) {
+    Copy-Item -Force $PackageJson (Join-Path $ResourcesDir "package.json")
+    Write-Host "Copied package.json to resources" -ForegroundColor Green
+}
+
 # Verify copy succeeded
 if (-not (Test-Path $TargetServerDir)) {
     throw "Failed to copy server directory to $TargetServerDir"

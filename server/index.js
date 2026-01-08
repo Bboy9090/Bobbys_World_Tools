@@ -1741,7 +1741,7 @@ function requireDeviceLock(req, res, next) {
   }
 
   const operation = req.path.replace('/api/', '').replace(/\//g, '_');
-  const lockResult = acquireDeviceLock(deviceSerial, operation);
+  const lockResult = await acquireDeviceLock(deviceSerial, operation);
 
   if (!lockResult.acquired) {
     return res.status(423).json({

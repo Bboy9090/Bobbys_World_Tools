@@ -15,7 +15,7 @@ import express from 'express';
 import ShadowLogger from '../../../../core/lib/shadow-logger.js';
 import { safeSpawn, commandExistsSafe } from '../../../utils/safe-exec.js';
 import { acquireDeviceLock, releaseDeviceLock } from '../../../locks.js';
-import { ADBLibrary } from '../../../../core/lib/adb.js';
+import ADBLibrary from '../../../../core/lib/adb.js';
 
 const router = express.Router();
 const shadowLogger = new ShadowLogger();
@@ -43,7 +43,7 @@ router.post('/install', async (req, res) => {
   }
 
   // Acquire device lock
-  const lockResult = acquireDeviceLock(deviceSerial, 'trapdoor_root_install');
+  const lockResult = await acquireDeviceLock(deviceSerial, 'trapdoor_root_install');
   if (!lockResult.acquired) {
     return res.sendDeviceLocked(lockResult.reason, {
       lockedBy: lockResult.lockedBy

@@ -23,13 +23,9 @@ foreach ($file in $jsFiles) {
 
     $originalContent = $content
 
-    # Fix core/lib imports for bundled environment (working directory is server/)
-    $content = $content -replace "from '\.\./\.\./\.\./core/lib/", "from '../core/lib/"
-    $content = $content -replace 'from "\.\./\.\./\.\./core/lib/', 'from "../core/lib/'
-
-    # Fix src/lib imports to use bundled logger
-    $content = $content -replace "from '\.\./\.\./\.\./src/lib/debug-logger\.js'", "from './bundled-logger.js'"
-    $content = $content -replace 'from "\.\./\.\./\.\./src/lib/debug-logger\.js"', "from './bundled-logger.js'"
+    # Fix src/lib imports to use bundled logger (only in utils folder)
+    $content = $content -replace "from '\.\./\.\./src/lib/debug-logger\.js'", "from './bundled-logger.js'"
+    $content = $content -replace 'from "\.\./\.\./src/lib/debug-logger\.js"', 'from "./bundled-logger.js"'
 
     if ($content -ne $originalContent) {
         Set-Content -Path $file.FullName -Value $content -NoNewline

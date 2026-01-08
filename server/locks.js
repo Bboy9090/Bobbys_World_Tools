@@ -98,7 +98,7 @@ export async function acquireDeviceLockWithWait(deviceSerial, operation, timeout
   const pollInterval = 100;
 
   while (Date.now() - startTime < timeout) {
-    const result = acquireDeviceLock(deviceSerial, operation);
+    const result = await acquireDeviceLock(deviceSerial, operation);
     if (result.acquired) {
       return result;
     }
