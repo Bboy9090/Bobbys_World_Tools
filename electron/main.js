@@ -9,6 +9,10 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 
+// No localhost! Always use bundled files (file:// protocol)
+app.commandLine.appendSwitch('disable-web-security'); // Only for local file access
+app.commandLine.appendSwitch('allow-file-access-from-files'); // Allow file:// protocol
+
 // Keep a global reference of the window object
 let mainWindow = null;
 let backendProcess = null;
@@ -158,26 +162,37 @@ function createWindow() {
     width: 1280,
     height: 800,
     title: "Bobbys Workshop",
+    autoHideMenuBar: true, // Hide menu bar for cleaner look
+    show: false, // Don't show until ready
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      preload: path.join(__dirname, 'preload.js')
+      preload: path.join(__dirname, 'preload.js'),
+      webSecurity: false // Allow file:// protocol for bundled files
     }
   });
   
-  // Load the app
-  if (app.isPackaged) {
-    // In production, load from dist
-    mainWindow.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
+  // Show window when ready (prevents white flash)
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show();
+    mainWindow.focus();
+  });
+  
+  // Load the app - ALWAYS from bundled files, NEVER from localhost
+  const distPath = path.join(__dirname, '..', 'dist', 'index.html');
+  
+  if (fs.existsSync(distPath)) {
+    // Load from bundled static files (file:// protocol, no localhost!)
+    mainWindow.loadFile(distPath);
+    console.log('[Electron] Loading from bundled files:', distPath);
   } else {
-    // In development, load from Vite dev server
-    mainWindow.loadURL('http://localhost:5173');
+    // Fallback: Build the frontend first
+    console.error('[Electron] Frontend not built! Run: npm run build');
+    mainWindow.loadURL('data:text/html,<h1>Frontend not built!</h1><p>Run: npm run build</p>');
   }
   
-  // Open DevTools in development
-  if (!app.isPackaged) {
-    mainWindow.webContents.openDevTools();
-  }
+  // Open DevTools in development (can be toggled later)
+  // DevTools disabled by default - use Ctrl+Shift+I or Cmd+Option+I to open
   
   mainWindow.on('closed', () => {
     mainWindow = null;
