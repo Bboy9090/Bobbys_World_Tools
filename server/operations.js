@@ -311,10 +311,13 @@ async function executeOperation(capabilityId, params) {
         throw new Error('Device serial required for reboot_device');
       }
       try {
-        const modeFlag = mode === 'bootloader' ? ' bootloader' : mode === 'recovery' ? ' recovery' : '';
         // Use spawnSync with shell: false to prevent console windows
         const rebootArgs = ['-s', serial, 'reboot'];
-        if (modeFlag) rebootArgs.push(modeFlag);
+        if (mode === 'bootloader') {
+          rebootArgs.push('bootloader');
+        } else if (mode === 'recovery') {
+          rebootArgs.push('recovery');
+        }
         spawnSync('adb', rebootArgs, { 
           encoding: 'utf8', 
           timeout: 10000,
