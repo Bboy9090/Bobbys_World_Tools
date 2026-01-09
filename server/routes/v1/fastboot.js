@@ -66,24 +66,29 @@ async function requireDeviceLock(req, res, next) {
     return next(); // Some operations don't need a device lock
   }
 
-  const operation = `fastboot_${req.path.replace('/', '_').replace(/\//g, '_')}`;
-  const lockResult = await acquireDeviceLock(deviceSerial, operation);
+  try {
+    const operation = `fastboot_${req.path.replace('/', '_').replace(/\//g, '_')}`;
+    const lockResult = await acquireDeviceLock(deviceSerial, operation);
 
-  if (!lockResult.acquired) {
-    return res.sendDeviceLocked(lockResult.reason, {
-      lockedBy: lockResult.lockedBy,
-      retryAfter: Math.floor(LOCK_TIMEOUT / 1000) // Convert milliseconds to seconds
-    });
+    if (!lockResult.acquired) {
+      return res.sendDeviceLocked(lockResult.reason, {
+        lockedBy: lockResult.lockedBy,
+        retryAfter: Math.floor(LOCK_TIMEOUT / 1000) // Convert milliseconds to seconds
+      });
+    }
+
+    // Release lock when response finishes
+    const originalEnd = res.end;
+    res.end = function(...args) {
+      releaseDeviceLock(deviceSerial);
+      originalEnd.apply(this, args);
+    };
+
+    next();
+  } catch (error) {
+    console.error('[requireDeviceLock] Error acquiring lock:', error);
+    next(error);
   }
-
-  // Release lock when response finishes
-  const originalEnd = res.end;
-  res.end = function(...args) {
-    releaseDeviceLock(deviceSerial);
-    originalEnd.apply(this, args);
-  };
-
-  next();
 }
 
 /**

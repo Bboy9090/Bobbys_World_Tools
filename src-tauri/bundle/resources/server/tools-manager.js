@@ -140,9 +140,9 @@ function toolExists(path) {
 function commandExistsInPath(command) {
   try {
     if (IS_WINDOWS) {
-      execSync(`where ${command}`, { stdio: 'ignore', timeout: 2000 });
+      execSync(`where ${command}`, { stdio: 'ignore', timeout: 2000, windowsHide: true });
     } else {
-      execSync(`command -v ${command}`, { stdio: 'ignore', timeout: 2000 });
+      execSync(`command -v ${command}`, { stdio: 'ignore', timeout: 2000, windowsHide: true });
     }
     return true;
   } catch {

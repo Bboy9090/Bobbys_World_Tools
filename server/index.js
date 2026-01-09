@@ -705,7 +705,7 @@ function broadcastCorrelation(message) {
 
 function safeExec(cmd) {
   try {
-    return execSync(cmd, { encoding: "utf-8", timeout: 5000 }).trim();
+    return execSync(cmd, { encoding: "utf-8", timeout: 5000, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] }).trim();
   } catch {
     return null;
   }
@@ -867,9 +867,9 @@ function commandExists(cmd) {
 
   try {
     if (IS_WINDOWS) {
-      execSync(`where ${cmd}`, { stdio: 'ignore', timeout: 2000 });
+      execSync(`where ${cmd}`, { stdio: 'ignore', timeout: 2000, windowsHide: true });
     } else {
-      execSync(`command -v ${cmd}`, { stdio: "ignore", timeout: 2000 });
+      execSync(`command -v ${cmd}`, { stdio: "ignore", timeout: 2000, windowsHide: true });
     }
     return true;
   } catch {
@@ -1740,27 +1740,32 @@ async function requireDeviceLock(req, res, next) {
     return next();
   }
 
-  const operation = req.path.replace('/api/', '').replace(/\//g, '_');
-  const lockResult = await acquireDeviceLock(deviceSerial, operation);
+  try {
+    const operation = req.path.replace('/api/', '').replace(/\//g, '_');
+    const lockResult = await acquireDeviceLock(deviceSerial, operation);
 
-  if (!lockResult.acquired) {
-    return res.status(423).json({
-      success: false,
-      error: 'Device locked',
-      message: lockResult.reason,
-      lockedBy: lockResult.lockedBy,
-      retryAfter: Math.floor(LOCK_TIMEOUT / 1000) // Convert milliseconds to seconds
-    });
+    if (!lockResult.acquired) {
+      return res.status(423).json({
+        success: false,
+        error: 'Device locked',
+        message: lockResult.reason,
+        lockedBy: lockResult.lockedBy,
+        retryAfter: Math.floor(LOCK_TIMEOUT / 1000) // Convert milliseconds to seconds
+      });
+    }
+
+    // Release lock when response finishes (success or error)
+    const originalEnd = res.end;
+    res.end = function(...args) {
+      releaseDeviceLock(deviceSerial);
+      originalEnd.apply(this, args);
+    };
+
+    next();
+  } catch (error) {
+    console.error('[requireDeviceLock] Error acquiring lock:', error);
+    next(error);
   }
-
-  // Release lock when response finishes (success or error)
-  const originalEnd = res.end;
-  res.end = function(...args) {
-    releaseDeviceLock(deviceSerial);
-    originalEnd.apply(this, args);
-  };
-
-  next();
 }
 
 app.post('/api/fastboot/flash', requireDeviceLock, async (req, res) => {

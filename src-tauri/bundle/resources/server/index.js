@@ -705,7 +705,7 @@ function broadcastCorrelation(message) {
 
 function safeExec(cmd) {
   try {
-    return execSync(cmd, { encoding: "utf-8", timeout: 5000 }).trim();
+    return execSync(cmd, { encoding: "utf-8", timeout: 5000, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] }).trim();
   } catch {
     return null;
   }
@@ -867,9 +867,9 @@ function commandExists(cmd) {
 
   try {
     if (IS_WINDOWS) {
-      execSync(`where ${cmd}`, { stdio: 'ignore', timeout: 2000 });
+      execSync(`where ${cmd}`, { stdio: 'ignore', timeout: 2000, windowsHide: true });
     } else {
-      execSync(`command -v ${cmd}`, { stdio: "ignore", timeout: 2000 });
+      execSync(`command -v ${cmd}`, { stdio: "ignore", timeout: 2000, windowsHide: true });
     }
     return true;
   } catch {
