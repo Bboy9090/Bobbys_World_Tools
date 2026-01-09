@@ -213,8 +213,7 @@ export function getToolInfo(toolName) {
       version = execSync(fullCommand, { 
         encoding: 'utf-8', 
         timeout: 5000,
-        windowsHide: true,
-        stdio: ['ignore', 'pipe', 'pipe']
+        windowsHide: true
       }).trim();
     } catch {
       // Version check failed, ignore
@@ -266,7 +265,6 @@ export function executeTool(toolName, args = [], options = {}) {
     timeout: 300000, // 5 minutes default
     maxBuffer: 50 * 1024 * 1024, // 50MB
     windowsHide: true,
-    stdio: ['ignore', 'pipe', 'pipe'],
     ...options
   };
   

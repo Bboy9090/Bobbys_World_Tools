@@ -18,7 +18,7 @@ import { correlationIdMiddleware, envelopeMiddleware } from './middleware/api-en
 import { deprecationWarningMiddleware } from './middleware/api-versioning.js';
 import { rateLimiter } from './middleware/rate-limiter.js';
 import { requireTrapdoorPasscode } from './middleware/trapdoor-auth.js';
-import { acquireDeviceLock, releaseDeviceLock, LOCK_TIMEOUT, getAllActiveLocks, getActiveLockCount } from './locks.js';
+import { acquireDeviceLock, releaseDeviceLock, LOCK_TIMEOUT, getAllActiveLocks, getActiveLockCount, createRequireDeviceLockMiddleware } from './locks.js';
 import { getToolPath, isToolAvailable, getToolInfo, getAllToolsInfo, executeTool } from './tools-manager.js';
 import { downloadFirmware, getDownloadStatus, cancelDownload, getActiveDownloads } from './firmware-downloader.js';
 import { readyHandler } from './routes/v1/ready.js';
@@ -705,7 +705,7 @@ function broadcastCorrelation(message) {
 
 function safeExec(cmd) {
   try {
-    return execSync(cmd, { encoding: "utf-8", timeout: 5000, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+    return execSync(cmd, { encoding: "utf-8", timeout: 5000, windowsHide: true }).trim();
   } catch {
     return null;
   }
@@ -900,8 +900,7 @@ function runBootForgeUsbScanJson() {
     encoding: 'utf-8',
     timeout: 10000,
     maxBuffer: 10 * 1024 * 1024,
-    windowsHide: true,
-    stdio: ['ignore', 'pipe', 'pipe']
+    windowsHide: true
   });
 
   const devices = JSON.parse(output);
@@ -1383,8 +1382,7 @@ app.post('/api/adb/trigger-auth', (req, res) => {
     execSync(`${adbCmd} -s ${resolvedSerial} shell echo "auth_trigger" 2>&1`, { 
       encoding: "utf-8", 
       timeout: 3000,
-      windowsHide: true,
-      stdio: ['ignore', 'pipe', 'pipe']
+      windowsHide: true
     });
     
     res.json({
@@ -1735,42 +1733,8 @@ app.get('/api/fastboot/device-info', (req, res) => {
   }
 });
 
-// Device lock middleware for destructive operations
-async function requireDeviceLock(req, res, next) {
-  const deviceSerial = req.body?.serial || req.body?.deviceSerial || req.params?.serial;
-  
-  if (!deviceSerial) {
-    // Operations that don't need a device lock can proceed
-    return next();
-  }
-
-  try {
-    const operation = req.path.replace('/api/', '').replace(/\//g, '_');
-    const lockResult = await acquireDeviceLock(deviceSerial, operation);
-
-    if (!lockResult.acquired) {
-      return res.status(423).json({
-        success: false,
-        error: 'Device locked',
-        message: lockResult.reason,
-        lockedBy: lockResult.lockedBy,
-        retryAfter: Math.floor(LOCK_TIMEOUT / 1000) // Convert milliseconds to seconds
-      });
-    }
-
-    // Release lock when response finishes (success or error)
-    const originalEnd = res.end;
-    res.end = function(...args) {
-      releaseDeviceLock(deviceSerial);
-      originalEnd.apply(this, args);
-    };
-
-    next();
-  } catch (error) {
-    console.error('[requireDeviceLock] Error acquiring lock:', error);
-    next(error);
-  }
-}
+// Device lock middleware for destructive operations (uses shared implementation from locks.js)
+const requireDeviceLock = createRequireDeviceLockMiddleware({ operationPrefix: 'api' });
 
 app.post('/api/fastboot/flash', requireDeviceLock, async (req, res) => {
   const { confirmation } = req.body;
@@ -1807,7 +1771,7 @@ app.post('/api/fastboot/flash', requireDeviceLock, async (req, res) => {
       try {
         const output = execSync(
           `fastboot -s ${serial} flash ${partition} ${file.path}`,
-          { encoding: 'utf-8', timeout: 120000, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] }
+          { encoding: 'utf-8', timeout: 120000, windowsHide: true }
         );
 
         const fs = require('fs');
@@ -2196,8 +2160,7 @@ app.post('/api/bootforgeusb/build', async (req, res) => {
         encoding: 'utf-8',
         timeout: 300000,
         maxBuffer: 50 * 1024 * 1024,
-        windowsHide: true,
-        stdio: ['ignore', 'pipe', 'pipe']
+        windowsHide: true
       }
     );
 
@@ -2212,7 +2175,6 @@ app.post('/api/bootforgeusb/build', async (req, res) => {
       {
         cwd: buildPath,
         windowsHide: true,
-        stdio: ['ignore', 'pipe', 'pipe'],
         encoding: 'utf-8',
         timeout: 60000
       }

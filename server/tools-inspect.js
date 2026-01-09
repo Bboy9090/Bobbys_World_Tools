@@ -25,7 +25,6 @@ function safeExec(cmd, timeout = 2000) {
     const result = execSync(cmd, {
       encoding: 'utf-8',
       timeout,
-      stdio: ['ignore', 'pipe', 'pipe'],
       windowsHide: true
     });
     return result.trim();

@@ -20,7 +20,6 @@ function safeExec(cmd, options = {}) {
       encoding: "utf-8", 
       timeout: 5000,
       windowsHide: true,
-      stdio: ['ignore', 'pipe', 'pipe'],
       ...options 
     }).trim();
   } catch {

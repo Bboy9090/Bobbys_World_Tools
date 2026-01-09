@@ -255,3 +255,56 @@ export function getActiveLockCount() {
   return getAllActiveLocks().length;
 }
 
+/**
+ * Express middleware factory for requiring device locks on destructive operations
+ * @param {Object} options - Middleware options
+ * @param {string} options.operationPrefix - Prefix for operation name (e.g., 'fastboot', 'flash')
+ * @returns {Function} Express middleware function
+ */
+export function createRequireDeviceLockMiddleware(options = {}) {
+  const { operationPrefix = 'api' } = options;
+  
+  return async function requireDeviceLock(req, res, next) {
+    const deviceSerial = req.body?.serial || req.body?.deviceSerial || req.params?.serial;
+    
+    if (!deviceSerial) {
+      // Operations that don't need a device lock can proceed
+      return next();
+    }
+
+    try {
+      const operation = `${operationPrefix}_${req.path.replace(/^\//, '').replace(/\//g, '_')}`;
+      const lockResult = await acquireDeviceLock(deviceSerial, operation);
+
+      if (!lockResult.acquired) {
+        return res.status(423).json({
+          ok: false,
+          error: {
+            code: 'DEVICE_LOCKED',
+            message: lockResult.reason || 'Device is locked by another operation',
+            details: {
+              lockedBy: lockResult.lockedBy,
+              retryAfter: Math.floor(LOCK_TIMEOUT / 1000)
+            }
+          }
+        });
+      }
+
+      // Store lockId for cleanup
+      req.deviceLockId = lockResult.lockId;
+      req.deviceSerial = deviceSerial;
+
+      // Release lock when response finishes (success or error)
+      const originalEnd = res.end;
+      res.end = function(...args) {
+        releaseDeviceLock(deviceSerial, lockResult.lockId);
+        originalEnd.apply(this, args);
+      };
+
+      next();
+    } catch (error) {
+      console.error('[requireDeviceLock] Error acquiring lock:', error);
+      next(error);
+    }
+  };
+}
