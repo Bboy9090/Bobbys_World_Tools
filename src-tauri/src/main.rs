@@ -1135,10 +1135,11 @@ fn start_backend_server(app_handle: &AppHandle) -> Result<Child, std::io::Error>
     std::fs::create_dir_all(&log_dir).ok();
     
     // Start the Node.js server with log directory environment variable
-    // Working directory should be resource_dir (bundle root) so relative paths work correctly
+    // Working directory must be server folder for relative imports to work
+    let server_dir_str = format!("{}/server", resource_dir_str.replace("\\", "/"));
     let mut cmd = Command::new(&node_exe);
     cmd.arg(&server_path_str)
-        .current_dir(&resource_dir_str)
+        .current_dir(&server_dir_str)
         .env("PORT", port.to_string())
         .env("BW_LOG_DIR", log_dir.to_string_lossy().to_string());
     
