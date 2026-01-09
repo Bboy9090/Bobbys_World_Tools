@@ -800,7 +800,7 @@ function getConnectedUsbDevices() {
     "$devs | ConvertTo-Json -Compress"
   ].join('; ');
 
-  const raw = safeExec(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${ps}"`);
+  const raw = safeExec(`powershell -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -Command "${ps}"`);
   if (!raw) return [];
 
   try {
