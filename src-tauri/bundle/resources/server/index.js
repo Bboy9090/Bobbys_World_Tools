@@ -899,7 +899,9 @@ function runBootForgeUsbScanJson() {
   const output = execSync(`${cmd}${args ? ` ${args}` : ''}`, {
     encoding: 'utf-8',
     timeout: 10000,
-    maxBuffer: 10 * 1024 * 1024
+    maxBuffer: 10 * 1024 * 1024,
+    windowsHide: true,
+    stdio: ['ignore', 'pipe', 'pipe']
   });
 
   const devices = JSON.parse(output);
@@ -1380,7 +1382,9 @@ app.post('/api/adb/trigger-auth', (req, res) => {
   try {
     execSync(`${adbCmd} -s ${resolvedSerial} shell echo "auth_trigger" 2>&1`, { 
       encoding: "utf-8", 
-      timeout: 3000 
+      timeout: 3000,
+      windowsHide: true,
+      stdio: ['ignore', 'pipe', 'pipe']
     });
     
     res.json({
@@ -1740,27 +1744,32 @@ async function requireDeviceLock(req, res, next) {
     return next();
   }
 
-  const operation = req.path.replace('/api/', '').replace(/\//g, '_');
-  const lockResult = await acquireDeviceLock(deviceSerial, operation);
+  try {
+    const operation = req.path.replace('/api/', '').replace(/\//g, '_');
+    const lockResult = await acquireDeviceLock(deviceSerial, operation);
 
-  if (!lockResult.acquired) {
-    return res.status(423).json({
-      success: false,
-      error: 'Device locked',
-      message: lockResult.reason,
-      lockedBy: lockResult.lockedBy,
-      retryAfter: Math.floor(LOCK_TIMEOUT / 1000) // Convert milliseconds to seconds
-    });
+    if (!lockResult.acquired) {
+      return res.status(423).json({
+        success: false,
+        error: 'Device locked',
+        message: lockResult.reason,
+        lockedBy: lockResult.lockedBy,
+        retryAfter: Math.floor(LOCK_TIMEOUT / 1000) // Convert milliseconds to seconds
+      });
+    }
+
+    // Release lock when response finishes (success or error)
+    const originalEnd = res.end;
+    res.end = function(...args) {
+      releaseDeviceLock(deviceSerial);
+      originalEnd.apply(this, args);
+    };
+
+    next();
+  } catch (error) {
+    console.error('[requireDeviceLock] Error acquiring lock:', error);
+    next(error);
   }
-
-  // Release lock when response finishes (success or error)
-  const originalEnd = res.end;
-  res.end = function(...args) {
-    releaseDeviceLock(deviceSerial);
-    originalEnd.apply(this, args);
-  };
-
-  next();
 }
 
 app.post('/api/fastboot/flash', requireDeviceLock, async (req, res) => {
@@ -1798,7 +1807,7 @@ app.post('/api/fastboot/flash', requireDeviceLock, async (req, res) => {
       try {
         const output = execSync(
           `fastboot -s ${serial} flash ${partition} ${file.path}`,
-          { encoding: 'utf-8', timeout: 120000 }
+          { encoding: 'utf-8', timeout: 120000, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] }
         );
 
         const fs = require('fs');
@@ -2186,7 +2195,9 @@ app.post('/api/bootforgeusb/build', async (req, res) => {
         cwd: buildPath,
         encoding: 'utf-8',
         timeout: 300000,
-        maxBuffer: 50 * 1024 * 1024
+        maxBuffer: 50 * 1024 * 1024,
+        windowsHide: true,
+        stdio: ['ignore', 'pipe', 'pipe']
       }
     );
 
@@ -2200,6 +2211,8 @@ app.post('/api/bootforgeusb/build', async (req, res) => {
       'cargo install --path . --bin bootforgeusb',
       {
         cwd: buildPath,
+        windowsHide: true,
+        stdio: ['ignore', 'pipe', 'pipe'],
         encoding: 'utf-8',
         timeout: 60000
       }
