@@ -928,13 +928,20 @@ function runBootForgeUsbScanJson() {
 
   // New CLI expects: `bootforgeusb scan --json`.
   // If an older/alternate binary exists, prefer it only when detected by getBootForgeUsbCommand.
-  const args = cmd === 'bootforgeusb' ? 'scan --json' : '';
-  const output = execSync(`${cmd}${args ? ` ${args}` : ''}`, {
+  // Use spawnSync with shell: false to prevent console windows
+  const args = cmd === 'bootforgeusb' ? ['scan', '--json'] : [];
+  const outputResult = spawnSync(cmd, args, {
     encoding: 'utf-8',
     timeout: 10000,
     maxBuffer: 10 * 1024 * 1024,
-    windowsHide: true
+    windowsHide: true,
+    shell: false,
+    stdio: ['ignore', 'pipe', 'pipe']
   });
+  if (outputResult.error || outputResult.status !== 0) {
+    throw new Error(outputResult.stderr?.toString() || 'BootForgeUSB command failed');
+  }
+  const output = outputResult.stdout?.toString() || '';
 
   const devices = JSON.parse(output);
   return { cmd, devices };
