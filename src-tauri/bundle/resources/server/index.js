@@ -1,5 +1,5 @@
 import express from 'express';
-import { execSync } from 'child_process';
+import { execSync, spawnSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -867,11 +867,18 @@ function commandExists(cmd) {
 
   try {
     if (IS_WINDOWS) {
-      execSync(`where ${cmd}`, { stdio: 'ignore', timeout: 2000, windowsHide: true });
+      // Use spawnSync with shell: false to prevent any window from appearing
+      const result = spawnSync('where', [cmd], {
+        stdio: 'ignore',
+        timeout: 2000,
+        windowsHide: true,
+        shell: false
+      });
+      return result.status === 0;
     } else {
       execSync(`command -v ${cmd}`, { stdio: "ignore", timeout: 2000, windowsHide: true });
+      return true;
     }
-    return true;
   } catch {
     return false;
   }
