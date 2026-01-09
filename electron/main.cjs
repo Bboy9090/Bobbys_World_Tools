@@ -3,15 +3,17 @@
  * Replaces Tauri Rust code with JavaScript/Node.js
  */
 
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, protocol } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 
 // No localhost! Always use bundled files (file:// protocol)
-app.commandLine.appendSwitch('disable-web-security'); // Only for local file access
-app.commandLine.appendSwitch('allow-file-access-from-files'); // Allow file:// protocol
+// Required for file:// protocol to work with modules
+app.commandLine.appendSwitch('disable-web-security');
+app.commandLine.appendSwitch('allow-file-access-from-files');
+app.commandLine.appendSwitch('disable-site-isolation-trials'); // Allow ES modules in file://
 
 // Keep a global reference of the window object
 let mainWindow = null;
@@ -167,7 +169,7 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      preload: path.join(__dirname, 'preload.js'),
+      preload: path.join(__dirname, 'preload.cjs'),
       webSecurity: false // Allow file:// protocol for bundled files
     }
   });
