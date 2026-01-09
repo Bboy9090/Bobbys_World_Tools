@@ -284,6 +284,19 @@ export function createRequireDeviceLockMiddleware(options = {}) {
       const lockResult = await acquireDeviceLock(deviceSerial, operation);
 
       if (!lockResult.acquired) {
+        // Use the envelope middleware's sendDeviceLocked helper if available,
+        // otherwise fall back to properly-enveloped manual response
+        if (typeof res.sendDeviceLocked === 'function') {
+          return res.sendDeviceLocked(
+            lockResult.reason || 'Device is locked by another operation',
+            {
+              lockedBy: lockResult.lockedBy,
+              retryAfter: Math.floor(LOCK_TIMEOUT / 1000)
+            }
+          );
+        }
+        
+        // Fallback with proper meta field for API consistency
         return res.status(423).json({
           ok: false,
           error: {
@@ -293,6 +306,11 @@ export function createRequireDeviceLockMiddleware(options = {}) {
               lockedBy: lockResult.lockedBy,
               retryAfter: Math.floor(LOCK_TIMEOUT / 1000)
             }
+          },
+          meta: {
+            ts: new Date().toISOString(),
+            correlationId: req.correlationId || req.headers['x-correlation-id'] || `${Date.now()}-lock`,
+            apiVersion: 'v1'
           }
         });
       }
