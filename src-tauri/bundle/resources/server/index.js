@@ -867,12 +867,13 @@ function commandExists(cmd) {
 
   try {
     if (IS_WINDOWS) {
-      // Use spawnSync with shell: false to prevent any window from appearing
+      // Use spawnSync with shell: false and explicit stdio redirection to prevent any window from appearing
       const result = spawnSync('where', [cmd], {
-        stdio: 'ignore',
+        stdio: ['ignore', 'ignore', 'ignore'], // Explicitly redirect stdin, stdout, stderr
         timeout: 2000,
         windowsHide: true,
-        shell: false
+        shell: false,
+        detached: false
       });
       return result.status === 0;
     } else {

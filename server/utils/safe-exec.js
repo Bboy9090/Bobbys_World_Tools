@@ -35,6 +35,7 @@ export async function safeSpawn(command, args = [], options = {}) {
         timeout,
         encoding: 'utf8',
         windowsHide: true,
+        shell: false, // Explicitly disable shell to prevent conhost.exe
         stdio: options.stdio || ['ignore', 'pipe', 'pipe'],
         ...options
       });
