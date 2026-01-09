@@ -273,7 +273,14 @@ export function createRequireDeviceLockMiddleware(options = {}) {
     }
 
     try {
-      const operation = `${operationPrefix}_${req.path.replace(/^\//, '').replace(/\//g, '_')}`;
+      // Build operation name: strip common API prefixes, then apply operationPrefix
+      const cleanPath = req.path
+        .replace(/^\/api\/v1\//, '')  // Strip /api/v1/
+        .replace(/^\/api\//, '')       // Strip /api/
+        .replace(/^\/v1\//, '')        // Strip /v1/
+        .replace(/^\//, '')            // Strip leading slash
+        .replace(/\//g, '_');          // Replace remaining slashes with underscores
+      const operation = `${operationPrefix}_${cleanPath}`;
       const lockResult = await acquireDeviceLock(deviceSerial, operation);
 
       if (!lockResult.acquired) {

@@ -86,8 +86,7 @@ async function executeCommand(command, timeoutMs = COMMAND_TIMEOUT) {
     const { stdout, stderr } = await execAsync(command, {
       timeout: timeoutMs,
       encoding: 'utf8',
-      windowsHide: true,
-      stdio: ['ignore', 'pipe', 'pipe']
+      windowsHide: true
     });
     return {
       success: true,

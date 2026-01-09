@@ -6,7 +6,7 @@
 
 import express from 'express';
 import { execSync, spawn } from 'child_process';
-import { acquireDeviceLock, releaseDeviceLock, LOCK_TIMEOUT } from '../../locks.js';
+import { createRequireDeviceLockMiddleware } from '../../locks.js';
 
 const router = express.Router();
 
@@ -16,7 +16,6 @@ function safeExec(cmd, options = {}) {
       encoding: "utf-8", 
       timeout: 5000,
       windowsHide: true,
-      stdio: ['ignore', 'pipe', 'pipe'],
       ...options 
     }).trim();
   } catch (error) {
@@ -56,40 +55,8 @@ const BLOCKED_PARTITIONS = [
   'bootloader', 'radio', 'sbl1', 'aboot', 'rpm', 'tz', 'hyp', 'pmic'
 ];
 
-/**
- * Device lock middleware for Fastboot operations
- */
-async function requireDeviceLock(req, res, next) {
-  const deviceSerial = req.body?.serial || req.body?.deviceSerial || req.params?.serial;
-  
-  if (!deviceSerial) {
-    return next(); // Some operations don't need a device lock
-  }
-
-  try {
-    const operation = `fastboot_${req.path.replace('/', '_').replace(/\//g, '_')}`;
-    const lockResult = await acquireDeviceLock(deviceSerial, operation);
-
-    if (!lockResult.acquired) {
-      return res.sendDeviceLocked(lockResult.reason, {
-        lockedBy: lockResult.lockedBy,
-        retryAfter: Math.floor(LOCK_TIMEOUT / 1000) // Convert milliseconds to seconds
-      });
-    }
-
-    // Release lock when response finishes
-    const originalEnd = res.end;
-    res.end = function(...args) {
-      releaseDeviceLock(deviceSerial);
-      originalEnd.apply(this, args);
-    };
-
-    next();
-  } catch (error) {
-    console.error('[requireDeviceLock] Error acquiring lock:', error);
-    next(error);
-  }
-}
+// Device lock middleware for Fastboot operations (uses shared implementation from locks.js)
+const requireDeviceLock = createRequireDeviceLockMiddleware({ operationPrefix: 'fastboot' });
 
 /**
  * GET /api/v1/fastboot/devices

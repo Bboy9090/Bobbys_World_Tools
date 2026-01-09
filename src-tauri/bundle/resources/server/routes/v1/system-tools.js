@@ -11,8 +11,7 @@ function safeExec(cmd) {
     return execSync(cmd, { 
       encoding: "utf-8", 
       timeout: 5000,
-      windowsHide: true,
-      stdio: ['ignore', 'pipe', 'pipe']
+      windowsHide: true
     }).trim();
   } catch {
     return null;
@@ -51,8 +50,7 @@ function getAndroidToolDiagnostics(toolName) {
     const output = execSync(`${toolName} --version`, { 
       encoding: "utf-8", 
       timeout: 5000,
-      windowsHide: true,
-      stdio: ['ignore', 'pipe', 'pipe']
+      windowsHide: true
     });
     version = output.trim().split('\n')[0];
   } catch {
@@ -65,16 +63,14 @@ function getAndroidToolDiagnostics(toolName) {
       const output = execSync(`where ${toolName}`, { 
         encoding: "utf-8", 
         timeout: 2000,
-        windowsHide: true,
-        stdio: ['ignore', 'pipe', 'pipe']
+        windowsHide: true
       });
       path = output.trim().split('\n')[0];
     } else {
       const output = execSync(`which ${toolName}`, { 
         encoding: "utf-8", 
         timeout: 2000,
-        windowsHide: true,
-        stdio: ['ignore', 'pipe', 'pipe']
+        windowsHide: true
       });
       path = output.trim();
     }

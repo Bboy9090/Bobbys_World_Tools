@@ -200,8 +200,7 @@ async function executeOperation(capabilityId, params) {
         const result = execSync('adb devices -l', { 
           encoding: 'utf8', 
           timeout: 10000,
-          windowsHide: true,
-          stdio: ['ignore', 'pipe', 'pipe']
+          windowsHide: true
         });
         const devices = parseADBDevices(result);
         return {
@@ -219,8 +218,7 @@ async function executeOperation(capabilityId, params) {
         const result = execSync('fastboot devices', { 
           encoding: 'utf8', 
           timeout: 10000,
-          windowsHide: true,
-          stdio: ['ignore', 'pipe', 'pipe']
+          windowsHide: true
         });
         const devices = parseFastbootDevices(result);
         return {
@@ -238,8 +236,7 @@ async function executeOperation(capabilityId, params) {
         const result = execSync('idevice_id -l', { 
           encoding: 'utf8', 
           timeout: 10000,
-          windowsHide: true,
-          stdio: ['ignore', 'pipe', 'pipe']
+          windowsHide: true
         });
         const devices = result.split('\n').filter(Boolean).map(udid => ({ udid: udid.trim() }));
         return {
@@ -262,8 +259,7 @@ async function executeOperation(capabilityId, params) {
           const result = execSync(`ideviceinfo -u ${serial}`, { 
             encoding: 'utf8', 
             timeout: 15000,
-            windowsHide: true,
-            stdio: ['ignore', 'pipe', 'pipe']
+            windowsHide: true
           });
           return { success: true, info: parseIDeviceInfo(result), serial };
         } else {
@@ -275,8 +271,7 @@ async function executeOperation(capabilityId, params) {
               const val = execSync(`adb -s ${serial} shell getprop ${prop}`, { 
                 encoding: 'utf8', 
                 timeout: 5000,
-                windowsHide: true,
-                stdio: ['ignore', 'pipe', 'pipe']
+                windowsHide: true
               });
               props[prop] = val.trim();
             } catch { /* ignore individual prop errors */ }
@@ -306,8 +301,7 @@ async function executeOperation(capabilityId, params) {
         execSync(`adb -s ${serial} reboot${modeFlag}`, { 
           encoding: 'utf8', 
           timeout: 10000,
-          windowsHide: true,
-          stdio: ['ignore', 'pipe', 'pipe']
+          windowsHide: true
         });
         return { success: true, serial, mode, message: `Device rebooting to ${mode}` };
       } catch (error) {
