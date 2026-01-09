@@ -49,8 +49,8 @@ function commandExists(cmd) {
         timeout: 2000,
         windowsHide: true
       });
-      return true;
     }
+    return true;
   } catch {
     return false;
   }

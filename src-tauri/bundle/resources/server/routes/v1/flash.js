@@ -6,8 +6,6 @@
 
 import express from 'express';
 import { execSync } from 'child_process';
-import { existsSync } from 'fs';
-import { join } from 'path';
 import { getToolPath } from '../../tools-manager.js';
 import { flashHistory, activeFlashJobs, jobCounter as sharedJobCounter, broadcastFlashProgress, simulateFlashOperation } from './flash-shared.js';
 
@@ -53,8 +51,8 @@ function commandExists(cmd) {
         timeout: 2000,
         windowsHide: true
       });
-      return true;
     }
+    return true;
   } catch {
     return false;
   }

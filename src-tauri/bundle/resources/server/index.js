@@ -706,7 +706,25 @@ function broadcastCorrelation(message) {
 
 function safeExec(cmd) {
   try {
-    return execSync(cmd, { encoding: "utf-8", timeout: 5000, windowsHide: true }).trim();
+    // Use spawnSync with shell: false to prevent console windows on Windows
+    const { spawnSync } = require('child_process');
+    const parts = cmd.split(' ');
+    const command = parts[0];
+    const args = parts.slice(1);
+    
+    const result = spawnSync(command, args, {
+      encoding: "utf-8",
+      timeout: 5000,
+      windowsHide: true,
+      shell: false, // Prevent console window
+      stdio: ['ignore', 'pipe', 'pipe'] // Capture output, hide console
+    });
+    
+    if (result.error || result.status !== 0) {
+      return null;
+    }
+    
+    return result.stdout?.trim() || null;
   } catch {
     return null;
   }
@@ -1394,10 +1412,13 @@ app.post('/api/adb/trigger-auth', (req, res) => {
   }
   
   try {
-    execSync(`${adbCmd} -s ${resolvedSerial} shell echo "auth_trigger" 2>&1`, { 
+    // Use spawnSync with shell: false to prevent console windows
+    spawnSync(adbCmd, ['-s', resolvedSerial, 'shell', 'echo', 'auth_trigger'], { 
       encoding: "utf-8", 
       timeout: 3000,
-      windowsHide: true
+      windowsHide: true,
+      shell: false,
+      stdio: ['ignore', 'pipe', 'pipe']
     });
     
     res.json({
