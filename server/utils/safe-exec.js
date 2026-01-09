@@ -4,8 +4,10 @@
  * Includes retry logic and circuit breaker protection
  */
 
-import { spawn } from 'child_process';
+import { spawn, spawnSync } from 'child_process';
 import { promisify } from 'util';
+import { existsSync } from 'fs';
+import { join } from 'path';
 import { withReliability, getCircuitBreakerStatus, resetCircuitBreaker } from './retry-circuit-breaker.js';
 import { createLogger } from './bundled-logger.js';
 
@@ -163,14 +165,48 @@ export async function safeExecString(commandString, options = {}) {
 }
 
 /**
- * Check if a command exists (using safeSpawn)
+ * Check if a command exists in PATH (Windows-native, no where.exe call)
+ */
+export function commandExistsInPath(cmd) {
+  if (process.platform === 'win32') {
+    // Check PATH directly without calling where.exe to prevent console windows
+    const pathEnv = process.env.PATH || '';
+    const pathDirs = pathEnv.split(';');
+    const extensions = process.env.PATHEXT ? process.env.PATHEXT.split(';') : ['.exe', '.cmd', '.bat', '.com'];
+    
+    for (const dir of pathDirs) {
+      if (!dir) continue;
+      for (const ext of extensions) {
+        const fullPath = join(dir, cmd + ext);
+        if (existsSync(fullPath)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  } else {
+    // Unix-like: use command -v
+    try {
+      const result = spawnSync('command', ['-v', cmd], {
+        stdio: 'ignore',
+        timeout: 2000
+      });
+      return result.status === 0;
+    } catch {
+      return false;
+    }
+  }
+}
+
+/**
+ * Check if a command exists (using safeSpawn for non-Windows, PATH check for Windows)
  */
 export async function commandExistsSafe(cmd) {
-  const checkCmd = process.platform === 'win32' ? 'where' : 'command';
-  const checkArg = process.platform === 'win32' ? cmd : '-v';
-  const checkArgs = process.platform === 'win32' ? [cmd] : [checkArg, cmd];
+  if (process.platform === 'win32') {
+    return commandExistsInPath(cmd);
+  }
   
-  const result = await safeSpawn(checkCmd, checkArgs, {
+  const result = await safeSpawn('command', ['-v', cmd], {
     timeout: 2000,
     stdio: 'ignore'
   });

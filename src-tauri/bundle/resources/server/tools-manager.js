@@ -140,11 +140,25 @@ function toolExists(path) {
 function commandExistsInPath(command) {
   try {
     if (IS_WINDOWS) {
-      execSync(`where ${command}`, { stdio: 'ignore', timeout: 2000, windowsHide: true });
+      // Check PATH directly without calling where.exe to prevent console windows
+      const pathEnv = process.env.PATH || '';
+      const pathDirs = pathEnv.split(';');
+      const extensions = process.env.PATHEXT ? process.env.PATHEXT.split(';') : ['.exe', '.cmd', '.bat', '.com'];
+      
+      for (const dir of pathDirs) {
+        if (!dir) continue;
+        for (const ext of extensions) {
+          const fullPath = join(dir, command + ext);
+          if (existsSync(fullPath)) {
+            return true;
+          }
+        }
+      }
+      return false;
     } else {
       execSync(`command -v ${command}`, { stdio: 'ignore', timeout: 2000, windowsHide: true });
+      return true;
     }
-    return true;
   } catch {
     return false;
   }

@@ -43,14 +43,21 @@ function resolveToolPath(toolBaseName) {
 
   try {
     if (IS_WINDOWS) {
-      const out = execSync(`where ${toolBaseName}`, { 
-        stdio: 'pipe', 
-        timeout: 2000, 
-        encoding: 'utf8',
-        windowsHide: true
-      });
-      const first = out.split(/\r?\n/).map(l => l.trim()).filter(Boolean)[0];
-      return first || null;
+      // Check PATH directly without calling where.exe to prevent console windows
+      const pathEnv = process.env.PATH || '';
+      const pathDirs = pathEnv.split(';');
+      const extensions = process.env.PATHEXT ? process.env.PATHEXT.split(';') : ['.exe', '.cmd', '.bat', '.com'];
+      
+      for (const dir of pathDirs) {
+        if (!dir) continue;
+        for (const ext of extensions) {
+          const fullPath = path.join(dir, toolBaseName + ext);
+          if (fs.existsSync(fullPath)) {
+            return fullPath;
+          }
+        }
+      }
+      return null;
     }
     const out = execSync(`command -v ${toolBaseName}`, { 
       stdio: 'pipe', 

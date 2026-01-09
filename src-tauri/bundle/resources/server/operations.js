@@ -69,11 +69,26 @@ function checkToolsAvailable(requiredTools) {
   for (const tool of requiredTools) {
     try {
       if (IS_WINDOWS) {
-        execSync(`where ${tool}`, { 
-          stdio: 'ignore', 
-          timeout: 2000,
-          windowsHide: true
-        });
+        // Check PATH directly without calling where.exe to prevent console windows
+        const pathEnv = process.env.PATH || '';
+        const pathDirs = pathEnv.split(';');
+        const extensions = process.env.PATHEXT ? process.env.PATHEXT.split(';') : ['.exe', '.cmd', '.bat', '.com'];
+        
+        let found = false;
+        for (const dir of pathDirs) {
+          if (!dir) continue;
+          for (const ext of extensions) {
+            const fullPath = path.join(dir, tool + ext);
+            if (fs.existsSync(fullPath)) {
+              found = true;
+              break;
+            }
+          }
+          if (found) break;
+        }
+        if (!found) {
+          missing.push(tool);
+        }
       } else {
         execSync(`command -v ${tool}`, { 
           stdio: 'ignore', 

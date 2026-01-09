@@ -2,6 +2,7 @@ import express from 'express';
 import { execSync, spawnSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
+import { existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import cors from 'cors';
 
@@ -867,15 +868,21 @@ function commandExists(cmd) {
 
   try {
     if (IS_WINDOWS) {
-      // Use spawnSync with shell: false and explicit stdio redirection to prevent any window from appearing
-      const result = spawnSync('where', [cmd], {
-        stdio: ['ignore', 'ignore', 'ignore'], // Explicitly redirect stdin, stdout, stderr
-        timeout: 2000,
-        windowsHide: true,
-        shell: false,
-        detached: false
-      });
-      return result.status === 0;
+      // Check PATH directly without calling where.exe to prevent console windows
+      const pathEnv = process.env.PATH || '';
+      const pathDirs = pathEnv.split(path.delimiter);
+      const extensions = process.env.PATHEXT ? process.env.PATHEXT.split(path.delimiter) : ['.exe', '.cmd', '.bat', '.com'];
+      
+      for (const dir of pathDirs) {
+        if (!dir) continue;
+        for (const ext of extensions) {
+          const fullPath = path.join(dir, cmd + ext);
+          if (existsSync(fullPath)) {
+            return true;
+          }
+        }
+      }
+      return false;
     } else {
       execSync(`command -v ${cmd}`, { stdio: "ignore", timeout: 2000, windowsHide: true });
       return true;

@@ -5,6 +5,8 @@
  */
 
 import { execSync } from 'child_process';
+import { existsSync } from 'fs';
+import { join } from 'path';
 
 function safeExec(cmd) {
   try {
@@ -21,19 +23,29 @@ function safeExec(cmd) {
 function commandExists(cmd) {
   try {
     if (process.platform === 'win32') {
-      execSync(`where ${cmd}`, { 
-        stdio: 'ignore', 
-        timeout: 2000,
-        windowsHide: true
-      });
+      // Check PATH directly without calling where.exe to prevent console windows
+      const pathEnv = process.env.PATH || '';
+      const pathDirs = pathEnv.split(';');
+      const extensions = process.env.PATHEXT ? process.env.PATHEXT.split(';') : ['.exe', '.cmd', '.bat', '.com'];
+      
+      for (const dir of pathDirs) {
+        if (!dir) continue;
+        for (const ext of extensions) {
+          const fullPath = join(dir, cmd + ext);
+          if (existsSync(fullPath)) {
+            return true;
+          }
+        }
+      }
+      return false;
     } else {
       execSync(`which ${cmd}`, { 
         stdio: 'ignore', 
         timeout: 2000,
         windowsHide: true
       });
+      return true;
     }
-    return true;
   } catch {
     return false;
   }
@@ -60,12 +72,22 @@ function getAndroidToolDiagnostics(toolName) {
   let path = null;
   try {
     if (process.platform === 'win32') {
-      const output = execSync(`where ${toolName}`, { 
-        encoding: "utf-8", 
-        timeout: 2000,
-        windowsHide: true
-      });
-      path = output.trim().split('\n')[0];
+      // Check PATH directly without calling where.exe to prevent console windows
+      const pathEnv = process.env.PATH || '';
+      const pathDirs = pathEnv.split(';');
+      const extensions = process.env.PATHEXT ? process.env.PATHEXT.split(';') : ['.exe', '.cmd', '.bat', '.com'];
+      
+      for (const dir of pathDirs) {
+        if (!dir) continue;
+        for (const ext of extensions) {
+          const fullPath = join(dir, toolName + ext);
+          if (existsSync(fullPath)) {
+            path = fullPath;
+            break;
+          }
+        }
+        if (path) break;
+      }
     } else {
       const output = execSync(`which ${toolName}`, { 
         encoding: "utf-8", 
