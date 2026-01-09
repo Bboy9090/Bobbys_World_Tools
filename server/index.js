@@ -1732,7 +1732,7 @@ app.get('/api/fastboot/device-info', (req, res) => {
 });
 
 // Device lock middleware for destructive operations
-function requireDeviceLock(req, res, next) {
+async function requireDeviceLock(req, res, next) {
   const deviceSerial = req.body?.serial || req.body?.deviceSerial || req.params?.serial;
   
   if (!deviceSerial) {
