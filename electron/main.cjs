@@ -11,7 +11,6 @@ const os = require('os');
 
 // No localhost! Always use bundled files (file:// protocol)
 // Required for file:// protocol to work with modules
-app.commandLine.appendSwitch('disable-web-security');
 app.commandLine.appendSwitch('allow-file-access-from-files');
 app.commandLine.appendSwitch('disable-site-isolation-trials'); // Allow ES modules in file://
 
@@ -169,8 +168,7 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      preload: path.join(__dirname, 'preload.cjs'),
-      webSecurity: false // Allow file:// protocol for bundled files
+      preload: path.join(__dirname, 'preload.cjs')
     }
   });
   
