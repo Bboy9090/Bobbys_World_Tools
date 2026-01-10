@@ -136,38 +136,6 @@ function toolExists(path) {
 }
 
 /**
- * Check if a command exists in PATH
- */
-function commandExistsInPath(command) {
-  try {
-    if (IS_WINDOWS) {
-      // Check PATH directly without calling where.exe to prevent console windows
-      const pathEnv = process.env.PATH || '';
-      const pathDirs = pathEnv.split(';');
-      const extensions = process.env.PATHEXT ? process.env.PATHEXT.split(';') : ['.exe', '.cmd', '.bat', '.com'];
-      
-      for (const dir of pathDirs) {
-        if (!dir) continue;
-        for (const ext of extensions) {
-          const fullPath = join(dir, command + ext);
-          if (existsSync(fullPath)) {
-            return true;
-          }
-        }
-      }
-      return false;
-    } else {
-      if (!commandExistsInPath(command)) {
-        return false;
-      }
-      return true;
-    }
-  } catch {
-    return false;
-  }
-}
-
-/**
  * Get tool path - checks bundled location, then system PATH
  */
 export function getToolPath(toolName) {
