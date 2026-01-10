@@ -7,11 +7,12 @@
  * 3. Downloadable/installable on demand
  */
 
-import { execSync } from 'child_process';
+import { execSync, spawnSync } from 'child_process';
 import { existsSync, statSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import os from 'os';
+import { commandExistsInPath as checkCommandInPath } from './utils/safe-exec.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -136,18 +137,10 @@ function toolExists(path) {
 
 /**
  * Check if a command exists in PATH
+ * Uses the safe helper from utils/safe-exec.js to avoid console windows
  */
 function commandExistsInPath(command) {
-  try {
-    if (IS_WINDOWS) {
-      execSync(`where ${command}`, { stdio: 'ignore', timeout: 2000 });
-    } else {
-      execSync(`command -v ${command}`, { stdio: 'ignore', timeout: 2000 });
-    }
-    return true;
-  } catch {
-    return false;
-  }
+  return checkCommandInPath(command);
 }
 
 /**

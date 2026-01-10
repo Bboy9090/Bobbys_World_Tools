@@ -31,5 +31,13 @@ if ($LASTEXITCODE -ne 0) {
     throw "Import path fixing failed"
 }
 
+# Fix execSync('where') calls to eliminate pop-ups
+Write-Host ""
+Write-Host "Step 4: Fixing execSync calls to eliminate console pop-ups" -ForegroundColor Cyan
+& "$ScriptDir\fix-bundle-execsync.ps1"
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "Warning: execSync fix script failed, but continuing..." -ForegroundColor Yellow
+}
+
 Write-Host ""
 Write-Host "Bundle preparation complete!" -ForegroundColor Green

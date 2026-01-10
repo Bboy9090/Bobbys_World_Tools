@@ -61,6 +61,20 @@ if (Test-Path $CoreDir) {
     Write-Host "Warning: Core directory not found at $CoreDir" -ForegroundColor Yellow
 }
 
+# Copy runtime directory (required by catalog API)
+$RuntimeDir = Join-Path $RootDir "runtime"
+$TargetRuntimeDir = Join-Path $ResourcesDir "runtime"
+if (Test-Path $RuntimeDir) {
+    Write-Host "Copying runtime directory to $TargetRuntimeDir..." -ForegroundColor Cyan
+    if (Test-Path $TargetRuntimeDir) {
+        Remove-Item -Recurse -Force $TargetRuntimeDir
+    }
+    Copy-Item -Recurse -Force $RuntimeDir $TargetRuntimeDir -ErrorAction Stop
+    Write-Host "Runtime directory copied successfully" -ForegroundColor Green
+} else {
+    Write-Host "Warning: Runtime directory not found at $RuntimeDir" -ForegroundColor Yellow
+}
+
 # Copy package.json to resources root (needed by ready.js)
 $PackageJson = Join-Path $RootDir "package.json"
 if (Test-Path $PackageJson) {
