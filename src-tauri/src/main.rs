@@ -360,8 +360,9 @@ fn env_var_truthy(name: &str) -> bool {
 }
 
 fn should_start_node_backend() -> bool {
-    // Production default: AUTO-START backend for complete standalone experience
-    // Set BW_DISABLE_NODE_BACKEND=1 to disable backend (use in-process Tauri only)
+    // ALWAYS AUTO-START backend for complete standalone experience
+    // Backend is required for full functionality
+    // Set BW_DISABLE_NODE_BACKEND=1 to disable (not recommended)
     !env_var_truthy("BW_DISABLE_NODE_BACKEND")
 }
 

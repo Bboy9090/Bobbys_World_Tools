@@ -902,7 +902,9 @@ function commandExists(cmd) {
       }
       return false;
     } else {
-      execSync(`command -v ${cmd}`, { stdio: "ignore", timeout: 2000, windowsHide: true });
+      if (!commandExistsInPath(cmd)) {
+        return false;
+      }
       return true;
     }
   } catch {
@@ -1812,10 +1814,17 @@ app.post('/api/fastboot/flash', requireDeviceLock, async (req, res) => {
       }
 
       try {
-        const output = execSync(
-          `fastboot -s ${serial} flash ${partition} ${file.path}`,
-          { encoding: 'utf-8', timeout: 120000, windowsHide: true }
-        );
+        const result = spawnSync('fastboot', ['-s', serial, 'flash', partition, file.path], {
+          encoding: 'utf-8',
+          timeout: 120000,
+          windowsHide: true,
+          shell: false,
+          stdio: ['ignore', 'pipe', 'pipe']
+        });
+        if (result.error || result.status !== 0) {
+          throw new Error(result.error?.message || `fastboot failed with exit code ${result.status}`);
+        }
+        const output = result.stdout || '';
 
         const fs = require('fs');
         fs.unlinkSync(file.path);
@@ -2196,16 +2205,19 @@ app.post('/api/bootforgeusb/build', async (req, res) => {
       timestamp: new Date().toISOString()
     }) + '\n');
 
-    const buildOutput = execSync(
-      'cargo build --release --bin bootforgeusb',
-      {
-        cwd: buildPath,
-        encoding: 'utf-8',
-        timeout: 300000,
-        maxBuffer: 50 * 1024 * 1024,
-        windowsHide: true
-      }
-    );
+    const buildResult = spawnSync('cargo', ['build', '--release', '--bin', 'bootforgeusb'], {
+      cwd: buildPath,
+      encoding: 'utf-8',
+      timeout: 300000,
+      maxBuffer: 50 * 1024 * 1024,
+      windowsHide: true,
+      shell: false,
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+    const buildOutput = buildResult.stdout || '';
+    if (buildResult.error || buildResult.status !== 0) {
+      throw new Error(buildResult.error?.message || `cargo build failed with exit code ${buildResult.status}`);
+    }
 
     res.write(JSON.stringify({
       status: 'installing',
@@ -2213,11 +2225,19 @@ app.post('/api/bootforgeusb/build', async (req, res) => {
       timestamp: new Date().toISOString()
     }) + '\n');
 
-    const installOutput = execSync(
-      'cargo install --path . --bin bootforgeusb',
-      {
-        cwd: buildPath,
-        windowsHide: true,
+    const installResult = spawnSync('cargo', ['install', '--path', '.', '--bin', 'bootforgeusb'], {
+      cwd: buildPath,
+      encoding: 'utf-8',
+      timeout: 300000,
+      maxBuffer: 50 * 1024 * 1024,
+      windowsHide: true,
+      shell: false,
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+    const installOutput = installResult.stdout || '';
+    if (installResult.error || installResult.status !== 0) {
+      throw new Error(installResult.error?.message || `cargo install failed with exit code ${installResult.status}`);
+    }
         encoding: 'utf-8',
         timeout: 60000
       }

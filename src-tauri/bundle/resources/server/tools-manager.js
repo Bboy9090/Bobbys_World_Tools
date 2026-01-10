@@ -8,10 +8,9 @@
  */
 
 import { execSync, spawnSync } from 'child_process';
-import { existsSync } from 'fs';
-import { join } from 'path';
 import { existsSync, statSync } from 'fs';
 import { join, dirname } from 'path';
+import { commandExistsInPath } from './utils/safe-exec.js';
 import { fileURLToPath } from 'url';
 import os from 'os';
 
@@ -158,7 +157,9 @@ function commandExistsInPath(command) {
       }
       return false;
     } else {
-      execSync(`command -v ${command}`, { stdio: 'ignore', timeout: 2000, windowsHide: true });
+      if (!commandExistsInPath(command)) {
+        return false;
+      }
       return true;
     }
   } catch {

@@ -5,8 +5,11 @@
  */
 
 import express from 'express';
-import { execSync } from 'child_process';
+import { execSync, spawnSync } from 'child_process';
+import { commandExistsInPath } from '../../utils/safe-exec.js';
 import { getToolPath } from '../../tools-manager.js';
+import { existsSync } from 'fs';
+import { join } from 'path';
 import { flashHistory, activeFlashJobs, jobCounter as sharedJobCounter, broadcastFlashProgress, simulateFlashOperation } from './flash-shared.js';
 
 const router = express.Router();
@@ -46,11 +49,9 @@ function commandExists(cmd) {
       }
       return false;
     } else {
-      execSync(`command -v ${cmd}`, { 
-        stdio: 'ignore', 
-        timeout: 2000,
-        windowsHide: true
-      });
+      if (!commandExistsInPath(cmd)) {
+        return false;
+      }
     }
     return true;
   } catch {

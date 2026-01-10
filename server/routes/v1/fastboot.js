@@ -8,6 +8,7 @@ import express from 'express';
 import { execSync, spawn } from 'child_process';
 import { existsSync } from 'fs';
 import { join } from 'path';
+import { commandExistsInPath } from '../../utils/safe-exec.js';
 import { createRequireDeviceLockMiddleware } from '../../locks.js';
 
 const router = express.Router();
@@ -44,11 +45,10 @@ function commandExists(cmd) {
       }
       return false;
     } else {
-      execSync(`which ${cmd}`, { 
-        stdio: 'ignore', 
-        timeout: 2000,
-        windowsHide: true
-      });
+      // Use commandExistsInPath instead of which to prevent console windows
+      if (!commandExistsInPath(cmd)) {
+        return false;
+      }
     }
     return true;
   } catch {

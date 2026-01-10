@@ -6,7 +6,8 @@
  */
 
 import express from 'express';
-import { execSync } from 'child_process';
+import { execSync, spawnSync } from 'child_process';
+import { commandExistsInPath } from '../utils/safe-exec.js';
 import { existsSync } from 'fs';
 import { join } from 'path';
 import os from 'os';
@@ -60,11 +61,9 @@ function commandExists(cmd) {
       }
       return false;
     } else {
-      execSync(`command -v ${cmd}`, { 
-        stdio: 'ignore', 
-        timeout: 2000,
-        windowsHide: true
-      });
+      if (!commandExistsInPath(cmd)) {
+        return false;
+      }
     }
     return true;
   } catch {

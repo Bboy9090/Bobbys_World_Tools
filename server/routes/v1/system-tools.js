@@ -4,7 +4,8 @@
  * System tools detection endpoint (migrated to v1 with envelope)
  */
 
-import { execSync } from 'child_process';
+import { execSync, spawnSync } from 'child_process';
+import { commandExistsInPath } from '../../utils/safe-exec.js';
 import { existsSync } from 'fs';
 import { join } from 'path';
 
@@ -39,11 +40,9 @@ function commandExists(cmd) {
       }
       return false;
     } else {
-      execSync(`which ${cmd}`, { 
-        stdio: 'ignore', 
-        timeout: 2000,
-        windowsHide: true
-      });
+      if (!commandExistsInPath(cmd)) {
+        return false;
+      }
       return true;
     }
   } catch {
@@ -89,12 +88,34 @@ function getAndroidToolDiagnostics(toolName) {
         if (path) break;
       }
     } else {
-      const output = execSync(`which ${toolName}`, { 
-        encoding: "utf-8", 
-        timeout: 2000,
-        windowsHide: true
-      });
-      path = output.trim();
+      if (process.platform === 'win32') {
+        // Use native PATH check
+        const pathEnv = process.env.PATH || '';
+        const pathDirs = pathEnv.split(';');
+        const extensions = process.env.PATHEXT ? process.env.PATHEXT.split(';') : ['.exe', '.cmd', '.bat', '.com'];
+        for (const dir of pathDirs) {
+          if (!dir) continue;
+          for (const ext of extensions) {
+            const fullPath = join(dir, toolName + ext);
+            if (existsSync(fullPath)) {
+              path = fullPath;
+              break;
+            }
+          }
+          if (path) break;
+        }
+      } else {
+        const result = spawnSync('which', [toolName], { 
+          encoding: "utf-8", 
+          timeout: 2000,
+          windowsHide: true,
+          shell: false,
+          stdio: ['ignore', 'pipe', 'pipe']
+        });
+        if (result.status === 0) {
+          path = (result.stdout || '').trim();
+        }
+      }
     }
   } catch {
     // Path check failed

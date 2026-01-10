@@ -15,6 +15,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { execSync, spawnSync } from 'child_process';
+import { commandExistsInPath } from '../utils/safe-exec.js';
 import os from 'os';
 import {
   createExecuteEnvelope,
@@ -67,21 +68,7 @@ function getCapability(capabilityId) {
 function checkToolsAvailable(requiredTools) {
   const missing = [];
   for (const tool of requiredTools) {
-    try {
-      if (IS_WINDOWS) {
-        execSync(`where ${tool}`, { 
-          stdio: 'ignore', 
-          timeout: 2000,
-          windowsHide: true
-        });
-      } else {
-        execSync(`command -v ${tool}`, { 
-          stdio: 'ignore', 
-          timeout: 2000,
-          windowsHide: true
-        });
-      }
-    } catch {
+    if (!commandExistsInPath(tool)) {
       missing.push(tool);
     }
   }
@@ -247,12 +234,17 @@ async function executeOperation(capabilityId, params) {
 
     case 'detect_ios_devices': {
       try {
-        const result = execSync('idevice_id -l', { 
+        const result = spawnSync('idevice_id', ['-l'], { 
           encoding: 'utf8', 
           timeout: 10000,
-          windowsHide: true
+          windowsHide: true,
+          shell: false,
+          stdio: ['ignore', 'pipe', 'pipe']
         });
-        const devices = result.split('\n').filter(Boolean).map(udid => ({ udid: udid.trim() }));
+        if (result.error || result.status !== 0) {
+          return { success: false, error: result.error?.message || 'Command failed', devices: [] };
+        }
+        const devices = (result.stdout || '').split('\n').filter(Boolean).map(udid => ({ udid: udid.trim() }));
         return {
           success: true,
           devices,
@@ -270,24 +262,35 @@ async function executeOperation(capabilityId, params) {
       }
       try {
         if (platform === 'ios') {
-          const result = execSync(`ideviceinfo -u ${serial}`, { 
+          const result = spawnSync('ideviceinfo', ['-u', serial], { 
             encoding: 'utf8', 
             timeout: 15000,
-            windowsHide: true
+            windowsHide: true,
+            shell: false,
+            stdio: ['ignore', 'pipe', 'pipe']
           });
-          return { success: true, info: parseIDeviceInfo(result), serial };
+          if (result.error || result.status !== 0) {
+            throw new Error(result.error?.message || 'ideviceinfo failed');
+          }
+          return { success: true, info: parseIDeviceInfo(result.stdout || ''), serial };
         } else {
           // Android via ADB
           const props = {};
           const propsToGet = ['ro.product.model', 'ro.product.manufacturer', 'ro.build.version.release'];
           for (const prop of propsToGet) {
             try {
-              const val = execSync(`adb -s ${serial} shell getprop ${prop}`, { 
+              const val = spawnSync('adb', ['-s', serial, 'shell', 'getprop', prop], { 
                 encoding: 'utf8', 
                 timeout: 5000,
-                windowsHide: true
+                windowsHide: true,
+                shell: false,
+                stdio: ['ignore', 'pipe', 'pipe']
               });
-              props[prop] = val.trim();
+              if (val.error || val.status !== 0) {
+                props[prop] = null;
+                continue;
+              }
+              props[prop] = (val.stdout || '').trim();
             } catch { /* ignore individual prop errors */ }
           }
           return {
