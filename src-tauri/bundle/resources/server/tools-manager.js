@@ -7,9 +7,10 @@
  * 3. Downloadable/installable on demand
  */
 
-import { execSync } from 'child_process';
+import { execSync, spawnSync } from 'child_process';
 import { existsSync, statSync } from 'fs';
 import { join, dirname } from 'path';
+import { commandExistsInPath } from './utils/safe-exec.js';
 import { fileURLToPath } from 'url';
 import os from 'os';
 
@@ -140,11 +141,27 @@ function toolExists(path) {
 function commandExistsInPath(command) {
   try {
     if (IS_WINDOWS) {
-      execSync(`where ${command}`, { stdio: 'ignore', timeout: 2000 });
+      // Check PATH directly without calling where.exe to prevent console windows
+      const pathEnv = process.env.PATH || '';
+      const pathDirs = pathEnv.split(';');
+      const extensions = process.env.PATHEXT ? process.env.PATHEXT.split(';') : ['.exe', '.cmd', '.bat', '.com'];
+      
+      for (const dir of pathDirs) {
+        if (!dir) continue;
+        for (const ext of extensions) {
+          const fullPath = join(dir, command + ext);
+          if (existsSync(fullPath)) {
+            return true;
+          }
+        }
+      }
+      return false;
     } else {
-      execSync(`command -v ${command}`, { stdio: 'ignore', timeout: 2000 });
+      if (!commandExistsInPath(command)) {
+        return false;
+      }
+      return true;
     }
-    return true;
   } catch {
     return false;
   }
@@ -213,8 +230,7 @@ export function getToolInfo(toolName) {
       version = execSync(fullCommand, { 
         encoding: 'utf-8', 
         timeout: 5000,
-        windowsHide: true,
-        stdio: ['ignore', 'pipe', 'pipe']
+        windowsHide: true
       }).trim();
     } catch {
       // Version check failed, ignore
@@ -257,26 +273,23 @@ export function executeTool(toolName, args = [], options = {}) {
     throw new Error(`Tool ${toolName} is not available`);
   }
   
-  const fullCommand = path.includes('/') || path.includes('\\')
-    ? `"${path}" ${args.join(' ')}`
-    : `${path} ${args.join(' ')}`;
-  
+  // Use spawnSync instead of execSync to prevent console windows on Windows
   const defaultOptions = {
     encoding: 'utf-8',
     timeout: 300000, // 5 minutes default
-    maxBuffer: 50 * 1024 * 1024, // 50MB
     windowsHide: true,
-    stdio: ['ignore', 'pipe', 'pipe'],
+    shell: false, // Don't use shell to prevent console windows
+    stdio: ['ignore', 'pipe', 'pipe'], // Prevent console window, but capture output
     ...options
   };
   
   try {
-    const result = execSync(fullCommand, defaultOptions);
+    const result = spawnSync(path, args, defaultOptions);
     return {
-      success: true,
-      stdout: result,
-      stderr: '',
-      exitCode: 0
+      success: result.status === 0,
+      stdout: result.stdout?.toString() || '',
+      stderr: result.stderr?.toString() || '',
+      exitCode: result.status || 0
     };
   } catch (error) {
     return {

@@ -11,6 +11,7 @@ const projectRoot = process.env.PROJECT_ROOT || import.meta.dirname
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: './', // Use relative paths for Electron (file:// protocol)
   plugins: [
     react(),
     tailwindcss(),
@@ -25,4 +26,14 @@ export default defineConfig({
       '@': resolve(projectRoot, 'src')
     }
   },
+  build: {
+    // Ensure relative paths work with file:// protocol
+    assetsDir: 'assets',
+    rollupOptions: {
+      output: {
+        // Use relative paths for all assets
+        format: 'es'
+      }
+    }
+  }
 });

@@ -14,7 +14,8 @@ import express from 'express';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { execSync } from 'child_process';
+import { execSync, spawnSync } from 'child_process';
+import { commandExistsInPath } from '../utils/safe-exec.js';
 import os from 'os';
 import {
   createExecuteEnvelope,
@@ -67,21 +68,7 @@ function getCapability(capabilityId) {
 function checkToolsAvailable(requiredTools) {
   const missing = [];
   for (const tool of requiredTools) {
-    try {
-      if (IS_WINDOWS) {
-        execSync(`where ${tool}`, { 
-          stdio: 'ignore', 
-          timeout: 2000,
-          windowsHide: true
-        });
-      } else {
-        execSync(`command -v ${tool}`, { 
-          stdio: 'ignore', 
-          timeout: 2000,
-          windowsHide: true
-        });
-      }
-    } catch {
+    if (!commandExistsInPath(tool)) {
       missing.push(tool);
     }
   }
@@ -197,12 +184,18 @@ async function executeOperation(capabilityId, params) {
     case 'detect_usb_devices':
     case 'detect_android_adb': {
       try {
-        const result = execSync('adb devices -l', { 
+        // Use spawnSync with shell: false to prevent console windows
+        const adbResult = spawnSync('adb', ['devices', '-l'], { 
           encoding: 'utf8', 
           timeout: 10000,
           windowsHide: true,
+          shell: false,
           stdio: ['ignore', 'pipe', 'pipe']
         });
+        if (adbResult.error || adbResult.status !== 0) {
+          throw new Error(adbResult.stderr?.toString() || 'ADB command failed');
+        }
+        const result = { stdout: adbResult.stdout?.toString() || '' };
         const devices = parseADBDevices(result);
         return {
           success: true,
@@ -216,12 +209,18 @@ async function executeOperation(capabilityId, params) {
 
     case 'detect_android_fastboot': {
       try {
-        const result = execSync('fastboot devices', { 
+        // Use spawnSync with shell: false to prevent console windows
+        const fastbootResult = spawnSync('fastboot', ['devices'], { 
           encoding: 'utf8', 
           timeout: 10000,
           windowsHide: true,
+          shell: false,
           stdio: ['ignore', 'pipe', 'pipe']
         });
+        if (fastbootResult.error || fastbootResult.status !== 0) {
+          throw new Error(fastbootResult.stderr?.toString() || 'Fastboot command failed');
+        }
+        const result = { stdout: fastbootResult.stdout?.toString() || '' };
         const devices = parseFastbootDevices(result);
         return {
           success: true,
@@ -235,13 +234,17 @@ async function executeOperation(capabilityId, params) {
 
     case 'detect_ios_devices': {
       try {
-        const result = execSync('idevice_id -l', { 
+        const result = spawnSync('idevice_id', ['-l'], { 
           encoding: 'utf8', 
           timeout: 10000,
           windowsHide: true,
+          shell: false,
           stdio: ['ignore', 'pipe', 'pipe']
         });
-        const devices = result.split('\n').filter(Boolean).map(udid => ({ udid: udid.trim() }));
+        if (result.error || result.status !== 0) {
+          return { success: false, error: result.error?.message || 'Command failed', devices: [] };
+        }
+        const devices = (result.stdout || '').split('\n').filter(Boolean).map(udid => ({ udid: udid.trim() }));
         return {
           success: true,
           devices,
@@ -259,26 +262,35 @@ async function executeOperation(capabilityId, params) {
       }
       try {
         if (platform === 'ios') {
-          const result = execSync(`ideviceinfo -u ${serial}`, { 
+          const result = spawnSync('ideviceinfo', ['-u', serial], { 
             encoding: 'utf8', 
             timeout: 15000,
             windowsHide: true,
+            shell: false,
             stdio: ['ignore', 'pipe', 'pipe']
           });
-          return { success: true, info: parseIDeviceInfo(result), serial };
+          if (result.error || result.status !== 0) {
+            throw new Error(result.error?.message || 'ideviceinfo failed');
+          }
+          return { success: true, info: parseIDeviceInfo(result.stdout || ''), serial };
         } else {
           // Android via ADB
           const props = {};
           const propsToGet = ['ro.product.model', 'ro.product.manufacturer', 'ro.build.version.release'];
           for (const prop of propsToGet) {
             try {
-              const val = execSync(`adb -s ${serial} shell getprop ${prop}`, { 
+              const val = spawnSync('adb', ['-s', serial, 'shell', 'getprop', prop], { 
                 encoding: 'utf8', 
                 timeout: 5000,
                 windowsHide: true,
+                shell: false,
                 stdio: ['ignore', 'pipe', 'pipe']
               });
-              props[prop] = val.trim();
+              if (val.error || val.status !== 0) {
+                props[prop] = null;
+                continue;
+              }
+              props[prop] = (val.stdout || '').trim();
             } catch { /* ignore individual prop errors */ }
           }
           return {
@@ -302,11 +314,18 @@ async function executeOperation(capabilityId, params) {
         throw new Error('Device serial required for reboot_device');
       }
       try {
-        const modeFlag = mode === 'bootloader' ? ' bootloader' : mode === 'recovery' ? ' recovery' : '';
-        execSync(`adb -s ${serial} reboot${modeFlag}`, { 
+        // Use spawnSync with shell: false to prevent console windows
+        const rebootArgs = ['-s', serial, 'reboot'];
+        if (mode === 'bootloader') {
+          rebootArgs.push('bootloader');
+        } else if (mode === 'recovery') {
+          rebootArgs.push('recovery');
+        }
+        spawnSync('adb', rebootArgs, { 
           encoding: 'utf8', 
           timeout: 10000,
           windowsHide: true,
+          shell: false,
           stdio: ['ignore', 'pipe', 'pipe']
         });
         return { success: true, serial, mode, message: `Device rebooting to ${mode}` };
