@@ -6,7 +6,10 @@
 
 import express from 'express';
 import { execSync, spawn } from 'child_process';
-import { acquireDeviceLock, releaseDeviceLock, LOCK_TIMEOUT } from '../../locks.js';
+import { existsSync } from 'fs';
+import { join } from 'path';
+import { commandExistsInPath } from '../../utils/safe-exec.js';
+import { createRequireDeviceLockMiddleware } from '../../locks.js';
 
 const router = express.Router();
 
@@ -16,7 +19,6 @@ function safeExec(cmd, options = {}) {
       encoding: "utf-8", 
       timeout: 5000,
       windowsHide: true,
-      stdio: ['ignore', 'pipe', 'pipe'],
       ...options 
     }).trim();
   } catch (error) {
@@ -27,17 +29,26 @@ function safeExec(cmd, options = {}) {
 function commandExists(cmd) {
   try {
     if (process.platform === 'win32') {
-      execSync(`where ${cmd}`, { 
-        stdio: 'ignore', 
-        timeout: 2000,
-        windowsHide: true
-      });
+      // Check PATH directly without calling where.exe to prevent console windows
+      const pathEnv = process.env.PATH || '';
+      const pathDirs = pathEnv.split(';');
+      const extensions = process.env.PATHEXT ? process.env.PATHEXT.split(';') : ['.exe', '.cmd', '.bat', '.com'];
+      
+      for (const dir of pathDirs) {
+        if (!dir) continue;
+        for (const ext of extensions) {
+          const fullPath = join(dir, cmd + ext);
+          if (existsSync(fullPath)) {
+            return true;
+          }
+        }
+      }
+      return false;
     } else {
-      execSync(`which ${cmd}`, { 
-        stdio: 'ignore', 
-        timeout: 2000,
-        windowsHide: true
-      });
+      // Use commandExistsInPath instead of which to prevent console windows
+      if (!commandExistsInPath(cmd)) {
+        return false;
+      }
     }
     return true;
   } catch {
@@ -56,35 +67,8 @@ const BLOCKED_PARTITIONS = [
   'bootloader', 'radio', 'sbl1', 'aboot', 'rpm', 'tz', 'hyp', 'pmic'
 ];
 
-/**
- * Device lock middleware for Fastboot operations
- */
-function requireDeviceLock(req, res, next) {
-  const deviceSerial = req.body?.serial || req.body?.deviceSerial || req.params?.serial;
-  
-  if (!deviceSerial) {
-    return next(); // Some operations don't need a device lock
-  }
-
-  const operation = `fastboot_${req.path.replace('/', '_').replace(/\//g, '_')}`;
-  const lockResult = await acquireDeviceLock(deviceSerial, operation);
-
-  if (!lockResult.acquired) {
-    return res.sendDeviceLocked(lockResult.reason, {
-      lockedBy: lockResult.lockedBy,
-      retryAfter: Math.floor(LOCK_TIMEOUT / 1000) // Convert milliseconds to seconds
-    });
-  }
-
-  // Release lock when response finishes
-  const originalEnd = res.end;
-  res.end = function(...args) {
-    releaseDeviceLock(deviceSerial);
-    originalEnd.apply(this, args);
-  };
-
-  next();
-}
+// Device lock middleware for Fastboot operations (uses shared implementation from locks.js)
+const requireDeviceLock = createRequireDeviceLockMiddleware({ operationPrefix: 'fastboot' });
 
 /**
  * GET /api/v1/fastboot/devices

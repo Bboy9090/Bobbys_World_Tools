@@ -6,7 +6,8 @@
 
 import fs from 'fs';
 import os from 'os';
-import { commandExistsSafe, safeSpawn } from './safe-exec.js';
+import { spawnSync } from 'child_process';
+import { commandExistsSafe, commandExistsInPath } from './safe-exec.js';
 import { createLogger } from './bundled-logger.js';
 
 const logger = createLogger('StartupValidation');
@@ -77,12 +78,18 @@ const OPTIONAL_COMPONENTS = [
   {
     name: 'ADB',
     check: async () => {
-      const available = await commandExistsSafe('adb');
+      const available = commandExistsInPath('adb');
       let version = 'unknown';
       if (available) {
         try {
-          const result = await safeSpawn('adb', ['version']);
-          if (result.success) {
+          const result = spawnSync('adb', ['version'], {
+            encoding: 'utf8',
+            timeout: 5000,
+            windowsHide: true,
+            shell: false,
+            stdio: ['ignore', 'pipe', 'pipe']
+          });
+          if (result.status === 0 && result.stdout) {
             const match = result.stdout.match(/version\s+([\d.]+)/i);
             version = match ? match[1] : 'detected';
           }

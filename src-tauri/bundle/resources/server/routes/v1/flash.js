@@ -5,8 +5,11 @@
  */
 
 import express from 'express';
-import { execSync } from 'child_process';
+import { execSync, spawnSync } from 'child_process';
+import { commandExistsInPath } from '../../utils/safe-exec.js';
 import { getToolPath } from '../../tools-manager.js';
+import { existsSync } from 'fs';
+import { join } from 'path';
 import { flashHistory, activeFlashJobs, jobCounter as sharedJobCounter, broadcastFlashProgress, simulateFlashOperation } from './flash-shared.js';
 
 const router = express.Router();
@@ -20,7 +23,6 @@ function safeExec(cmd, options = {}) {
       encoding: "utf-8", 
       timeout: 5000,
       windowsHide: true,
-      stdio: ['ignore', 'pipe', 'pipe'],
       ...options 
     }).trim();
   } catch {
@@ -31,17 +33,25 @@ function safeExec(cmd, options = {}) {
 function commandExists(cmd) {
   try {
     if (process.platform === 'win32') {
-      execSync(`where ${cmd}`, { 
-        stdio: 'ignore', 
-        timeout: 2000,
-        windowsHide: true
-      });
+      // Check PATH directly without calling where.exe to prevent console windows
+      const pathEnv = process.env.PATH || '';
+      const pathDirs = pathEnv.split(';');
+      const extensions = process.env.PATHEXT ? process.env.PATHEXT.split(';') : ['.exe', '.cmd', '.bat', '.com'];
+      
+      for (const dir of pathDirs) {
+        if (!dir) continue;
+        for (const ext of extensions) {
+          const fullPath = join(dir, cmd + ext);
+          if (existsSync(fullPath)) {
+            return true;
+          }
+        }
+      }
+      return false;
     } else {
-      execSync(`command -v ${cmd}`, { 
-        stdio: 'ignore', 
-        timeout: 2000,
-        windowsHide: true
-      });
+      if (!commandExistsInPath(cmd)) {
+        return false;
+      }
     }
     return true;
   } catch {

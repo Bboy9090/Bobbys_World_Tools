@@ -1,4 +1,5 @@
-import { exec, execSync } from 'child_process';
+import { exec, execSync, spawnSync } from 'child_process';
+import { commandExistsInPath } from '../utils/safe-exec.js';
 import { promisify } from 'util';
 import fs from 'fs';
 import os from 'os';
@@ -41,25 +42,40 @@ function resolveToolPath(toolBaseName) {
     if (fs.existsSync(candidate)) return candidate;
   }
 
-  try {
-    if (IS_WINDOWS) {
-      const out = execSync(`where ${toolBaseName}`, { 
-        stdio: 'pipe', 
-        timeout: 2000, 
-        encoding: 'utf8',
-        windowsHide: true
-      });
-      const first = out.split(/\r?\n/).map(l => l.trim()).filter(Boolean)[0];
-      return first || null;
+  if (IS_WINDOWS) {
+    // Use native PATH check instead of where.exe to prevent console windows
+    if (!commandExistsInPath(toolBaseName)) {
+      return null;
     }
-    const out = execSync(`command -v ${toolBaseName}`, { 
+    // Find the actual path by checking PATH directories
+    const pathEnv = process.env.PATH || '';
+    const pathDirs = pathEnv.split(';');
+    const extensions = process.env.PATHEXT ? process.env.PATHEXT.split(';') : ['.exe', '.cmd', '.bat', '.com'];
+    
+    for (const dir of pathDirs) {
+      if (!dir) continue;
+      for (const ext of extensions) {
+        const fullPath = path.join(dir, toolBaseName + ext);
+        if (fs.existsSync(fullPath)) {
+          return fullPath;
+        }
+      }
+    }
+    return null;
+  }
+  
+  try {
+    const result = spawnSync('command', ['-v', toolBaseName], { 
       stdio: 'pipe', 
       timeout: 2000, 
       encoding: 'utf8',
-      windowsHide: true
+      windowsHide: true,
+      shell: false
     });
-    const resolved = out.trim();
-    return resolved || null;
+    if (result.error || result.status !== 0) {
+      return null;
+    }
+    return (result.stdout || '').trim();
   } catch {
     return null;
   }
@@ -86,8 +102,7 @@ async function executeCommand(command, timeoutMs = COMMAND_TIMEOUT) {
     const { stdout, stderr } = await execAsync(command, {
       timeout: timeoutMs,
       encoding: 'utf8',
-      windowsHide: true,
-      stdio: ['ignore', 'pipe', 'pipe']
+      windowsHide: true
     });
     return {
       success: true,

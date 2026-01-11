@@ -1,7 +1,8 @@
 import express from 'express';
-import { execSync } from 'child_process';
+import { execSync, spawnSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
+import { existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import cors from 'cors';
 
@@ -18,7 +19,7 @@ import { correlationIdMiddleware, envelopeMiddleware } from './middleware/api-en
 import { deprecationWarningMiddleware } from './middleware/api-versioning.js';
 import { rateLimiter } from './middleware/rate-limiter.js';
 import { requireTrapdoorPasscode } from './middleware/trapdoor-auth.js';
-import { acquireDeviceLock, releaseDeviceLock, LOCK_TIMEOUT, getAllActiveLocks, getActiveLockCount } from './locks.js';
+import { acquireDeviceLock, releaseDeviceLock, LOCK_TIMEOUT, getAllActiveLocks, getActiveLockCount, createRequireDeviceLockMiddleware } from './locks.js';
 import { getToolPath, isToolAvailable, getToolInfo, getAllToolsInfo, executeTool } from './tools-manager.js';
 import { downloadFirmware, getDownloadStatus, cancelDownload, getActiveDownloads } from './firmware-downloader.js';
 import { readyHandler } from './routes/v1/ready.js';
@@ -705,7 +706,25 @@ function broadcastCorrelation(message) {
 
 function safeExec(cmd) {
   try {
-    return execSync(cmd, { encoding: "utf-8", timeout: 5000 }).trim();
+    // Use spawnSync with shell: false to prevent console windows on Windows
+    const { spawnSync } = require('child_process');
+    const parts = cmd.split(' ');
+    const command = parts[0];
+    const args = parts.slice(1);
+    
+    const result = spawnSync(command, args, {
+      encoding: "utf-8",
+      timeout: 5000,
+      windowsHide: true,
+      shell: false, // Prevent console window
+      stdio: ['ignore', 'pipe', 'pipe'] // Capture output, hide console
+    });
+    
+    if (result.error || result.status !== 0) {
+      return null;
+    }
+    
+    return result.stdout?.trim() || null;
   } catch {
     return null;
   }
@@ -800,7 +819,7 @@ function getConnectedUsbDevices() {
     "$devs | ConvertTo-Json -Compress"
   ].join('; ');
 
-  const raw = safeExec(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${ps}"`);
+  const raw = safeExec(`powershell -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -Command "${ps}"`);
   if (!raw) return [];
 
   try {
@@ -867,11 +886,27 @@ function commandExists(cmd) {
 
   try {
     if (IS_WINDOWS) {
-      execSync(`where ${cmd}`, { stdio: 'ignore', timeout: 2000 });
+      // Check PATH directly without calling where.exe to prevent console windows
+      const pathEnv = process.env.PATH || '';
+      const pathDirs = pathEnv.split(path.delimiter);
+      const extensions = process.env.PATHEXT ? process.env.PATHEXT.split(path.delimiter) : ['.exe', '.cmd', '.bat', '.com'];
+      
+      for (const dir of pathDirs) {
+        if (!dir) continue;
+        for (const ext of extensions) {
+          const fullPath = path.join(dir, cmd + ext);
+          if (existsSync(fullPath)) {
+            return true;
+          }
+        }
+      }
+      return false;
     } else {
-      execSync(`command -v ${cmd}`, { stdio: "ignore", timeout: 2000 });
+      if (!commandExistsInPath(cmd)) {
+        return false;
+      }
+      return true;
     }
-    return true;
   } catch {
     return false;
   }
@@ -895,12 +930,20 @@ function runBootForgeUsbScanJson() {
 
   // New CLI expects: `bootforgeusb scan --json`.
   // If an older/alternate binary exists, prefer it only when detected by getBootForgeUsbCommand.
-  const args = cmd === 'bootforgeusb' ? 'scan --json' : '';
-  const output = execSync(`${cmd}${args ? ` ${args}` : ''}`, {
+  // Use spawnSync with shell: false to prevent console windows
+  const args = cmd === 'bootforgeusb' ? ['scan', '--json'] : [];
+  const outputResult = spawnSync(cmd, args, {
     encoding: 'utf-8',
     timeout: 10000,
-    maxBuffer: 10 * 1024 * 1024
+    maxBuffer: 10 * 1024 * 1024,
+    windowsHide: true,
+    shell: false,
+    stdio: ['ignore', 'pipe', 'pipe']
   });
+  if (outputResult.error || outputResult.status !== 0) {
+    throw new Error(outputResult.stderr?.toString() || 'BootForgeUSB command failed');
+  }
+  const output = outputResult.stdout?.toString() || '';
 
   const devices = JSON.parse(output);
   return { cmd, devices };
@@ -1378,9 +1421,13 @@ app.post('/api/adb/trigger-auth', (req, res) => {
   }
   
   try {
-    execSync(`${adbCmd} -s ${resolvedSerial} shell echo "auth_trigger" 2>&1`, { 
+    // Use spawnSync with shell: false to prevent console windows
+    spawnSync(adbCmd, ['-s', resolvedSerial, 'shell', 'echo', 'auth_trigger'], { 
       encoding: "utf-8", 
-      timeout: 3000 
+      timeout: 3000,
+      windowsHide: true,
+      shell: false,
+      stdio: ['ignore', 'pipe', 'pipe']
     });
     
     res.json({
@@ -1731,37 +1778,8 @@ app.get('/api/fastboot/device-info', (req, res) => {
   }
 });
 
-// Device lock middleware for destructive operations
-function requireDeviceLock(req, res, next) {
-  const deviceSerial = req.body?.serial || req.body?.deviceSerial || req.params?.serial;
-  
-  if (!deviceSerial) {
-    // Operations that don't need a device lock can proceed
-    return next();
-  }
-
-  const operation = req.path.replace('/api/', '').replace(/\//g, '_');
-  const lockResult = await acquireDeviceLock(deviceSerial, operation);
-
-  if (!lockResult.acquired) {
-    return res.status(423).json({
-      success: false,
-      error: 'Device locked',
-      message: lockResult.reason,
-      lockedBy: lockResult.lockedBy,
-      retryAfter: Math.floor(LOCK_TIMEOUT / 1000) // Convert milliseconds to seconds
-    });
-  }
-
-  // Release lock when response finishes (success or error)
-  const originalEnd = res.end;
-  res.end = function(...args) {
-    releaseDeviceLock(deviceSerial);
-    originalEnd.apply(this, args);
-  };
-
-  next();
-}
+// Device lock middleware for destructive operations (uses shared implementation from locks.js)
+const requireDeviceLock = createRequireDeviceLockMiddleware({ operationPrefix: 'api' });
 
 app.post('/api/fastboot/flash', requireDeviceLock, async (req, res) => {
   const { confirmation } = req.body;
@@ -1796,10 +1814,17 @@ app.post('/api/fastboot/flash', requireDeviceLock, async (req, res) => {
       }
 
       try {
-        const output = execSync(
-          `fastboot -s ${serial} flash ${partition} ${file.path}`,
-          { encoding: 'utf-8', timeout: 120000 }
-        );
+        const result = spawnSync('fastboot', ['-s', serial, 'flash', partition, file.path], {
+          encoding: 'utf-8',
+          timeout: 120000,
+          windowsHide: true,
+          shell: false,
+          stdio: ['ignore', 'pipe', 'pipe']
+        });
+        if (result.error || result.status !== 0) {
+          throw new Error(result.error?.message || `fastboot failed with exit code ${result.status}`);
+        }
+        const output = result.stdout || '';
 
         const fs = require('fs');
         fs.unlinkSync(file.path);
@@ -2180,15 +2205,19 @@ app.post('/api/bootforgeusb/build', async (req, res) => {
       timestamp: new Date().toISOString()
     }) + '\n');
 
-    const buildOutput = execSync(
-      'cargo build --release --bin bootforgeusb',
-      {
-        cwd: buildPath,
-        encoding: 'utf-8',
-        timeout: 300000,
-        maxBuffer: 50 * 1024 * 1024
-      }
-    );
+    const buildResult = spawnSync('cargo', ['build', '--release', '--bin', 'bootforgeusb'], {
+      cwd: buildPath,
+      encoding: 'utf-8',
+      timeout: 300000,
+      maxBuffer: 50 * 1024 * 1024,
+      windowsHide: true,
+      shell: false,
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+    const buildOutput = buildResult.stdout || '';
+    if (buildResult.error || buildResult.status !== 0) {
+      throw new Error(buildResult.error?.message || `cargo build failed with exit code ${buildResult.status}`);
+    }
 
     res.write(JSON.stringify({
       status: 'installing',
@@ -2196,10 +2225,19 @@ app.post('/api/bootforgeusb/build', async (req, res) => {
       timestamp: new Date().toISOString()
     }) + '\n');
 
-    const installOutput = execSync(
-      'cargo install --path . --bin bootforgeusb',
-      {
-        cwd: buildPath,
+    const installResult = spawnSync('cargo', ['install', '--path', '.', '--bin', 'bootforgeusb'], {
+      cwd: buildPath,
+      encoding: 'utf-8',
+      timeout: 300000,
+      maxBuffer: 50 * 1024 * 1024,
+      windowsHide: true,
+      shell: false,
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+    const installOutput = installResult.stdout || '';
+    if (installResult.error || installResult.status !== 0) {
+      throw new Error(installResult.error?.message || `cargo install failed with exit code ${installResult.status}`);
+    }
         encoding: 'utf-8',
         timeout: 60000
       }
