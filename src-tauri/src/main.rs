@@ -15,7 +15,9 @@ use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 mod python_backend;
+mod py_client;
 use python_backend::{launch_python_backend, shutdown_python_backend};
+use py_client::PyWorkerClient;
 
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
@@ -353,6 +355,8 @@ struct AppState {
     flash_history: Mutex<Vec<FlashHistoryEntry>>,
     job_counter: AtomicU64,
     device_monitor_started: Mutex<bool>,
+    py_client: Mutex<Option<PyWorkerClient>>,
+    py_backend_port: Mutex<Option<u16>>,
 }
 
 fn env_var_truthy(name: &str) -> bool {
@@ -1235,6 +1239,8 @@ fn main() {
         flash_history: Mutex::new(vec![]),
         job_counter: AtomicU64::new(0),
         device_monitor_started: Mutex::new(false),
+        py_client: Mutex::new(None),
+        py_backend_port: Mutex::new(None),
     };
 
     tauri::Builder::default()
@@ -1251,8 +1257,35 @@ fn main() {
                 match launch_python_backend(&resource_dir) {
                     Ok(port) => {
                         println!("[Tauri] Python backend launched on port {}", port);
-                        // Store port in app state for Rust API client
-                        // TODO: Create Python client and wire to Rust API
+                        
+                        // Create Python client and verify health
+                        let client = PyWorkerClient::new(port);
+                        let state_for_client = state.clone();
+                        
+                        // Spawn async task to check health
+                        tokio::spawn(async move {
+                            // Wait a moment for Python to start
+                            tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
+                            
+                            match client.health().await {
+                                Ok(health) => {
+                                    println!("[Tauri] Python backend healthy: {} (uptime: {}ms)", 
+                                        health.version, health.uptime_ms);
+                                    
+                                    // Store client and port in state
+                                    if let Ok(mut py_client_guard) = state_for_client.py_client.lock() {
+                                        *py_client_guard = Some(client);
+                                    }
+                                    if let Ok(mut port_guard) = state_for_client.py_backend_port.lock() {
+                                        *port_guard = Some(port);
+                                    }
+                                }
+                                Err(e) => {
+                                    eprintln!("[Tauri] Python backend health check failed: {}", e);
+                                    eprintln!("[Tauri] Python backend may not be fully ready");
+                                }
+                            }
+                        });
                     }
                     Err(e) => {
                         eprintln!("[Tauri] Failed to launch Python backend: {}", e);

@@ -43,6 +43,7 @@ import { WorkbenchMonitoring } from './screens/WorkbenchMonitoring';
 import { WorkbenchFirmware } from './screens/WorkbenchFirmware';
 import { WorkbenchWorkflows } from './screens/WorkbenchWorkflows';
 import { WorkbenchCases } from './screens/WorkbenchCases';
+import { useBackendHealth } from '@/hooks/use-backend-health';
 import { WorkbenchSecretRooms } from './screens/WorkbenchSecretRooms';
 import { WorkbenchSettings } from './screens/WorkbenchSettings';
 
