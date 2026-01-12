@@ -42,6 +42,8 @@ import performanceMonitorRouter from './routes/v1/monitor/performance.js';
 import iosDFURouter from './routes/v1/ios/dfu.js';
 import rootDetectionRouter from './routes/v1/security/root-detection.js';
 import bootloaderStatusRouter from './routes/v1/security/bootloader-status.js';
+import encryptionStatusRouter from './routes/v1/security/encryption-status.js';
+import securityPatchRouter from './routes/v1/security/security-patch.js';
 import odinRouter from './routes/v1/flash/odin.js';
 import mtkRouter from './routes/v1/flash/mtk.js';
 import edlRouter from './routes/v1/flash/edl.js';
@@ -49,6 +51,8 @@ import iosLibimobiledeviceRouter from './routes/v1/ios/libimobiledevice-full.js'
 import adbAdvancedRouter from './routes/v1/adb/advanced.js';
 import diagnosticsRouter from './routes/v1/diagnostics/index.js';
 import trapdoorRouter from './routes/v1/trapdoor/index.js';
+import casesRouter from './routes/v1/cases.js';
+import jobsRouter from './routes/v1/jobs.js';
 import { getAllMetrics, estimateUsbUtilization } from './utils/system-metrics.js';
 import { getCircuitBreakerStatus, resetCircuitBreaker, getHealthStatus } from './utils/retry-circuit-breaker.js';
 import { getResourceStatus, canExecuteOperation, acquireOperationSlot, releaseOperationSlot, forceCleanup } from './utils/resource-limits.js';
@@ -327,6 +331,8 @@ v1Router.use('/hotplug', hotplugRouter);
 // Security endpoints
 v1Router.use('/security/root-detection', rootDetectionRouter);
 v1Router.use('/security/bootloader-status', bootloaderStatusRouter);
+v1Router.use('/security/encryption-status', encryptionStatusRouter);
+v1Router.use('/security/security-patch', securityPatchRouter);
 
 // Catalog, operations routers
 v1Router.use('/catalog', catalogRouter);

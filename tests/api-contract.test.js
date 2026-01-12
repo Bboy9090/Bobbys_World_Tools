@@ -121,7 +121,7 @@ describe('API Contract Tests', () => {
           expect(routePaths.some(path => path.includes('/authorization'))).toBe(true);
         }
       } catch (error) {
-        // Route registry might not be available in production, that's OK
+       // Route registry might not be available in production, that's OK
         console.warn('Route registry test skipped (server not available or not in dev mode)');
       }
     });
