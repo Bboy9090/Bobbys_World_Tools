@@ -52,6 +52,7 @@ export function DashboardLayout() {
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const { backendAvailable } = useApp();
     const { showGreeting, dismiss } = useBugsGreeting({ enabled: true });
+    const backendHealth = useBackendHealth();
 
     const navItems = [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -99,6 +100,16 @@ export function DashboardLayout() {
                 
                 <div className="flex items-center gap-3">
                     <BackendStatusIndicator />
+                    {backendHealth.status === 'booting' && (
+                        <div className="text-xs font-mono text-ink-muted animate-pulse">
+                            Initializing...
+                        </div>
+                    )}
+                    {backendHealth.status === 'failed' && (
+                        <div className="text-xs font-mono text-state-danger">
+                            Backend Error
+                        </div>
+                    )}
                     <div className="text-xs font-mono text-ink-muted">
                         v3.0.0
                     </div>
