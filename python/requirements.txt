@@ -1,0 +1,8 @@
+# Bobby's Workshop Python Backend
+# Minimal dependencies - stateless worker only
+
+# No external dependencies for MVP
+# Add device inspection libraries as needed:
+# - libimobiledevice bindings (for iOS)
+# - adb libraries (for Android)
+# - report generation libraries (for PDF/HTML)

@@ -14,6 +14,9 @@ use std::env;
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicU64, Ordering};
 
+mod python_backend;
+use python_backend::{launch_python_backend, shutdown_python_backend};
+
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
 
@@ -1243,6 +1246,21 @@ fn main() {
             // Start in-process device monitor (Tauri events)
             start_device_monitor_once(&handle, state.clone());
 
+            // Launch Python backend service
+            if let Ok(resource_dir) = handle.path().resource_dir() {
+                match launch_python_backend(&resource_dir) {
+                    Ok(port) => {
+                        println!("[Tauri] Python backend launched on port {}", port);
+                        // Store port in app state for Rust API client
+                        // TODO: Create Python client and wire to Rust API
+                    }
+                    Err(e) => {
+                        eprintln!("[Tauri] Failed to launch Python backend: {}", e);
+                        eprintln!("[Tauri] Python backend is optional - continuing without it");
+                    }
+                }
+            }
+
             // Start legacy Node backend only when explicitly enabled.
             if should_start_node_backend() {
                 match start_backend_server(&handle) {
@@ -1267,8 +1285,9 @@ fn main() {
         })
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { .. } = event {
-                // Clean shutdown: stop backend when the app is actually closing.
+                // Clean shutdown: stop backends when the app is actually closing.
                 stop_backend_server(&window.app_handle());
+                shutdown_python_backend();
             }
         })
         .invoke_handler(tauri::generate_handler![
