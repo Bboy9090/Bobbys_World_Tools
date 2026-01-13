@@ -33,7 +33,8 @@
       "icons/icon.ico"
     ],
     "resources": [
-      "bundle/resources/**/*"
+      "bundle/resources/**/*",
+      "python/runtime/**/*"
     ],
     "copyright": "",
     "category": "DeveloperTool",

@@ -53,7 +53,11 @@
         "installer": "npm run build:standalone",
         "tauri:artifacts:windows": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/collect-tauri-windows-artifacts.ps1",
         "tauri:artifacts:windows:skipbuild": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/collect-tauri-windows-artifacts.ps1 -SkipBuild",
-        "build:installer": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-complete-installer.ps1"
+        "build:installer": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-complete-installer.ps1",
+        "build:complete": "node -e \"process.platform === 'win32' ? require('child_process').execSync('powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-complete-bundle.ps1', {stdio: 'inherit'}) : require('child_process').execSync('bash scripts/build-complete-bundle.sh', {stdio: 'inherit'})\"",
+        "build:complete:windows": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-complete-bundle.ps1",
+        "build:complete:macos": "bash scripts/build-complete-bundle.sh",
+        "bundle:python": "node -e \"process.platform === 'win32' ? require('child_process').execSync('powershell -NoProfile -ExecutionPolicy Bypass -File scripts/bundle-python-complete.ps1', {stdio: 'inherit'}) : require('child_process').execSync('bash scripts/bundle-python-complete.sh', {stdio: 'inherit'})\""
     },
     "dependencies": {
         "@github/spark": ">=0.43.1 <1",

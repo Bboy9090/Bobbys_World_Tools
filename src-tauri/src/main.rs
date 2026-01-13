@@ -16,8 +16,10 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 mod python_backend;
 mod py_client;
+mod fastapi_backend;
 use python_backend::{launch_python_backend, shutdown_python_backend};
 use py_client::PyWorkerClient;
+use fastapi_backend::{launch_fastapi_backend, shutdown_fastapi_backend};
 
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
@@ -357,6 +359,7 @@ struct AppState {
     device_monitor_started: Mutex<bool>,
     py_client: Mutex<Option<PyWorkerClient>>,
     py_backend_port: Mutex<Option<u16>>,
+    fastapi_backend: Mutex<Option<Child>>,
 }
 
 fn env_var_truthy(name: &str) -> bool {
@@ -1241,6 +1244,7 @@ fn main() {
         device_monitor_started: Mutex::new(false),
         py_client: Mutex::new(None),
         py_backend_port: Mutex::new(None),
+        fastapi_backend: Mutex::new(None),
     };
 
     tauri::Builder::default()
@@ -1252,7 +1256,7 @@ fn main() {
             // Start in-process device monitor (Tauri events)
             start_device_monitor_once(&handle, state.clone());
 
-            // Launch Python backend service
+            // Launch Python backend service (legacy)
             if let Ok(resource_dir) = handle.path().resource_dir() {
                 match launch_python_backend(&resource_dir) {
                     Ok(port) => {
@@ -1293,6 +1297,18 @@ fn main() {
                     }
                 }
             }
+            
+            // Launch FastAPI backend (Secret Rooms)
+            match launch_fastapi_backend(&handle) {
+                Ok(child) => {
+                    println!("[Tauri] FastAPI backend started successfully");
+                    // Store in state if needed
+                }
+                Err(e) => {
+                    eprintln!("[Tauri] Failed to start FastAPI backend: {}", e);
+                    eprintln!("[Tauri] FastAPI backend is optional - continuing without it");
+                }
+            }
 
             // Start legacy Node backend only when explicitly enabled.
             if should_start_node_backend() {
@@ -1321,6 +1337,14 @@ fn main() {
                 // Clean shutdown: stop backends when the app is actually closing.
                 stop_backend_server(&window.app_handle());
                 shutdown_python_backend();
+                
+                // Shutdown FastAPI backend
+                let state = window.app_handle().state::<AppState>();
+                let fastapi_child = {
+                    let mut guard = state.fastapi_backend.lock().unwrap();
+                    guard.take()
+                };
+                shutdown_fastapi_backend(fastapi_child);
             }
         })
         .invoke_handler(tauri::generate_handler![
