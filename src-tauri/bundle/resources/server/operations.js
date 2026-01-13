@@ -655,4 +655,7 @@ router.post('/simulate', async (req, res) => {
   }
 });
 
+// Export executeOperation for use by workflow executor
+export { executeOperation };
+
 export default router;
