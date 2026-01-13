@@ -32,6 +32,8 @@ import {
     FileText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { SpaceJamHeader } from './space-jam/SpaceJamHeader';
+import { SpaceJamNav } from './space-jam/SpaceJamNav';
 
 // Screen imports
 import { WorkbenchDashboard } from './screens/WorkbenchDashboard';
@@ -69,19 +71,19 @@ export function DashboardLayout() {
     ];
 
     return (
-        <div className="h-screen flex flex-col bg-midnight-room">
-            {/* Header */}
-            <header className="h-14 border-b border-panel bg-workbench-steel flex items-center px-4 gap-4">
-                <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg border border-spray-cyan/30 bg-spray-cyan/10 flex items-center justify-center">
-                        <span className="text-spray-cyan font-mono font-bold text-sm">BW</span>
+        <div className="h-screen flex flex-col bg-trap-house">
+            {/* Header - Space Jam Style */}
+            <header className="h-16 border-b-2 border-space-jam bg-gradient-space-jam flex items-center px-6 gap-4 glow-purple">
+                <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl border-2 border-jordan bg-hare-jordan-red flex items-center justify-center animate-bounce-jordan shadow-jordan">
+                        <span className="text-legendary font-display font-black text-xl">🐰</span>
                     </div>
                     <div>
-                        <h1 className="text-lg font-bold text-ink-primary font-mono">
-                            BOBBY'S WORKSHOP
+                        <h1 className="text-2xl font-black text-space-jam font-display tracking-wider animate-graffiti">
+                            HARE JORDAN'S PLAYGROUND
                         </h1>
-                        <p className="text-xs text-ink-muted font-mono">
-                            & His World of Secrets and Traps
+                        <p className="text-sm text-legendary font-display tracking-wide">
+                            NYC TRAP HOUSE WORKSHOP • SPACE JAM LEGENDARY
                         </p>
                     </div>
                 </div>
@@ -90,12 +92,14 @@ export function DashboardLayout() {
                 
                 {/* Greeting - Only show once per session */}
                 {showGreeting && (
-                    <OrnamentBugsGreeting 
-                        variant={backendAvailable ? 'devices' : 'warning'}
-                        onDismiss={dismiss}
-                        autoHide={true}
-                        autoHideDuration={4000}
-                    />
+                    <div className="px-4 py-2 bg-trap-walls border-2 border-neon-cyan rounded-lg glow-cyan animate-graffiti">
+                        <OrnamentBugsGreeting 
+                            variant={backendAvailable ? 'devices' : 'warning'}
+                            onDismiss={dismiss}
+                            autoHide={true}
+                            autoHideDuration={4000}
+                        />
+                    </div>
                 )}
                 
                 <div className="flex items-center gap-3">
@@ -123,9 +127,9 @@ export function DashboardLayout() {
                 {/* Main Content */}
                 <main className="flex-1 flex flex-col overflow-hidden min-h-0">
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
-                        {/* Navigation Tabs */}
-                        <div className="border-b border-panel bg-workbench-steel">
-                            <TabsList className="h-12 bg-transparent w-full justify-start rounded-none border-0 px-3 gap-1 overflow-x-auto">
+                        {/* Navigation Tabs - Space Jam Style */}
+                        <div className="border-b-2 border-space-jam bg-trap-walls">
+                            <TabsList className="h-14 bg-transparent w-full justify-start rounded-none border-0 px-4 gap-2 overflow-x-auto">
                                 {navItems.map((item) => {
                                     const Icon = item.icon;
                                     const isActive = activeTab === item.id;
@@ -135,17 +139,18 @@ export function DashboardLayout() {
                                             key={item.id}
                                             value={item.id}
                                             className={cn(
-                                                "gap-2 px-4 h-10 rounded-md transition-all motion-snap",
-                                                "data-[state=active]:bg-spray-cyan/20 data-[state=active]:text-spray-cyan",
-                                                "data-[state=active]:border-spray-cyan/50 data-[state=active]:border",
-                                                "data-[state=inactive]:text-ink-muted data-[state=inactive]:hover:text-ink-primary",
-                                                item.locked && !isActive && "opacity-50"
+                                                "gap-2 px-5 h-12 rounded-xl transition-all duration-300 font-display font-bold text-sm tracking-wide uppercase",
+                                                isActive
+                                                    ? "btn-space-jam text-legendary shadow-playground"
+                                                    : item.locked
+                                                    ? "bg-trap-basement border-2 border-trap-border text-ink-muted opacity-50 cursor-not-allowed"
+                                                    : "bg-trap-walls border-2 border-trap-border text-ink-primary hover:border-neon-cyan hover:text-graffiti hover:glow-cyan"
                                             )}
                                         >
-                                            <Icon className="w-4 h-4" />
-                                            <span className="font-medium text-sm">{item.label}</span>
+                                            <Icon className={cn("w-5 h-5", isActive && "animate-bounce")} />
+                                            <span>{item.label}</span>
                                             {item.locked && (
-                                                <Lock className="w-3 h-3" />
+                                                <Lock className="w-4 h-4" />
                                             )}
                                         </TabsTrigger>
                                     );
@@ -153,9 +158,9 @@ export function DashboardLayout() {
                             </TabsList>
                         </div>
 
-                        {/* Content Area */}
-                        <ScrollArea className="flex-1 min-h-0">
-                            <div className="p-6 min-h-0">
+                        {/* Content Area - Playground Style */}
+                        <ScrollArea className="flex-1 min-h-0 bg-playground">
+                            <div className="p-8 min-h-0 bg-gradient-playground">
                                 <TabsContent value="dashboard" className="mt-0">
                                     <WorkbenchDashboard />
                                 </TabsContent>

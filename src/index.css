@@ -2,6 +2,7 @@
 @import 'tailwindcss';
 @import "tw-animate-css";
 @import './styles/workshop-vibe.css';
+@import './styles/space-jam-theme.css';
 
 @layer base {
   * {
@@ -25,40 +26,41 @@
 }
 
 :root {
-  --background: #0A0A0A;
-  --foreground: #EDEDED;
+  /* Space Jam Theme Colors */
+  --background: #0D0D0D;
+  --foreground: #FFFFFF;
 
-  --card: #121212;
-  --card-foreground: #EDEDED;
-  --popover: #121212;
-  --popover-foreground: #EDEDED;
+  --card: #1A1A1A;
+  --card-foreground: #E8E8E8;
+  --popover: #1A1A1A;
+  --popover-foreground: #E8E8E8;
 
-  --primary: #1ECAD3;
-  --primary-foreground: #0A0A0A;
-  --secondary: #1F2632;
-  --secondary-foreground: #EDEDED;
+  --primary: #6B2C91;
+  --primary-foreground: #FFFFFF;
+  --secondary: #2C2C2C;
+  --secondary-foreground: #E8E8E8;
 
-  --muted: #1F2632;
-  --muted-foreground: #8C8C8C;
+  --muted: #2C2C2C;
+  --muted-foreground: #B0B0B0;
 
-  --accent: #CFA24D;
-  --accent-foreground: #0A0A0A;
+  --accent: #FF6B35;
+  --accent-foreground: #FFFFFF;
 
-  --destructive: #E74C3C;
-  --destructive-foreground: #EDEDED;
+  --destructive: #E11D48;
+  --destructive-foreground: #FFFFFF;
 
-  --success: #2ECC71;
-  --warning: #CFA24D;
+  --success: #22C55E;
+  --warning: #FFD700;
 
-  --border: #1F2632;
-  --input: #1F2632;
-  --ring: #1ECAD3;
+  --border: #2A2A2A;
+  --input: #2C2C2C;
+  --ring: #6B2C91;
 
-  --radius: 0.375rem;
+  --radius: 0.75rem;
 
-  --font-mono: 'Space Mono';
-  --font-display: 'Bebas Neue';
-  --font-sans: 'Outfit';
+  --font-mono: 'Space Mono', 'Courier New', monospace;
+  --font-display: 'Bebas Neue', 'Impact', sans-serif;
+  --font-sans: 'Outfit', 'Arial', sans-serif;
 }
 
 @theme {
