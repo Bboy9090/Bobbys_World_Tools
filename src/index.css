@@ -3,6 +3,7 @@
 @import "tw-animate-css";
 @import './styles/workshop-vibe.css';
 @import './styles/space-jam-theme.css';
+@import './styles/master-theme.css';
 
 @layer base {
   * {
