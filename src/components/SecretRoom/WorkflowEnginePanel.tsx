@@ -22,7 +22,8 @@ interface WorkflowEnginePanelProps {
 
 export const WorkflowEnginePanel: React.FC<WorkflowEnginePanelProps> = ({ deviceSerial: initialDeviceSerial }) => {
   const [deviceSerial, setDeviceSerial] = useState(initialDeviceSerial || '');
-  const [workflowId, setWorkflowId] = useState('');
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
+  const [customWorkflowId, setCustomWorkflowId] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -72,7 +73,7 @@ export const WorkflowEnginePanel: React.FC<WorkflowEnginePanelProps> = ({ device
           'X-Secret-Room-Passcode': passcode,
         },
         body: JSON.stringify({
-          workflowId: templateId || workflowId,
+          workflowId: templateId,
           devices: [deviceSerial],
           parameters: {},
         }),
@@ -85,7 +86,8 @@ export const WorkflowEnginePanel: React.FC<WorkflowEnginePanelProps> = ({ device
       }
 
       toast.success('Workflow execution initiated');
-      setWorkflowId('');
+      setSelectedTemplate(null);
+      setCustomWorkflowId('');
     } catch (err: any) {
       setError(err.message || 'Workflow execution failed');
       toast.error(err.message || 'Workflow execution failed');
@@ -147,11 +149,12 @@ export const WorkflowEnginePanel: React.FC<WorkflowEnginePanelProps> = ({ device
                 {workflowTemplates.map((template) => (
                   <Card
                     key={template.id}
-                    className="bg-[#0B0F14] border-2 border-[#2FD3FF]/20 hover:border-[#2FD3FF]/50 cursor-pointer transition-all"
-                    onClick={() => {
-                      setWorkflowId(template.id);
-                      handleExecuteWorkflow(template.id);
-                    }}
+                    className={`bg-[#0B0F14] border-2 cursor-pointer transition-all ${
+                      selectedTemplate === template.id
+                        ? 'border-[#2FD3FF] bg-[#2FD3FF]/10'
+                        : 'border-[#2FD3FF]/20 hover:border-[#2FD3FF]/50'
+                    }`}
+                    onClick={() => setSelectedTemplate(template.id)}
                   >
                     <CardHeader>
                       <div className="flex items-center justify-between">
@@ -172,45 +175,57 @@ export const WorkflowEnginePanel: React.FC<WorkflowEnginePanelProps> = ({ device
               </div>
             </div>
 
-            <div className="pt-4 border-t border-[#2FD3FF]/20">
-              <div>
-                <label className="text-sm font-medium text-gray-300 mb-2 block">
-                  Custom Workflow ID
-                </label>
-                <Input
-                  value={workflowId}
-                  onChange={(e) => setWorkflowId(e.target.value)}
-                  placeholder="Enter custom workflow ID"
-                  className="bg-[#0B0F14] border-[#2FD3FF]/50 text-white"
-                />
-              </div>
-
-              {error && (
-                <Alert variant="destructive" className="mt-4">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertDescription>{error}</AlertDescription>
+            {(selectedTemplate || customWorkflowId) && (
+              <div className="space-y-4 pt-4 border-t border-[#2FD3FF]/20">
+                <Alert className="bg-[#0B0F14] border-[#2FD3FF]/50">
+                  <AlertTriangle className="h-4 w-4 text-[#2FD3FF]" />
+                  <AlertDescription className="text-gray-300">
+                    <strong className="text-[#2FD3FF]">Ready to Execute:</strong>{' '}
+                    {selectedTemplate 
+                      ? workflowTemplates.find(t => t.id === selectedTemplate)?.name 
+                      : `Custom workflow: ${customWorkflowId}`}
+                  </AlertDescription>
                 </Alert>
-              )}
 
-              <RiskButton
-                riskLevel="medium"
-                onClick={() => handleExecuteWorkflow(workflowId)}
-                disabled={isLoading || !workflowId}
-                className="w-full mt-4"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Executing...
-                  </>
-                ) : (
-                  <>
-                    <Play className="mr-2 h-4 w-4" />
-                    Execute Custom Workflow
-                  </>
+                <div>
+                  <label className="text-sm font-medium text-gray-300 mb-2 block">
+                    Custom Workflow ID (optional)
+                  </label>
+                  <Input
+                    value={customWorkflowId}
+                    onChange={(e) => setCustomWorkflowId(e.target.value)}
+                    placeholder="Enter custom workflow ID (or use template above)"
+                    className="bg-[#0B0F14] border-[#2FD3FF]/50 text-white"
+                  />
+                </div>
+
+                {error && (
+                  <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
                 )}
-              </RiskButton>
-            </div>
+
+                <RiskButton
+                  riskLevel={selectedTemplate ? workflowTemplates.find(t => t.id === selectedTemplate)?.riskLevel || 'medium' : 'medium'}
+                  onClick={() => handleExecuteWorkflow(selectedTemplate || customWorkflowId)}
+                  disabled={isLoading || (!selectedTemplate && !customWorkflowId)}
+                  className="w-full"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Executing...
+                    </>
+                  ) : (
+                    <>
+                      <Play className="mr-2 h-4 w-4" />
+                      Execute {selectedTemplate ? workflowTemplates.find(t => t.id === selectedTemplate)?.name : 'Custom Workflow'}
+                    </>
+                  )}
+                </RiskButton>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

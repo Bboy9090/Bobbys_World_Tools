@@ -187,8 +187,8 @@ export const BypassLaboratoryPanel: React.FC<BypassLaboratoryPanelProps> = ({ de
                           <Icon className="h-5 w-5 text-[#FF6B9D]" />
                           <CardTitle className="text-white text-sm">{op.name}</CardTitle>
                         </div>
-                        <Badge variant="destructive" className="text-xs">
-                          HIGH
+                        <Badge variant={op.riskLevel === 'high' ? 'destructive' : op.riskLevel === 'medium' ? 'default' : 'secondary'} className="text-xs">
+                          {op.riskLevel.toUpperCase()}
                         </Badge>
                       </div>
                       <CardDescription className="text-gray-400 text-xs">
