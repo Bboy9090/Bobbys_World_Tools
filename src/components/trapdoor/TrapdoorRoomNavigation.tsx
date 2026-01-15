@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { Lock, Flashlight, Smartphone, Shield, Wrench, Zap, Code, Archive } from 'lucide-react';
+import { Lock, Flashlight, Smartphone, Shield, Wrench, Zap, Code, Archive, Music, Ghost, Box, FileKey } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export type SecretRoomId =
@@ -16,7 +16,11 @@ export type SecretRoomId =
   | 'root-vault'
   | 'bypass-laboratory'
   | 'workflow-engine'
-  | 'shadow-archive';
+  | 'shadow-archive'
+  | 'tool-arsenal'
+  | 'sonic-codex'
+  | 'ghost-codex'
+  | 'pandora-codex';
 
 interface SecretRoom {
   id: SecretRoomId;
@@ -81,6 +85,34 @@ const SECRET_ROOMS: SecretRoom[] = [
     icon: <Archive className="w-5 h-5" />,
     description: 'Audit logs & history',
     danger: false,
+  },
+  {
+    id: 'tool-arsenal',
+    label: 'Tool Arsenal',
+    icon: <FileKey className="w-5 h-5" />,
+    description: 'Tool inventory & hash verification',
+    danger: false,
+  },
+  {
+    id: 'sonic-codex',
+    label: 'Sonic Codex',
+    icon: <Music className="w-5 h-5" />,
+    description: 'Audio processing & transcription',
+    danger: false,
+  },
+  {
+    id: 'ghost-codex',
+    label: 'Ghost Codex',
+    icon: <Ghost className="w-5 h-5" />,
+    description: 'Metadata shredding & privacy',
+    danger: false,
+  },
+  {
+    id: 'pandora-codex',
+    label: 'Pandora Codex',
+    icon: <Box className="w-5 h-5" />,
+    description: 'Hardware manipulation',
+    danger: true,
   },
 ];
 

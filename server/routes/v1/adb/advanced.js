@@ -13,7 +13,7 @@
  */
 
 import express from 'express';
-import { ADBLibrary } from '../../../../core/lib/adb.js';
+import ADBLibrary from '../../../../core/lib/adb.js';
 import { safeSpawn, commandExistsSafe } from '../../../utils/safe-exec.js';
 import fs from 'fs';
 import path from 'path';
@@ -213,7 +213,7 @@ router.post('/install-recovery', async (req, res) => {
   }
 
   // Acquire device lock
-  const lockResult = acquireDeviceLock(deviceSerial, 'install_recovery');
+  const lockResult = await acquireDeviceLock(deviceSerial, 'install_recovery');
   if (!lockResult.acquired) {
     return res.sendDeviceLocked(lockResult.reason, {
       lockedBy: lockResult.lockedBy
@@ -264,7 +264,7 @@ router.post('/backup-partition', async (req, res) => {
   }
 
   // Acquire device lock
-  const lockResult = acquireDeviceLock(deviceSerial, 'backup_partition');
+  const lockResult = await acquireDeviceLock(deviceSerial, 'backup_partition');
   if (!lockResult.acquired) {
     return res.sendDeviceLocked(lockResult.reason, {
       lockedBy: lockResult.lockedBy
@@ -400,7 +400,7 @@ router.post('/sideload', async (req, res) => {
   }
 
   // Acquire device lock
-  const lockResult = acquireDeviceLock(deviceSerial, 'adb_sideload');
+  const lockResult = await acquireDeviceLock(deviceSerial, 'adb_sideload');
   if (!lockResult.acquired) {
     return res.sendDeviceLocked(lockResult.reason, {
       lockedBy: lockResult.lockedBy

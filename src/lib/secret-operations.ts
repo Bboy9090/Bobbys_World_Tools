@@ -581,7 +581,7 @@ export async function executeOperation(
 
   try {
     // Execute via trapdoor API
-    const response = await fetch('/api/v1/trapdoor/workflow/execute', {
+    const response = await fetch('/api/v1/trapdoor/workflows/execute', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

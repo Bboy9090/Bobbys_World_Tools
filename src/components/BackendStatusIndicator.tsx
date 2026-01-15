@@ -245,10 +245,10 @@ export function BackendStatusIndicator() {
           </div>
 
           {!allConnected && (
-            <div className="p-2 rounded-md bg-warning/10 border border-warning/20">
-              <p className="text-xs text-warning">
-                <strong>Backend Offline:</strong> Running in demo mode. 
-                Some features require the backend server.
+            <div className="p-2 rounded-md bg-error/10 border border-error/20">
+              <p className="text-xs text-error">
+                <strong>Backend Offline:</strong> Backend server is not responding. 
+                Please check the server connection. Some features may be unavailable.
               </p>
             </div>
           )}

@@ -6,7 +6,10 @@
  */
 
 import express from 'express';
-import { execSync } from 'child_process';
+import { execSync, spawnSync } from 'child_process';
+import { commandExistsInPath } from '../utils/safe-exec.js';
+import { existsSync } from 'fs';
+import { join } from 'path';
 import os from 'os';
 import { createInspectEnvelope, createBatchEnvelope } from '../core/lib/operation-envelope.js';
 
@@ -25,7 +28,7 @@ function safeExec(cmd, timeout = 2000) {
     const result = execSync(cmd, {
       encoding: 'utf-8',
       timeout,
-      stdio: ['pipe', 'pipe', 'pipe']
+      windowsHide: true
     });
     return result.trim();
   } catch (error) {
@@ -42,9 +45,25 @@ function safeExec(cmd, timeout = 2000) {
 function commandExists(cmd) {
   try {
     if (IS_WINDOWS) {
-      execSync(`where ${cmd}`, { stdio: 'ignore', timeout: 2000 });
+      // Check PATH directly without calling where.exe to prevent console windows
+      const pathEnv = process.env.PATH || '';
+      const pathDirs = pathEnv.split(';');
+      const extensions = process.env.PATHEXT ? process.env.PATHEXT.split(';') : ['.exe', '.cmd', '.bat', '.com'];
+      
+      for (const dir of pathDirs) {
+        if (!dir) continue;
+        for (const ext of extensions) {
+          const fullPath = join(dir, cmd + ext);
+          if (existsSync(fullPath)) {
+            return true;
+          }
+        }
+      }
+      return false;
     } else {
-      execSync(`command -v ${cmd}`, { stdio: 'ignore', timeout: 2000 });
+      if (!commandExistsInPath(cmd)) {
+        return false;
+      }
     }
     return true;
   } catch {

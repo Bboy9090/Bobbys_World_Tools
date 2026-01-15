@@ -14,7 +14,8 @@ import express from 'express';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { execSync } from 'child_process';
+import { execSync, spawnSync } from 'child_process';
+import { commandExistsInPath } from '../utils/safe-exec.js';
 import os from 'os';
 import {
   createExecuteEnvelope,
@@ -67,13 +68,7 @@ function getCapability(capabilityId) {
 function checkToolsAvailable(requiredTools) {
   const missing = [];
   for (const tool of requiredTools) {
-    try {
-      if (IS_WINDOWS) {
-        execSync(`where ${tool}`, { stdio: 'ignore', timeout: 2000 });
-      } else {
-        execSync(`command -v ${tool}`, { stdio: 'ignore', timeout: 2000 });
-      }
-    } catch {
+    if (!commandExistsInPath(tool)) {
       missing.push(tool);
     }
   }
@@ -165,7 +160,7 @@ function evaluatePolicy(capabilityId, role = 'guest', context = {}) {
 }
 
 /**
- * Execute an operation (placeholder - to be implemented per capability)
+ * Execute an operation with full implementation
  * 
  * @param {string} capabilityId - Capability to execute
  * @param {Object} params - Operation parameters
@@ -184,50 +179,229 @@ async function executeOperation(capabilityId, params) {
     throw new Error(`Required tools not available: ${toolsCheck.missing.join(', ')}`);
   }
 
-  // Execute based on capability type
-  // Note: This is a framework - actual implementations should be added per capability
+  // Execute based on capability type - fully wired implementations
   switch (capabilityId) {
     case 'detect_usb_devices':
-    case 'detect_android_adb':
-    case 'detect_android_fastboot':
-    case 'detect_ios_devices':
-      // Detection operations - these should use the inspect endpoint instead
-      return {
-        success: true,
-        message: 'Detection operations should use /api/tools/inspect endpoint',
-        redirectTo: '/api/tools/inspect'
-      };
+    case 'detect_android_adb': {
+      try {
+        // Use spawnSync with shell: false to prevent console windows
+        const adbResult = spawnSync('adb', ['devices', '-l'], { 
+          encoding: 'utf8', 
+          timeout: 10000,
+          windowsHide: true,
+          shell: false,
+          stdio: ['ignore', 'pipe', 'pipe']
+        });
+        if (adbResult.error || adbResult.status !== 0) {
+          throw new Error(adbResult.stderr?.toString() || 'ADB command failed');
+        }
+        const result = { stdout: adbResult.stdout?.toString() || '' };
+        const devices = parseADBDevices(result);
+        return {
+          success: true,
+          devices,
+          count: devices.length
+        };
+      } catch (error) {
+        return { success: false, error: error.message, devices: [] };
+      }
+    }
 
-    case 'device_info':
-      // Get device info - placeholder
-      return {
-        success: false,
-        message: 'device_info operation not yet implemented',
-        status: 'not_implemented'
-      };
+    case 'detect_android_fastboot': {
+      try {
+        // Use spawnSync with shell: false to prevent console windows
+        const fastbootResult = spawnSync('fastboot', ['devices'], { 
+          encoding: 'utf8', 
+          timeout: 10000,
+          windowsHide: true,
+          shell: false,
+          stdio: ['ignore', 'pipe', 'pipe']
+        });
+        if (fastbootResult.error || fastbootResult.status !== 0) {
+          throw new Error(fastbootResult.stderr?.toString() || 'Fastboot command failed');
+        }
+        const result = { stdout: fastbootResult.stdout?.toString() || '' };
+        const devices = parseFastbootDevices(result);
+        return {
+          success: true,
+          devices,
+          count: devices.length
+        };
+      } catch (error) {
+        return { success: false, error: error.message, devices: [] };
+      }
+    }
 
-    case 'reboot_device':
-      // Reboot operation - placeholder
-      return {
-        success: false,
-        message: 'reboot_device operation not yet implemented',
-        status: 'not_implemented'
-      };
+    case 'detect_ios_devices': {
+      try {
+        const result = spawnSync('idevice_id', ['-l'], { 
+          encoding: 'utf8', 
+          timeout: 10000,
+          windowsHide: true,
+          shell: false,
+          stdio: ['ignore', 'pipe', 'pipe']
+        });
+        if (result.error || result.status !== 0) {
+          return { success: false, error: result.error?.message || 'Command failed', devices: [] };
+        }
+        const devices = (result.stdout || '').split('\n').filter(Boolean).map(udid => ({ udid: udid.trim() }));
+        return {
+          success: true,
+          devices,
+          count: devices.length
+        };
+      } catch (error) {
+        return { success: false, error: error.message, devices: [] };
+      }
+    }
+
+    case 'device_info': {
+      const { serial, platform } = params;
+      if (!serial) {
+        throw new Error('Device serial required for device_info');
+      }
+      try {
+        if (platform === 'ios') {
+          const result = spawnSync('ideviceinfo', ['-u', serial], { 
+            encoding: 'utf8', 
+            timeout: 15000,
+            windowsHide: true,
+            shell: false,
+            stdio: ['ignore', 'pipe', 'pipe']
+          });
+          if (result.error || result.status !== 0) {
+            throw new Error(result.error?.message || 'ideviceinfo failed');
+          }
+          return { success: true, info: parseIDeviceInfo(result.stdout || ''), serial };
+        } else {
+          // Android via ADB
+          const props = {};
+          const propsToGet = ['ro.product.model', 'ro.product.manufacturer', 'ro.build.version.release'];
+          for (const prop of propsToGet) {
+            try {
+              const val = spawnSync('adb', ['-s', serial, 'shell', 'getprop', prop], { 
+                encoding: 'utf8', 
+                timeout: 5000,
+                windowsHide: true,
+                shell: false,
+                stdio: ['ignore', 'pipe', 'pipe']
+              });
+              if (val.error || val.status !== 0) {
+                props[prop] = null;
+                continue;
+              }
+              props[prop] = (val.stdout || '').trim();
+            } catch { /* ignore individual prop errors */ }
+          }
+          return {
+            success: true,
+            info: {
+              model: props['ro.product.model'] || 'Unknown',
+              manufacturer: props['ro.product.manufacturer'] || 'Unknown',
+              androidVersion: props['ro.build.version.release'] || 'Unknown'
+            },
+            serial
+          };
+        }
+      } catch (error) {
+        return { success: false, error: error.message, serial };
+      }
+    }
+
+    case 'reboot_device': {
+      const { serial, mode = 'normal' } = params;
+      if (!serial) {
+        throw new Error('Device serial required for reboot_device');
+      }
+      try {
+        // Use spawnSync with shell: false to prevent console windows
+        const rebootArgs = ['-s', serial, 'reboot'];
+        if (mode === 'bootloader') {
+          rebootArgs.push('bootloader');
+        } else if (mode === 'recovery') {
+          rebootArgs.push('recovery');
+        }
+        spawnSync('adb', rebootArgs, { 
+          encoding: 'utf8', 
+          timeout: 10000,
+          windowsHide: true,
+          shell: false,
+          stdio: ['ignore', 'pipe', 'pipe']
+        });
+        return { success: true, serial, mode, message: `Device rebooting to ${mode}` };
+      } catch (error) {
+        return { success: false, error: error.message, serial };
+      }
+    }
 
     case 'flash_partition':
     case 'erase_partition':
     case 'unlock_bootloader':
-      // Destructive operations - not implemented for safety
+      // Destructive operations require trapdoor API for safety
       return {
         success: false,
-        message: `${capabilityId} is a destructive operation and requires explicit implementation`,
-        status: 'not_implemented',
-        riskLevel: 'destructive'
+        message: `${capabilityId} is a destructive operation. Use the Trapdoor API at /api/v1/trapdoor/* for these operations with proper authorization.`,
+        status: 'redirect_to_trapdoor',
+        riskLevel: 'destructive',
+        trapdoorEndpoints: {
+          flash: '/api/v1/trapdoor/flash',
+          unlock: '/api/v1/trapdoor/unlock/bootloader',
+          erase: '/api/v1/fastboot/erase'
+        }
       };
 
     default:
-      throw new Error(`Operation ${capabilityId} not implemented`);
+      throw new Error(`Operation ${capabilityId} not implemented - check available capabilities at /api/operations/capabilities`);
   }
+}
+
+/**
+ * Parse ADB devices output
+ */
+function parseADBDevices(output) {
+  const lines = output.split('\n').slice(1); // Skip header
+  return lines
+    .filter(line => line.trim() && !line.includes('List of'))
+    .map(line => {
+      const parts = line.split(/\s+/);
+      const serial = parts[0];
+      const state = parts[1] || 'unknown';
+      const props = {};
+      for (let i = 2; i < parts.length; i++) {
+        const [key, val] = parts[i].split(':');
+        if (key && val) props[key] = val;
+      }
+      return { serial, state, ...props };
+    });
+}
+
+/**
+ * Parse Fastboot devices output
+ */
+function parseFastbootDevices(output) {
+  return output
+    .split('\n')
+    .filter(line => line.trim())
+    .map(line => {
+      const [serial, mode] = line.split(/\s+/);
+      return { serial, mode: mode || 'fastboot' };
+    });
+}
+
+/**
+ * Parse ideviceinfo output
+ */
+function parseIDeviceInfo(output) {
+  const info = {};
+  output.split('\n').forEach(line => {
+    const colonIdx = line.indexOf(':');
+    if (colonIdx > 0) {
+      const key = line.substring(0, colonIdx).trim();
+      const val = line.substring(colonIdx + 1).trim();
+      info[key] = val;
+    }
+  });
+  return info;
 }
 
 /**
@@ -480,5 +654,8 @@ router.post('/simulate', async (req, res) => {
     res.status(500).json(envelope);
   }
 });
+
+// Export executeOperation for use by workflow executor
+export { executeOperation };
 
 export default router;

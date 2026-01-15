@@ -125,6 +125,7 @@ class FlashProgress(BaseModel):
 
 flash_jobs: Dict[str, Dict[str, Any]] = {}
 active_websockets: Dict[str, List[WebSocket]] = {}
+device_event_clients: List[WebSocket] = []
 
 
 def scan_adb_devices() -> List[Dict[str, Any]]:
@@ -559,6 +560,101 @@ async def device_monitor_websocket(websocket: WebSocket):
             await asyncio.sleep(2)
     except WebSocketDisconnect:
         pass
+
+
+@app.websocket("/ws/device-events")
+async def device_events_websocket(websocket: WebSocket):
+    """WebSocket endpoint for device connection/disconnection events"""
+    await websocket.accept()
+    device_event_clients.append(websocket)
+    
+    try:
+        # Track previous device list to detect connections/disconnections
+        previous_devices: Dict[str, Dict[str, Any]] = {}
+        
+        while True:
+            # Scan for current devices
+            scan_result = await scan_devices()
+            current_devices: Dict[str, Dict[str, Any]] = {}
+            
+            for device in scan_result.get("devices", []):
+                device_uid = f"adb:{device.get('serial', 'unknown')}"
+                current_devices[device_uid] = device
+            
+            # Detect newly connected devices
+            for device_uid, device in current_devices.items():
+                if device_uid not in previous_devices:
+                    # Device connected
+                    brand = device.get("brand", "unknown")
+                    platform = device.get("platform", "android")
+                    
+                    event = {
+                        "type": "connected",
+                        "device_uid": device_uid,
+                        "platform_hint": platform,
+                        "mode": f"{device.get('currentMode', 'normal').title()} Mode",
+                        "confidence": device.get("confidence", 0.85),
+                        "timestamp": int(datetime.now().timestamp() * 1000),
+                        "serverTs": datetime.now().isoformat(),
+                        "apiVersion": "v1",
+                        "correlationId": f"ws-{int(datetime.now().timestamp() * 1000)}-{uuid.uuid4().hex[:9]}",
+                        "display_name": device.get("model") or f"{brand.title()} Device",
+                        "matched_tool_ids": [device.get("serial", "")],
+                        "correlation_badge": "CORRELATED" if device.get("serial") else "LIKELY"
+                    }
+                    
+                    # Broadcast to all connected clients
+                    disconnected_clients = []
+                    for client in device_event_clients:
+                        try:
+                            await client.send_json(event)
+                        except:
+                            disconnected_clients.append(client)
+                    
+                    # Remove disconnected clients
+                    for client in disconnected_clients:
+                        if client in device_event_clients:
+                            device_event_clients.remove(client)
+            
+            # Detect disconnected devices
+            for device_uid, device in previous_devices.items():
+                if device_uid not in current_devices:
+                    # Device disconnected
+                    event = {
+                        "type": "disconnected",
+                        "device_uid": device_uid,
+                        "platform_hint": device.get("platform", "android"),
+                        "mode": "Disconnected",
+                        "confidence": 1.0,
+                        "timestamp": int(datetime.now().timestamp() * 1000),
+                        "serverTs": datetime.now().isoformat(),
+                        "apiVersion": "v1",
+                        "correlationId": f"ws-{int(datetime.now().timestamp() * 1000)}-{uuid.uuid4().hex[:9]}",
+                        "display_name": device.get("model") or "Unknown Device",
+                        "matched_tool_ids": [device.get("serial", "")]
+                    }
+                    
+                    # Broadcast to all connected clients
+                    disconnected_clients = []
+                    for client in device_event_clients:
+                        try:
+                            await client.send_json(event)
+                        except:
+                            disconnected_clients.append(client)
+                    
+                    # Remove disconnected clients
+                    for client in disconnected_clients:
+                        if client in device_event_clients:
+                            device_event_clients.remove(client)
+            
+            previous_devices = current_devices
+            await asyncio.sleep(2)  # Poll every 2 seconds
+            
+    except WebSocketDisconnect:
+        pass
+    finally:
+        if websocket in device_event_clients:
+            device_event_clients.remove(websocket)
 
 
 if __name__ == "__main__":

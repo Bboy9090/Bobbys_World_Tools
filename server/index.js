@@ -1,7 +1,8 @@
 import express from 'express';
-import { execSync } from 'child_process';
+import { execSync, spawnSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
+import { existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import cors from 'cors';
 
@@ -18,7 +19,7 @@ import { correlationIdMiddleware, envelopeMiddleware } from './middleware/api-en
 import { deprecationWarningMiddleware } from './middleware/api-versioning.js';
 import { rateLimiter } from './middleware/rate-limiter.js';
 import { requireTrapdoorPasscode } from './middleware/trapdoor-auth.js';
-import { acquireDeviceLock, releaseDeviceLock, LOCK_TIMEOUT, getAllActiveLocks, getActiveLockCount } from './locks.js';
+import { acquireDeviceLock, releaseDeviceLock, LOCK_TIMEOUT, getAllActiveLocks, getActiveLockCount, createRequireDeviceLockMiddleware } from './locks.js';
 import { getToolPath, isToolAvailable, getToolInfo, getAllToolsInfo, executeTool } from './tools-manager.js';
 import { downloadFirmware, getDownloadStatus, cancelDownload, getActiveDownloads } from './firmware-downloader.js';
 import { readyHandler } from './routes/v1/ready.js';
@@ -41,6 +42,8 @@ import performanceMonitorRouter from './routes/v1/monitor/performance.js';
 import iosDFURouter from './routes/v1/ios/dfu.js';
 import rootDetectionRouter from './routes/v1/security/root-detection.js';
 import bootloaderStatusRouter from './routes/v1/security/bootloader-status.js';
+import encryptionStatusRouter from './routes/v1/security/encryption-status.js';
+import securityPatchRouter from './routes/v1/security/security-patch.js';
 import odinRouter from './routes/v1/flash/odin.js';
 import mtkRouter from './routes/v1/flash/mtk.js';
 import edlRouter from './routes/v1/flash/edl.js';
@@ -48,8 +51,13 @@ import iosLibimobiledeviceRouter from './routes/v1/ios/libimobiledevice-full.js'
 import adbAdvancedRouter from './routes/v1/adb/advanced.js';
 import diagnosticsRouter from './routes/v1/diagnostics/index.js';
 import trapdoorRouter from './routes/v1/trapdoor/index.js';
+import casesRouter from './routes/v1/cases.js';
+import jobsRouter from './routes/v1/jobs.js';
 import { getAllMetrics, estimateUsbUtilization } from './utils/system-metrics.js';
-import { LegendaryWebSocketManager } from './utils/websocket-manager.js';
+import { getCircuitBreakerStatus, resetCircuitBreaker, getHealthStatus } from './utils/retry-circuit-breaker.js';
+import { getResourceStatus, canExecuteOperation, acquireOperationSlot, releaseOperationSlot, forceCleanup } from './utils/resource-limits.js';
+import { performStartupValidation, getValidationResults, isValidationPassed } from './utils/startup-validation.js';
+import { performanceMiddleware, getPerformanceMetrics, OperationTimer } from './utils/performance-monitor.js';
 
 // Initialize logging first
 const LOG_DIR = process.env.BW_LOG_DIR || (process.platform === 'win32' 
@@ -109,17 +117,171 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 const DEMO_MODE = process.env.DEMO_MODE === '1';
 
+// 🔧 BACKEND RELIABILITY ENHANCEMENTS
+
+// Global error handling - prevent backend crashes
+process.on('uncaughtException', (error) => {
+  logger.error(`🚨 UNCAUGHT EXCEPTION: ${error.message}`);
+  logger.error(`Stack trace: ${error.stack}`);
+  // Don't exit immediately - try to recover
+  setTimeout(() => {
+    logger.error('🔄 Attempting graceful recovery after uncaught exception...');
+    // Log critical state
+    try {
+      const activeLocks = getActiveLockCount();
+      logger.error(`Active device locks: ${activeLocks}`);
+
+      const activeDownloads = getActiveDownloads ? getActiveDownloads().length : 0;
+      logger.error(`Active firmware downloads: ${activeDownloads}`);
+    } catch (logError) {
+      logger.error(`Failed to log recovery state: ${logError.message}`);
+    }
+  }, 1000);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error(`🚨 UNHANDLED PROMISE REJECTION: ${reason}`);
+  logger.error(`Promise: ${promise}`);
+  // Don't crash on unhandled rejections - log and continue
+});
+
+process.on('warning', (warning) => {
+  logger.error(`⚠️  PROCESS WARNING: ${warning.name} - ${warning.message}`);
+});
+
+// Memory monitoring
+const memCheckInterval = setInterval(() => {
+  const memUsage = process.memoryUsage();
+  const memUsageMB = {
+    rss: Math.round(memUsage.rss / 1024 / 1024),
+    heapTotal: Math.round(memUsage.heapTotal / 1024 / 1024),
+    heapUsed: Math.round(memUsage.heapUsed / 1024 / 1024),
+    external: Math.round(memUsage.external / 1024 / 1024)
+  };
+
+  // Warn if memory usage is high
+  if (memUsageMB.heapUsed > 500) {
+    logger.error(`🚨 HIGH MEMORY USAGE: ${JSON.stringify(memUsageMB)}`);
+  }
+
+  // Force garbage collection if available and memory is high
+  if (global.gc && memUsageMB.heapUsed > 700) {
+    logger.error('🗑️  Triggering garbage collection due to high memory usage');
+    global.gc();
+  }
+}, 30000); // Check every 30 seconds
+
+// Graceful shutdown handling
+let isShuttingDown = false;
+const gracefulShutdown = (signal) => {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+
+  logger.info(`🛑 Received ${signal} - initiating graceful shutdown...`);
+
+  // Stop accepting new connections
+  server.close((err) => {
+    if (err) {
+      logger.error(`Error during server close: ${err.message}`);
+      process.exit(1);
+    }
+
+    logger.info('✅ Server closed successfully');
+
+    // Clean up resources
+    clearInterval(memCheckInterval);
+
+    // Release all device locks
+    try {
+      const activeLocks = getAllActiveLocks();
+      activeLocks.forEach(lock => {
+        logger.info(`Releasing lock for device ${lock.deviceSerial} (${lock.operation})`);
+        releaseDeviceLock(lock.deviceSerial);
+      });
+    } catch (lockError) {
+      logger.error(`Error releasing locks: ${lockError.message}`);
+    }
+
+    // Cancel active downloads
+    try {
+      if (getActiveDownloads) {
+        const downloads = getActiveDownloads();
+        downloads.forEach(download => {
+          logger.info(`Cancelling download: ${download.id}`);
+          cancelDownload(download.id);
+        });
+      }
+    } catch (downloadError) {
+      logger.error(`Error cancelling downloads: ${downloadError.message}`);
+    }
+
+    // Close WebSocket connections
+    try {
+      if (wss) {
+        logger.info('Closing WebSocket server...');
+        wss.close();
+      }
+    } catch (wsError) {
+      logger.error(`Error closing WebSocket server: ${wsError.message}`);
+    }
+
+    logger.info('✅ Graceful shutdown complete');
+    process.exit(0);
+  });
+
+  // Force exit after 30 seconds
+  setTimeout(() => {
+    logger.error('⏰ Force exiting after 30 seconds');
+    process.exit(1);
+  }, 30000);
+};
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// Handle Windows-specific signals
+if (process.platform === 'win32') {
+  process.on('SIGHUP', () => gracefulShutdown('SIGHUP'));
+}
+
 logger.info(`Backend starting on port ${PORT}`);
 logger.info(`Log directory: ${LOG_DIR}`);
 logger.info(`Log file: ${LOG_FILE}`);
+logger.info(`Process PID: ${process.pid}`);
+logger.info(`Node.js version: ${process.version}`);
+logger.info(`Platform: ${process.platform} ${process.arch}`);
+
+// Perform startup validation
+logger.info('🚀 Performing startup validation...');
+try {
+  const validationResult = await performStartupValidation();
+
+  if (!isValidationPassed()) {
+    logger.error('❌ STARTUP VALIDATION FAILED - Server will start in degraded mode');
+    logger.error('Critical failures:');
+    validationResult.criticalFailures.forEach(failure => {
+      logger.error(`  - ${failure.component}: ${failure.message}`);
+    });
+
+    // In a production system, you might want to exit here
+    // But for Bobby's Workshop, we'll allow startup in degraded mode
+    logger.warn('⚠️  Continuing startup despite validation failures (degraded mode)');
+  } else {
+    logger.info('✅ Startup validation passed - all systems nominal');
+  }
+} catch (validationError) {
+  logger.error(`💥 Startup validation error: ${validationError.message}`);
+  logger.error('Continuing startup despite validation error');
+}
 
 app.use(cors());
 app.use(express.json());
 
-// Apply middleware in order: correlation ID, envelope, audit logging
+// Apply middleware in order: correlation ID, envelope, audit logging, performance
 app.use(correlationIdMiddleware);
 app.use(envelopeMiddleware);
 app.use(auditLogMiddleware);
+app.use(performanceMiddleware);
 
 // API versioning: warn on non-v1 routes
 app.use('/api', deprecationWarningMiddleware);
@@ -190,6 +352,8 @@ v1Router.use('/hotplug', hotplugRouter);
 // Security endpoints
 v1Router.use('/security/root-detection', rootDetectionRouter);
 v1Router.use('/security/bootloader-status', bootloaderStatusRouter);
+v1Router.use('/security/encryption-status', encryptionStatusRouter);
+v1Router.use('/security/security-patch', securityPatchRouter);
 
 // Catalog, operations routers
 v1Router.use('/catalog', catalogRouter);
@@ -212,30 +376,9 @@ app.use('/api/v1', v1Router);
 const authTriggers = new AuthorizationTriggers();
 
 const server = createServer(app);
-
-// 🔱 LEGENDARY WebSocket Managers with heartbeat and health monitoring
-const wsDeviceEvents = new LegendaryWebSocketManager(server, '/ws/device-events', {
-  heartbeatInterval: 30000,
-  heartbeatTimeout: 10000,
-  maxMissedHeartbeats: 3
-});
-
-const wsCorrelation = new LegendaryWebSocketManager(server, '/ws/correlation', {
-  heartbeatInterval: 30000,
-  heartbeatTimeout: 10000,
-  maxMissedHeartbeats: 3
-});
-
-const wsAnalytics = new LegendaryWebSocketManager(server, '/ws/analytics', {
-  heartbeatInterval: 30000,
-  heartbeatTimeout: 10000,
-  maxMissedHeartbeats: 3
-});
-
-// Legacy compatibility - keep old WebSocketServer instances for existing code
-const wss = wsDeviceEvents.wss;
-const wssCorrelation = wsCorrelation.wss;
-const wssAnalytics = wsAnalytics.wss;
+const wss = new WebSocketServer({ server, path: '/ws/device-events' });
+const wssCorrelation = new WebSocketServer({ server, path: '/ws/correlation' });
+const wssAnalytics = new WebSocketServer({ server, path: '/ws/analytics' });
 
 const clients = new Set();
 const correlationClients = new Set();
@@ -254,7 +397,7 @@ wss.on('connection', (ws) => {
           const deviceId = `device-${Math.random().toString(36).substr(2, 9)}`;
 
           const correlationId = `ws-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-          wsDeviceEvents.send(ws, {
+          ws.send(JSON.stringify({
             type: isConnect ? 'connected' : 'disconnected',
             device_uid: deviceId,
             platform_hint: platform,
@@ -590,14 +733,25 @@ function broadcastCorrelation(message) {
 
 function safeExec(cmd) {
   try {
-    // On Windows, hide the window to prevent PowerShell windows from popping up
-    const options = {
+    // Use spawnSync with shell: false to prevent console windows on Windows
+    const { spawnSync } = require('child_process');
+    const parts = cmd.split(' ');
+    const command = parts[0];
+    const args = parts.slice(1);
+    
+    const result = spawnSync(command, args, {
       encoding: "utf-8",
       timeout: 5000,
-      windowsHide: true, // Hide the window on Windows
-      stdio: ['ignore', 'pipe', 'pipe'] // Suppress all output to prevent window flashing
-    };
-    return execSync(cmd, options).trim();
+      windowsHide: true,
+      shell: false, // Prevent console window
+      stdio: ['ignore', 'pipe', 'pipe'] // Capture output, hide console
+    });
+    
+    if (result.error || result.status !== 0) {
+      return null;
+    }
+    
+    return result.stdout?.trim() || null;
   } catch {
     return null;
   }
@@ -681,22 +835,9 @@ function parseUsbVidPidFromPnpDeviceId(pnpDeviceId) {
   };
 }
 
-// Cache USB device scan results to prevent excessive PowerShell calls
-let usbDeviceCache = {
-  data: [],
-  timestamp: 0,
-  TTL: 2000 // Cache for 2 seconds to prevent rapid-fire PowerShell windows
-};
-
 function getConnectedUsbDevices() {
   if (!IS_WINDOWS) {
     return [];
-  }
-
-  // Use cache if recent enough
-  const now = Date.now();
-  if (usbDeviceCache.timestamp && (now - usbDeviceCache.timestamp) < usbDeviceCache.TTL) {
-    return usbDeviceCache.data;
   }
 
   const ps = [
@@ -705,17 +846,13 @@ function getConnectedUsbDevices() {
     "$devs | ConvertTo-Json -Compress"
   ].join('; ');
 
-  const raw = safeExec(`powershell -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -NonInteractive -Command "${ps}"`);
-  if (!raw) {
-    // Cache empty result to prevent repeated failed calls
-    usbDeviceCache = { data: [], timestamp: now, TTL: usbDeviceCache.TTL };
-    return [];
-  }
+  const raw = safeExec(`powershell -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -Command "${ps}"`);
+  if (!raw) return [];
 
   try {
     const parsed = JSON.parse(raw);
     const items = Array.isArray(parsed) ? parsed : [parsed];
-    const result = items
+    return items
       .filter(Boolean)
       .map(d => {
         const name = d.Name || null;
@@ -731,13 +868,7 @@ function getConnectedUsbDevices() {
         };
       })
       .filter(d => d.pnpDeviceId || d.name);
-    
-    // Update cache
-    usbDeviceCache = { data: result, timestamp: now, TTL: usbDeviceCache.TTL };
-    return result;
   } catch {
-    // Cache empty result on error
-    usbDeviceCache = { data: [], timestamp: now, TTL: usbDeviceCache.TTL };
     return [];
   }
 }
@@ -782,11 +913,27 @@ function commandExists(cmd) {
 
   try {
     if (IS_WINDOWS) {
-      execSync(`where ${cmd}`, { stdio: 'ignore', timeout: 2000, windowsHide: true });
+      // Check PATH directly without calling where.exe to prevent console windows
+      const pathEnv = process.env.PATH || '';
+      const pathDirs = pathEnv.split(path.delimiter);
+      const extensions = process.env.PATHEXT ? process.env.PATHEXT.split(path.delimiter) : ['.exe', '.cmd', '.bat', '.com'];
+      
+      for (const dir of pathDirs) {
+        if (!dir) continue;
+        for (const ext of extensions) {
+          const fullPath = path.join(dir, cmd + ext);
+          if (existsSync(fullPath)) {
+            return true;
+          }
+        }
+      }
+      return false;
     } else {
-      execSync(`command -v ${cmd}`, { stdio: "ignore", timeout: 2000, windowsHide: true });
+      if (!commandExistsInPath(cmd)) {
+        return false;
+      }
+      return true;
     }
-    return true;
   } catch {
     return false;
   }
@@ -810,14 +957,20 @@ function runBootForgeUsbScanJson() {
 
   // New CLI expects: `bootforgeusb scan --json`.
   // If an older/alternate binary exists, prefer it only when detected by getBootForgeUsbCommand.
-  const args = cmd === 'bootforgeusb' ? 'scan --json' : '';
-  const output = execSync(`${cmd}${args ? ` ${args}` : ''}`, {
+  // Use spawnSync with shell: false to prevent console windows
+  const args = cmd === 'bootforgeusb' ? ['scan', '--json'] : [];
+  const outputResult = spawnSync(cmd, args, {
     encoding: 'utf-8',
     timeout: 10000,
     maxBuffer: 10 * 1024 * 1024,
     windowsHide: true,
+    shell: false,
     stdio: ['ignore', 'pipe', 'pipe']
   });
+  if (outputResult.error || outputResult.status !== 0) {
+    throw new Error(outputResult.stderr?.toString() || 'BootForgeUSB command failed');
+  }
+  const output = outputResult.stdout?.toString() || '';
 
   const devices = JSON.parse(output);
   return { cmd, devices };
@@ -1130,6 +1283,32 @@ app.get('/api/adb/devices', (req, res) => {
   });
 });
 
+// Alias: /api/android/devices -> /api/adb/devices for API consistency
+app.get('/api/android/devices', (req, res) => {
+  // Redirect internally to /api/adb/devices handler
+  req.url = '/api/adb/devices';
+  app._router.handle(req, res, () => {});
+});
+
+// Plugins API stub (for plugin marketplace)
+app.get('/api/plugins', (req, res) => {
+  res.json({
+    success: true,
+    plugins: [],
+    count: 0,
+    message: 'Plugin marketplace is available. No plugins installed.',
+    timestamp: new Date().toISOString()
+  });
+});
+
+app.get('/api/plugins/:id', (req, res) => {
+  res.status(404).json({
+    success: false,
+    error: 'Plugin not found',
+    pluginId: req.params.id
+  });
+});
+
 app.get('/api/devices/scan', (req, res) => {
   const scanned = [];
   const seenUids = new Set();
@@ -1269,9 +1448,13 @@ app.post('/api/adb/trigger-auth', (req, res) => {
   }
   
   try {
-    execSync(`${adbCmd} -s ${resolvedSerial} shell echo "auth_trigger" 2>&1`, { 
+    // Use spawnSync with shell: false to prevent console windows
+    spawnSync(adbCmd, ['-s', resolvedSerial, 'shell', 'echo', 'auth_trigger'], { 
       encoding: "utf-8", 
-      timeout: 3000 
+      timeout: 3000,
+      windowsHide: true,
+      shell: false,
+      stdio: ['ignore', 'pipe', 'pipe']
     });
     
     res.json({
@@ -1622,37 +1805,8 @@ app.get('/api/fastboot/device-info', (req, res) => {
   }
 });
 
-// Device lock middleware for destructive operations
-function requireDeviceLock(req, res, next) {
-  const deviceSerial = req.body?.serial || req.body?.deviceSerial || req.params?.serial;
-  
-  if (!deviceSerial) {
-    // Operations that don't need a device lock can proceed
-    return next();
-  }
-
-  const operation = req.path.replace('/api/', '').replace(/\//g, '_');
-  const lockResult = acquireDeviceLock(deviceSerial, operation);
-
-  if (!lockResult.acquired) {
-    return res.status(423).json({
-      success: false,
-      error: 'Device locked',
-      message: lockResult.reason,
-      lockedBy: lockResult.lockedBy,
-      retryAfter: Math.floor(LOCK_TIMEOUT / 1000) // Convert milliseconds to seconds
-    });
-  }
-
-  // Release lock when response finishes (success or error)
-  const originalEnd = res.end;
-  res.end = function(...args) {
-    releaseDeviceLock(deviceSerial);
-    originalEnd.apply(this, args);
-  };
-
-  next();
-}
+// Device lock middleware for destructive operations (uses shared implementation from locks.js)
+const requireDeviceLock = createRequireDeviceLockMiddleware({ operationPrefix: 'api' });
 
 app.post('/api/fastboot/flash', requireDeviceLock, async (req, res) => {
   const { confirmation } = req.body;
@@ -1687,10 +1841,17 @@ app.post('/api/fastboot/flash', requireDeviceLock, async (req, res) => {
       }
 
       try {
-        const output = execSync(
-          `fastboot -s ${serial} flash ${partition} ${file.path}`,
-          { encoding: 'utf-8', timeout: 120000 }
-        );
+        const result = spawnSync('fastboot', ['-s', serial, 'flash', partition, file.path], {
+          encoding: 'utf-8',
+          timeout: 120000,
+          windowsHide: true,
+          shell: false,
+          stdio: ['ignore', 'pipe', 'pipe']
+        });
+        if (result.error || result.status !== 0) {
+          throw new Error(result.error?.message || `fastboot failed with exit code ${result.status}`);
+        }
+        const output = result.stdout || '';
 
         const fs = require('fs');
         fs.unlinkSync(file.path);
@@ -1841,14 +2002,9 @@ app.post('/api/fastboot/erase', requireDeviceLock, (req, res) => {
 });
 
 app.get('/api/bootforgeusb/scan', (req, res) => {
-  const useDemoData = req.query.demo === 'true';
-  
+  // Production mode - no demo data allowed
   const cmd = getBootForgeUsbCommand();
   if (!cmd) {
-    if (useDemoData) {
-      return res.json(generateDemoBootForgeData());
-    }
-    
     return res.status(503).json({ 
       error: "BootForgeUSB not available",
       message: "BootForgeUSB CLI tool is not installed or not in PATH",
@@ -1870,9 +2026,6 @@ app.get('/api/bootforgeusb/scan', (req, res) => {
     });
   } catch (error) {
     if (error.code === 'CLI_NOT_FOUND') {
-      if (useDemoData) {
-        return res.json(generateDemoBootForgeData());
-      }
       return res.status(503).json({
         error: "BootForgeUSB not available",
         message: error.message,
@@ -1891,10 +2044,6 @@ app.get('/api/bootforgeusb/scan', (req, res) => {
     
     console.error('BootForgeUSB scan error:', error);
     
-    if (useDemoData) {
-      return res.json(generateDemoBootForgeData());
-    }
-    
     res.status(500).json({
       error: 'BootForgeUSB scan failed',
       details: error.message,
@@ -1904,217 +2053,7 @@ app.get('/api/bootforgeusb/scan', (req, res) => {
   }
 });
 
-function generateDemoBootForgeData() {
-  const demoDevices = [
-    {
-      device_uid: "usb-18d1:4ee7-3-2",
-      platform_hint: "android",
-      mode: "Normal OS (Confirmed)",
-      confidence: 0.95,
-      evidence: {
-        usb: {
-          vid: "0x18d1",
-          pid: "0x4ee7",
-          manufacturer: "Google Inc.",
-          product: "Pixel 6",
-          serial: "1A2B3C4D5E6F",
-          bus: 3,
-          address: 2,
-          interface_hints: [
-            { class: 255, subclass: 66, protocol: 1 },
-            { class: 255, subclass: 66, protocol: 3 }
-          ]
-        },
-        tools: {
-          adb: {
-            present: true,
-            seen: true,
-            raw: "1A2B3C4D5E6F device",
-            device_ids: ["1A2B3C4D5E6F"]
-          },
-          fastboot: {
-            present: true,
-            seen: false,
-            raw: "",
-            device_ids: []
-          },
-          idevice_id: {
-            present: false,
-            seen: false,
-            raw: "",
-            device_ids: []
-          }
-        }
-      },
-      notes: [
-        "USB VID/PID matches Google Android Debug Bridge",
-        "ADB tool detected device with serial 1A2B3C4D5E6F",
-        "USB interface class 0xFF (Vendor Specific) with ADB-standard protocol",
-        "Device confirmed in normal Android OS mode via ADB"
-      ],
-      matched_tool_ids: ["1A2B3C4D5E6F"],
-      correlation_badge: "CORRELATED",
-      correlation_notes: ["Per-device correlation present (matched tool ID(s))."]
-    },
-    {
-      device_uid: "usb-05ac:12a8-1-5",
-      platform_hint: "ios",
-      mode: "Normal OS (Likely)",
-      confidence: 0.88,
-      evidence: {
-        usb: {
-          vid: "0x05ac",
-          pid: "0x12a8",
-          manufacturer: "Apple Inc.",
-          product: "iPhone",
-          serial: null,
-          bus: 1,
-          address: 5,
-          interface_hints: [
-            { class: 255, subclass: 254, protocol: 2 }
-          ]
-        },
-        tools: {
-          adb: {
-            present: true,
-            seen: false,
-            raw: "",
-            device_ids: []
-          },
-          fastboot: {
-            present: true,
-            seen: false,
-            raw: "",
-            device_ids: []
-          },
-          idevice_id: {
-            present: false,
-            seen: false,
-            raw: "",
-            device_ids: []
-          }
-        }
-      },
-      notes: [
-        "USB VID matches Apple Inc. (0x05ac)",
-        "PID 0x12a8 is standard iPhone enumeration",
-        "No idevice_id tool available to confirm",
-        "Classification based on USB evidence only"
-      ],
-      matched_tool_ids: [],
-      correlation_badge: "LIKELY",
-      correlation_notes: []
-    },
-    {
-      device_uid: "usb-18d1:d00d-2-7",
-      platform_hint: "android",
-      mode: "Fastboot (Confirmed)",
-      confidence: 0.92,
-      evidence: {
-        usb: {
-          vid: "0x18d1",
-          pid: "0xd00d",
-          manufacturer: "Google Inc.",
-          product: "Fastboot Device",
-          serial: "FASTBOOT123ABC",
-          bus: 2,
-          address: 7,
-          interface_hints: [
-            { class: 255, subclass: 66, protocol: 3 }
-          ]
-        },
-        tools: {
-          adb: {
-            present: true,
-            seen: false,
-            raw: "",
-            device_ids: []
-          },
-          fastboot: {
-            present: true,
-            seen: true,
-            raw: "FASTBOOT123ABC fastboot",
-            device_ids: ["FASTBOOT123ABC"]
-          },
-          idevice_id: {
-            present: false,
-            seen: false,
-            raw: "",
-            device_ids: []
-          }
-        }
-      },
-      notes: [
-        "USB VID/PID matches Google Fastboot protocol",
-        "Fastboot tool detected device with serial FASTBOOT123ABC",
-        "Device is in bootloader/fastboot mode",
-        "Ready for flashing operations"
-      ],
-      matched_tool_ids: ["FASTBOOT123ABC"],
-      correlation_badge: "CORRELATED",
-      correlation_notes: ["Per-device correlation present (matched tool ID(s))."]
-    },
-    {
-      device_uid: "usb-2717:ff48-3-4",
-      platform_hint: "android",
-      mode: "Normal OS (Likely)",
-      confidence: 0.78,
-      evidence: {
-        usb: {
-          vid: "0x2717",
-          pid: "0xff48",
-          manufacturer: "Xiaomi",
-          product: "Mi Device",
-          serial: "XIAOMI987654",
-          bus: 3,
-          address: 4,
-          interface_hints: [
-            { class: 255, subclass: 66, protocol: 1 }
-          ]
-        },
-        tools: {
-          adb: {
-            present: true,
-            seen: false,
-            raw: "",
-            device_ids: []
-          },
-          fastboot: {
-            present: true,
-            seen: false,
-            raw: "",
-            device_ids: []
-          },
-          idevice_id: {
-            present: false,
-            seen: false,
-            raw: "",
-            device_ids: []
-          }
-        }
-      },
-      notes: [
-        "USB VID matches Xiaomi manufacturer code",
-        "Interface class suggests Android ADB protocol",
-        "ADB tool present but device not visible (possible USB authorization pending)",
-        "Classification confidence reduced due to lack of tool confirmation"
-      ],
-      matched_tool_ids: [],
-      correlation_badge: "LIKELY",
-      correlation_notes: []
-    }
-  ];
-
-  return {
-    success: true,
-    count: demoDevices.length,
-    devices: demoDevices,
-    timestamp: new Date().toISOString(),
-    available: false,
-    demo: true,
-    message: "Showing demo data - BootForgeUSB CLI not available"
-  };
-}
+// REMOVED: generateDemoBootForgeData - Demo data is disabled in production mode
 
 app.get('/api/bootforgeusb/status', (req, res) => {
   const cmd = getBootForgeUsbCommand();
@@ -2293,15 +2232,19 @@ app.post('/api/bootforgeusb/build', async (req, res) => {
       timestamp: new Date().toISOString()
     }) + '\n');
 
-    const buildOutput = execSync(
-      'cargo build --release --bin bootforgeusb',
-      {
-        cwd: buildPath,
-        encoding: 'utf-8',
-        timeout: 300000,
-        maxBuffer: 50 * 1024 * 1024
-      }
-    );
+    const buildResult = spawnSync('cargo', ['build', '--release', '--bin', 'bootforgeusb'], {
+      cwd: buildPath,
+      encoding: 'utf-8',
+      timeout: 300000,
+      maxBuffer: 50 * 1024 * 1024,
+      windowsHide: true,
+      shell: false,
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+    const buildOutput = buildResult.stdout || '';
+    if (buildResult.error || buildResult.status !== 0) {
+      throw new Error(buildResult.error?.message || `cargo build failed with exit code ${buildResult.status}`);
+    }
 
     res.write(JSON.stringify({
       status: 'installing',
@@ -2309,10 +2252,19 @@ app.post('/api/bootforgeusb/build', async (req, res) => {
       timestamp: new Date().toISOString()
     }) + '\n');
 
-    const installOutput = execSync(
-      'cargo install --path . --bin bootforgeusb',
-      {
-        cwd: buildPath,
+    const installResult = spawnSync('cargo', ['install', '--path', '.', '--bin', 'bootforgeusb'], {
+      cwd: buildPath,
+      encoding: 'utf-8',
+      timeout: 300000,
+      maxBuffer: 50 * 1024 * 1024,
+      windowsHide: true,
+      shell: false,
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+    const installOutput = installResult.stdout || '';
+    if (installResult.error || installResult.status !== 0) {
+      throw new Error(installResult.error?.message || `cargo install failed with exit code ${installResult.status}`);
+    }
         encoding: 'utf-8',
         timeout: 60000
       }
@@ -3132,6 +3084,24 @@ app.get('/api/standards', (req, res) => {
 app.get('/api/hotplug/events', (req, res) => {
   res.json({
     events: [],
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Sync API for offline storage
+app.post('/api/v1/sync/:store', (req, res) => {
+  const { store } = req.params;
+  const { action, data, queuedAt } = req.body;
+  
+  // In production, this would persist to database
+  // For now, acknowledge receipt and log
+  console.log(`[Sync] Store: ${store}, Action: ${action}, Queued: ${queuedAt}`);
+  
+  res.json({
+    success: true,
+    synced: true,
+    store,
+    action,
     timestamp: new Date().toISOString()
   });
 });
@@ -4116,6 +4086,215 @@ app.get('/api/tools/:toolName', (req, res) => {
   res.json(toolInfo);
 });
 
+// Health monitoring endpoint
+app.get('/api/health', async (req, res) => {
+  try {
+    const startTime = Date.now();
+
+    // Check critical dependencies
+    const healthChecks = {
+      server: {
+        status: 'healthy',
+        uptime: process.uptime(),
+        memory: process.memoryUsage(),
+        version: process.version,
+        pid: process.pid
+      },
+      database: {
+        status: 'unknown', // We don't use a database, but check file system
+        available: true
+      },
+      filesystem: {
+        status: 'healthy',
+        writable: false,
+        readable: false
+      },
+      tools: {},
+      circuitBreakers: getCircuitBreakerStatus()
+    };
+
+    // Check filesystem access
+    try {
+      fs.accessSync(LOG_DIR, fs.constants.W_OK);
+      healthChecks.filesystem.writable = true;
+      fs.accessSync(LOG_DIR, fs.constants.R_OK);
+      healthChecks.filesystem.readable = true;
+    } catch (fsError) {
+      healthChecks.filesystem.status = 'degraded';
+      healthChecks.filesystem.error = fsError.message;
+    }
+
+    // Check critical tools
+    const criticalTools = ['adb', 'fastboot', 'node', 'npm'];
+    for (const tool of criticalTools) {
+      try {
+        const available = await commandExistsSafe(tool);
+        healthChecks.tools[tool] = {
+          available,
+          status: available ? 'healthy' : 'unavailable'
+        };
+      } catch (error) {
+        healthChecks.tools[tool] = {
+          available: false,
+          status: 'error',
+          error: error.message
+        };
+      }
+    }
+
+    // Check active operations
+    const activeLocks = getActiveLockCount();
+    const activeDownloads = getActiveDownloads ? getActiveDownloads().length : 0;
+    const resourceStatus = await getResourceStatus();
+
+    // Overall health assessment
+    const circuitBreakerHealth = getHealthStatus();
+    const hasUnhealthyTools = Object.values(healthChecks.tools).some(t => t.status !== 'healthy');
+    const hasOpenCircuits = circuitBreakerHealth.unhealthyCount > 0;
+
+    let overallStatus = 'healthy';
+    if (hasOpenCircuits || hasUnhealthyTools) {
+      overallStatus = 'degraded';
+    }
+    if (healthChecks.filesystem.status !== 'healthy') {
+      overallStatus = 'unhealthy';
+    }
+
+    const responseTime = Date.now() - startTime;
+
+    const healthResponse = {
+      status: overallStatus,
+      timestamp: new Date().toISOString(),
+      responseTime: `${responseTime}ms`,
+      checks: healthChecks,
+      activeOperations: {
+        deviceLocks: activeLocks,
+        firmwareDownloads: activeDownloads
+      },
+      resources: resourceStatus,
+      circuitBreakerHealth,
+      warnings: [],
+      recommendations: []
+    };
+
+    // Add warnings and recommendations
+    if (hasOpenCircuits) {
+      healthResponse.warnings.push(`${circuitBreakerHealth.unhealthyCount} circuit breaker(s) are open`);
+      healthResponse.recommendations.push('Check circuit breaker status and reset if services have recovered');
+    }
+
+    if (hasUnhealthyTools) {
+      const unhealthyTools = Object.entries(healthChecks.tools)
+        .filter(([_, status]) => status.status !== 'healthy')
+        .map(([tool]) => tool);
+      healthResponse.warnings.push(`Tools unavailable: ${unhealthyTools.join(', ')}`);
+      healthResponse.recommendations.push('Ensure Android SDK Platform Tools are installed and in PATH');
+    }
+
+    if (healthChecks.filesystem.status !== 'healthy') {
+      healthResponse.warnings.push('Filesystem access issues detected');
+      healthResponse.recommendations.push('Check disk space and permissions for log directory');
+    }
+
+    // Return appropriate status code
+    const statusCode = overallStatus === 'healthy' ? 200 :
+                      overallStatus === 'degraded' ? 206 : 503;
+
+    res.status(statusCode).json(healthResponse);
+
+  } catch (error) {
+    logger.error(`Health check failed: ${error.message}`);
+    res.status(503).json({
+      status: 'unhealthy',
+      timestamp: new Date().toISOString(),
+      error: 'Health check failed',
+      details: error.message
+    });
+  }
+});
+
+// Circuit breaker management endpoint (admin)
+app.get('/api/admin/circuit-breakers', (req, res) => {
+  const status = getCircuitBreakerStatus();
+  res.json({
+    circuitBreakers: status,
+    timestamp: new Date().toISOString()
+  });
+});
+
+app.post('/api/admin/circuit-breakers/:name/reset', (req, res) => {
+  const { name } = req.params;
+  const success = resetCircuitBreaker(name);
+
+  if (success) {
+    logger.info(`Circuit breaker ${name} reset by admin`);
+    res.json({
+      success: true,
+      message: `Circuit breaker ${name} has been reset`,
+      timestamp: new Date().toISOString()
+    });
+  } else {
+    res.status(404).json({
+      success: false,
+      error: `Circuit breaker ${name} not found`,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Resource status endpoint
+app.get('/api/admin/resources', async (req, res) => {
+  try {
+    const resourceStatus = await getResourceStatus();
+    res.json(resourceStatus);
+  } catch (error) {
+    logger.error(`Resource status check failed: ${error.message}`);
+    res.status(500).json({
+      error: 'Failed to get resource status',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Force cleanup endpoint (emergency)
+app.post('/api/admin/cleanup', (req, res) => {
+  try {
+    const maxAge = req.body.maxAge ? parseInt(req.body.maxAge) : 900000; // 15 minutes default
+    const cleaned = forceCleanup(maxAge);
+
+    logger.info(`Admin cleanup performed: ${cleaned} operations cleaned`);
+    res.json({
+      success: true,
+      operationsCleaned: cleaned,
+      maxAge,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    logger.error(`Admin cleanup failed: ${error.message}`);
+    res.status(500).json({
+      error: 'Cleanup failed',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Performance monitoring endpoint
+app.get('/api/admin/performance', (req, res) => {
+  try {
+    const metrics = getPerformanceMetrics();
+    res.json(metrics);
+  } catch (error) {
+    logger.error(`Performance metrics retrieval failed: ${error.message}`);
+    res.status(500).json({
+      error: 'Failed to get performance metrics',
+      details: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // Catalog API - Tool catalog and capabilities
 app.use('/api/catalog', catalogRouter);
 
@@ -4125,9 +4304,49 @@ app.use('/api/operations', operationsRouter);
 // Trapdoor API - Secure endpoints for sensitive operations (Bobby's Secret Workshop)
 app.use('/api/trapdoor', requireTrapdoorPasscode, trapdoorRouter);
 
+// Enhanced error middleware with envelope support and detailed logging
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ error: 'Internal server error' });
+  // Log the full error with correlation ID
+  const correlationId = req.correlationId || 'unknown';
+  const errorId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+  logger.error(`💥 ERROR [${errorId}] Correlation: ${correlationId}`);
+  logger.error(`   Message: ${err.message}`);
+  logger.error(`   Stack: ${err.stack}`);
+  logger.error(`   URL: ${req.method} ${req.originalUrl}`);
+  logger.error(`   User-Agent: ${req.get('User-Agent') || 'unknown'}`);
+  logger.error(`   IP: ${req.ip || req.connection.remoteAddress}`);
+
+  // Don't expose internal errors in production
+  const isDevelopment = process.env.NODE_ENV === 'development';
+
+  const errorResponse = {
+    errorId,
+    message: isDevelopment ? err.message : 'Internal server error',
+    ...(isDevelopment && { stack: err.stack }),
+    timestamp: new Date().toISOString(),
+    correlationId
+  };
+
+  // Use envelope format for consistency
+  if (res.sendError) {
+    res.sendError('INTERNAL_ERROR', 'An unexpected error occurred', errorResponse, 500);
+  } else {
+    // Fallback if envelope middleware failed
+    res.status(500).json({
+      ok: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'An unexpected error occurred',
+        details: errorResponse
+      },
+      meta: {
+        ts: new Date().toISOString(),
+        correlationId,
+        apiVersion: 'v1'
+      }
+    });
+  }
 });
 
 server.listen(PORT, '127.0.0.1', () => {

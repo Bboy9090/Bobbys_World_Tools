@@ -18,11 +18,28 @@ const __dirname = path.dirname(__filename);
 
 const router = express.Router();
 
-// Paths to manifest files
-const RUNTIME_DIR = path.join(__dirname, '..', 'runtime', 'manifests');
-const TOOLS_MANIFEST = path.join(RUNTIME_DIR, 'tools.json');
-const POLICIES_MANIFEST = path.join(RUNTIME_DIR, 'policies.json');
-const WORKFLOWS_MANIFEST = path.join(RUNTIME_DIR, 'workflows.json');
+// Paths to manifest files - try multiple locations for bundled vs source
+const RUNTIME_DIRS = [
+  path.join(__dirname, '..', 'runtime', 'manifests'),  // Bundled location
+  path.join(__dirname, '..', '..', 'runtime', 'manifests'),  // Alternative bundled location
+  path.join(process.cwd(), 'runtime', 'manifests'),  // Working directory relative
+  path.join(process.cwd(), '..', 'runtime', 'manifests')  // Parent directory
+];
+
+function findManifestFile(filename) {
+  for (const dir of RUNTIME_DIRS) {
+    const filePath = path.join(dir, filename);
+    if (fs.existsSync(filePath)) {
+      return filePath;
+    }
+  }
+  // Fallback to first directory (for error messages)
+  return path.join(RUNTIME_DIRS[0], filename);
+}
+
+const TOOLS_MANIFEST = findManifestFile('tools.json');
+const POLICIES_MANIFEST = findManifestFile('policies.json');
+const WORKFLOWS_MANIFEST = findManifestFile('workflows.json');
 
 /**
  * Load and parse a manifest file

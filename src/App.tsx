@@ -11,7 +11,6 @@ import { setupGlobalErrorHandler } from "./lib/error-handler";
 import { initOfflineStorage, networkStatus } from "./lib/offline-storage";
 import { initializeWebSockets, cleanupWebSockets } from "./lib/websocket-hub";
 import { createLogger } from "./lib/debug-logger";
-import { startBackendSync, stopBackendSync } from "./lib/backend-sync";
 
 const logger = createLogger('App');
 
@@ -20,6 +19,7 @@ function AppContent() {
     const [isLoading, setIsLoading] = useState(true);
     const [showSplash, setShowSplash] = useState(true);
     const [initError, setInitError] = useState<Error | null>(null);
+    const [backendConnected, setBackendConnected] = useState(false);
 
     useEffect(() => {
         async function initializeApp() {
@@ -36,57 +36,31 @@ function AppContent() {
                 await initOfflineStorage();
                 logger.debug('Offline storage ready');
                 
-                // Simulate system boot
-                await new Promise(resolve => setTimeout(resolve, 800));
+                // Brief initialization delay
+                await new Promise(resolve => setTimeout(resolve, 500));
                 
                 const backendHealthy = await checkBackendHealth();
                 setBackendAvailable(backendHealthy.isHealthy);
+                setBackendConnected(backendHealthy.isHealthy);
 
-                if (backendHealthy.isHealthy) {
-                    logger.info('Backend connected - production mode');
-                    // Initialize WebSocket connections (only if backend is available)
-                    initializeWebSockets().catch(err => {
-                        logger.warn('Failed to initialize WebSockets:', err);
-                    });
-                    logger.debug('WebSocket connections initialized');
+                if (!backendHealthy.isHealthy) {
+                    logger.warn('Backend not available - please start the backend server');
                 } else {
-                    logger.warn('Backend offline - some features may be unavailable');
+                    logger.info('Backend connected - production mode active');
+                    // Initialize WebSocket connections
+                    initializeWebSockets();
+                    logger.debug('WebSocket connections initialized');
                 }
-                
-                // Start continuous backend sync monitoring
-                // This keeps frontend and backend in sync at all times
-                startBackendSync({
-                    checkInterval: 10000, // Check every 10 seconds
-                    onBackendAvailable: () => {
-                        setBackendAvailable(true);
-                        initializeWebSockets().catch(err => {
-                            logger.warn('Failed to initialize WebSockets:', err);
-                        });
-                        logger.debug('Backend available - frontend and backend in sync');
-                    },
-                    onBackendUnavailable: () => {
-                        setBackendAvailable(false);
-                        logger.warn('Backend unavailable - frontend and backend out of sync');
-                    },
-                    onBackendRestored: () => {
-                        setBackendAvailable(true);
-                        initializeWebSockets().catch(err => {
-                            logger.warn('Failed to initialize WebSockets:', err);
-                        });
-                        logger.info('Backend restored - frontend and backend back in sync');
-                    },
-                });
                 
                 // Listen for network status changes
                 networkStatus.subscribe((online) => {
-                    if (online && !backendHealthy.isHealthy) {
+                    if (online) {
                         // Re-check backend when coming online
                         checkBackendHealth().then(result => {
                             if (result.isHealthy) {
                                 setBackendAvailable(true);
-                                initializeWebSockets().catch(err => {
-                                    logger.warn('Failed to initialize WebSockets:', err);
-                                });
+                                setBackendConnected(true);
+                                initializeWebSockets();
                             }
                         });
                     }
@@ -105,7 +79,6 @@ function AppContent() {
 
         return () => {
             cleanupWebSockets();
-            stopBackendSync(); // Stop sync monitoring on unmount
         };
     }, [setBackendAvailable]);
 
@@ -113,6 +86,15 @@ function AppContent() {
         soundManager.init();
         return () => soundManager.destroy();
     }, []);
+
+    const handleRetryConnection = async () => {
+        const backendHealthy = await checkBackendHealth();
+        if (backendHealthy.isHealthy) {
+            setBackendAvailable(true);
+            setBackendConnected(true);
+            initializeWebSockets();
+        }
+    };
 
     // Show error if initialization failed
     if (initError) {
@@ -145,27 +127,26 @@ function AppContent() {
         return <SplashPage onComplete={() => setShowSplash(false)} />;
     }
 
-    try {
-        return (
-            <>
-                <DashboardLayout />
-                <Toaster />
-            </>
-        );
-    } catch (error) {
-        console.error('[AppContent] Render error:', error);
-        return (
-            <div className="min-h-screen bg-midnight-room flex items-center justify-center p-4">
-                <div className="max-w-md w-full bg-workbench-steel border border-panel rounded-lg p-6">
-                    <h1 className="text-xl font-bold text-ink-primary mb-2 font-mono">Render Error</h1>
-                    <p className="text-sm text-ink-muted mb-4">Failed to render the application.</p>
-                    <pre className="text-xs text-state-danger bg-midnight-room p-3 rounded border overflow-auto max-h-32 font-mono">
-                        {error instanceof Error ? error.message : String(error)}
-                    </pre>
+    // Show backend connection warning if not connected (non-blocking)
+    return (
+        <>
+            {!backendConnected && (
+                <div className="fixed top-0 left-0 right-0 z-50 bg-amber-900/90 border-b border-amber-600 px-4 py-2 flex items-center justify-between">
+                    <span className="text-amber-100 text-sm font-medium">
+                        ⚠️ Backend server not connected. Some features may be unavailable.
+                    </span>
+                    <button
+                        onClick={handleRetryConnection}
+                        className="px-3 py-1 bg-amber-600 text-white text-xs rounded hover:bg-amber-500 transition-colors"
+                    >
+                        Retry Connection
+                    </button>
                 </div>
-            </div>
-        );
-    }
+            )}
+            <DashboardLayout />
+            <Toaster />
+        </>
+    );
 }
 
 function App() {

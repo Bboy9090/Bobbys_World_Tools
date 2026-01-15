@@ -4,12 +4,20 @@
 
 import express from 'express';
 import { execSync, spawn } from 'child_process';
+import { existsSync } from 'fs';
+import { join } from 'path';
+import { commandExistsInPath } from '../../utils/safe-exec.js';
 
 const router = express.Router();
 
 function safeExec(cmd, options = {}) {
   try {
-    return execSync(cmd, { encoding: "utf-8", timeout: 5000, ...options }).trim();
+    return execSync(cmd, { 
+      encoding: "utf-8", 
+      timeout: 5000,
+      windowsHide: true,
+      ...options 
+    }).trim();
   } catch (error) {
     return null;
   }
@@ -18,9 +26,26 @@ function safeExec(cmd, options = {}) {
 function commandExists(cmd) {
   try {
     if (process.platform === 'win32') {
-      execSync(`where ${cmd}`, { stdio: 'ignore', timeout: 2000 });
+      // Check PATH directly without calling where.exe to prevent console windows
+      const pathEnv = process.env.PATH || '';
+      const pathDirs = pathEnv.split(';');
+      const extensions = process.env.PATHEXT ? process.env.PATHEXT.split(';') : ['.exe', '.cmd', '.bat', '.com'];
+      
+      for (const dir of pathDirs) {
+        if (!dir) continue;
+        for (const ext of extensions) {
+          const fullPath = join(dir, cmd + ext);
+          if (existsSync(fullPath)) {
+            return true;
+          }
+        }
+      }
+      return false;
     } else {
-      execSync(`which ${cmd}`, { stdio: 'ignore', timeout: 2000 });
+      // Use commandExistsInPath instead of which to prevent console windows
+      if (!commandExistsInPath(cmd)) {
+        return false;
+      }
     }
     return true;
   } catch {

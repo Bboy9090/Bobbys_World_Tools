@@ -141,7 +141,7 @@ This repository has undergone a **LEGENDARY GOD MODE TRANSFORMATION** - implemen
 - **Full diagnostics endpoint**
 - **Category-based checks**
 - **Health score calculation**
-- **Simulated results** for demo mode
+- **Real device diagnostics** via ADB/Fastboot integration
 
 ---
 

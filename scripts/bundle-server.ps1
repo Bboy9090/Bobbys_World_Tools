@@ -47,6 +47,41 @@ if (-not (Test-Path $ServerDir)) {
 # Copy entire server directory to target
 Copy-Item -Recurse -Force $ServerDir $TargetServerDir -ErrorAction Stop
 
+# Copy core directory (required by server imports)
+$CoreDir = Join-Path $RootDir "core"
+$TargetCoreDir = Join-Path $ResourcesDir "core"
+if (Test-Path $CoreDir) {
+    Write-Host "Copying core library to $TargetCoreDir..." -ForegroundColor Cyan
+    if (Test-Path $TargetCoreDir) {
+        Remove-Item -Recurse -Force $TargetCoreDir
+    }
+    Copy-Item -Recurse -Force $CoreDir $TargetCoreDir -ErrorAction Stop
+    Write-Host "Core library copied successfully" -ForegroundColor Green
+} else {
+    Write-Host "Warning: Core directory not found at $CoreDir" -ForegroundColor Yellow
+}
+
+# Copy runtime directory (required by catalog API)
+$RuntimeDir = Join-Path $RootDir "runtime"
+$TargetRuntimeDir = Join-Path $ResourcesDir "runtime"
+if (Test-Path $RuntimeDir) {
+    Write-Host "Copying runtime directory to $TargetRuntimeDir..." -ForegroundColor Cyan
+    if (Test-Path $TargetRuntimeDir) {
+        Remove-Item -Recurse -Force $TargetRuntimeDir
+    }
+    Copy-Item -Recurse -Force $RuntimeDir $TargetRuntimeDir -ErrorAction Stop
+    Write-Host "Runtime directory copied successfully" -ForegroundColor Green
+} else {
+    Write-Host "Warning: Runtime directory not found at $RuntimeDir" -ForegroundColor Yellow
+}
+
+# Copy package.json to resources root (needed by ready.js)
+$PackageJson = Join-Path $RootDir "package.json"
+if (Test-Path $PackageJson) {
+    Copy-Item -Force $PackageJson (Join-Path $ResourcesDir "package.json")
+    Write-Host "Copied package.json to resources" -ForegroundColor Green
+}
+
 # Verify copy succeeded
 if (-not (Test-Path $TargetServerDir)) {
     throw "Failed to copy server directory to $TargetServerDir"

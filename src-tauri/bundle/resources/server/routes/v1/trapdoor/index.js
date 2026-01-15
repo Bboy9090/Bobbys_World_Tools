@@ -9,8 +9,13 @@
 
 import express from 'express';
 import unlockRouter from './unlock.js';
+import flashRouter from './flash.js';
+import iosRouter from './ios.js';
+import rootRouter from './root.js';
+import bypassRouter from './bypass.js';
 import workflowsRouter from './workflows.js';
 import logsRouter from './logs.js';
+import toolsRouter from './tools.js';
 
 const router = express.Router({ mergeParams: true });
 
@@ -113,6 +118,18 @@ router.get('/', (req, res) => {
           'Analytics dashboard',
           'Export capabilities'
         ]
+      },
+      tools: {
+        name: 'The Tool Arsenal',
+        description: 'Tool inventory and hash verification',
+        endpoint: '/api/v1/trapdoor/tools',
+        features: [
+          'Tool inventory management',
+          'SHA256 hash verification',
+          'Tool execution with verification',
+          'Hash mismatch detection',
+          'Tool status monitoring'
+        ]
       }
     },
     security: {
@@ -145,7 +162,8 @@ router.get('/status', (req, res) => {
       root: { available: true, requiresAuth: true },
       bypass: { available: true, requiresAuth: true },
       workflows: { available: true, requiresAuth: true },
-      logs: { available: true, requiresAuth: true }
+      logs: { available: true, requiresAuth: true },
+      tools: { available: true, requiresAuth: true }
     },
     timestamp: new Date().toISOString()
   });
@@ -153,8 +171,13 @@ router.get('/status', (req, res) => {
 
 // Mount Secret Room routers
 router.use('/unlock', unlockRouter);
+router.use('/flash', flashRouter);
+router.use('/ios', iosRouter);
+router.use('/root', rootRouter);
+router.use('/bypass', bypassRouter);
 router.use('/workflows', workflowsRouter);
 router.use('/logs', logsRouter);
+router.use('/tools', toolsRouter);
 
 export default router;
 

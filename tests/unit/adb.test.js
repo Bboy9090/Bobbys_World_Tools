@@ -31,7 +31,7 @@ describe('ADB Library', () => {
       
       expect(result.success).toBe(true);
       expect(result.version).toBe(mockStdout);
-      expect(mockExecAsync).toHaveBeenCalledWith('adb version');
+      expect(mockExecAsync).toHaveBeenCalledWith('adb version', expect.objectContaining({ windowsHide: true }));
     });
 
     it('should return error when ADB is not found', async () => {

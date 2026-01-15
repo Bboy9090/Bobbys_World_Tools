@@ -7,6 +7,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { getValidationResults } from '../../utils/startup-validation.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -47,12 +48,12 @@ try {
  * Feature flags based on environment and tool availability
  */
 function getFeatureFlags() {
-  const demoMode = process.env.DEMO_MODE === '1';
+  // Production mode: Demo mode disabled
   const allowBootloaderUnlock = process.env.ALLOW_BOOTLOADER_UNLOCK === '1';
   const allowFirmwareDownload = process.env.ALLOW_FIRMWARE_DOWNLOAD === '1';
   
   return {
-    demoMode,
+    demoMode: false, // Always false in production
     trapdoorEnabled: true, // Always enabled (gated by auth)
     iosEnabled: true, // iOS tooling available if libimobiledevice present
     androidEnabled: true, // Android tooling available if adb/fastboot present
@@ -66,7 +67,8 @@ function getFeatureFlags() {
 
 export function readyHandler(req, res) {
   const featureFlags = getFeatureFlags();
-  
+  const validationResults = getValidationResults();
+
   const response = {
     serverVersion,
     apiVersion: API_VERSION,
@@ -74,9 +76,15 @@ export function readyHandler(req, res) {
     featureFlags,
     requiredFrontendMinVersion: FRONTEND_MIN_VERSION,
     compatibleFrontendRange: `>=${FRONTEND_MIN_VERSION}`, // Semver range
+    startupValidation: {
+      performed: validationResults.performed,
+      status: validationResults.overallStatus,
+      criticalFailures: validationResults.criticalFailures?.length || 0,
+      timestamp: validationResults.timestamp
+    },
     timestamp: new Date().toISOString()
   };
-  
+
   res.sendEnvelope(response);
 }
 

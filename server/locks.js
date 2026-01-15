@@ -1,9 +1,11 @@
 /**
  * Device Lock Manager
- * 
- * Atomic locking with mutex guarantees.
+ *
+ * Atomic locking with mutex guarantees and resource limit integration.
  * No race conditions. No silent failures. No excuses.
  */
+
+import { acquireOperationSlot, releaseOperationSlot } from './utils/resource-limits.js';
 
 const deviceLocks = new Map();
 const pendingLocks = new Map();
@@ -18,7 +20,7 @@ export const LOCK_ACQUIRE_TIMEOUT = 10000; // 10 seconds max wait
  * @param {Object} options - Lock options
  * @returns {{acquired: boolean, lockId?: string, reason?: string, lockedBy?: string, lockedAt?: number}}
  */
-export function acquireDeviceLock(deviceSerial, operation, options = {}) {
+export async function acquireDeviceLock(deviceSerial, operation, options = {}) {
   if (!deviceSerial || typeof deviceSerial !== 'string') {
     return { acquired: false, reason: 'INVALID_SERIAL' };
   }
@@ -27,18 +29,29 @@ export function acquireDeviceLock(deviceSerial, operation, options = {}) {
     return { acquired: false, reason: 'INVALID_OPERATION' };
   }
 
+  // Check resource limits before acquiring device lock
+  try {
+    const resourceCheck = await acquireOperationSlot(`${deviceSerial}-${operation}`, 'device');
+    if (!resourceCheck) {
+      return { acquired: false, reason: 'RESOURCE_LIMIT_EXCEEDED' };
+    }
+  } catch (error) {
+    return { acquired: false, reason: 'RESOURCE_LIMIT_EXCEEDED', details: error.message };
+  }
+
   const now = Date.now();
   const existingLock = deviceLocks.get(deviceSerial);
-  
+
   // Check existing lock
   if (existingLock) {
     const age = now - existingLock.lockedAt;
-    
+
     // Expired lock - clean up
     if (age > LOCK_TIMEOUT) {
       deviceLocks.delete(deviceSerial);
     } else {
-      // Active lock - deny
+      // Active lock - deny - but we already acquired resource slot, release it
+      releaseOperationSlot(`${deviceSerial}-${operation}`);
       return {
         acquired: false,
         reason: 'DEVICE_LOCKED',
@@ -60,13 +73,14 @@ export function acquireDeviceLock(deviceSerial, operation, options = {}) {
     operation,
     lockedAt: now,
     expiresAt: now + LOCK_TIMEOUT,
-    metadata: options.metadata || {}
+    metadata: options.metadata || {},
+    resourceSlot: `${deviceSerial}-${operation}`
   };
 
   deviceLocks.set(deviceSerial, lock);
 
-  return { 
-    acquired: true, 
+  return {
+    acquired: true,
     lockId,
     expiresAt: lock.expiresAt
   };
@@ -84,7 +98,7 @@ export async function acquireDeviceLockWithWait(deviceSerial, operation, timeout
   const pollInterval = 100;
 
   while (Date.now() - startTime < timeout) {
-    const result = acquireDeviceLock(deviceSerial, operation);
+    const result = await acquireDeviceLock(deviceSerial, operation);
     if (result.acquired) {
       return result;
     }
@@ -108,18 +122,23 @@ export async function acquireDeviceLockWithWait(deviceSerial, operation, timeout
  */
 export function releaseDeviceLock(deviceSerial, lockId = null) {
   const lock = deviceLocks.get(deviceSerial);
-  
+
   if (!lock) {
     return { released: true, reason: 'NO_LOCK_EXISTS' };
   }
 
   // If lockId provided, validate it matches
   if (lockId && lock.lockId !== lockId) {
-    return { 
-      released: false, 
+    return {
+      released: false,
       reason: 'LOCK_ID_MISMATCH',
       currentLockId: lock.lockId
     };
+  }
+
+  // Release resource slot if it was acquired
+  if (lock.resourceSlot) {
+    releaseOperationSlot(lock.resourceSlot);
   }
 
   deviceLocks.delete(deviceSerial);
@@ -236,3 +255,81 @@ export function getActiveLockCount() {
   return getAllActiveLocks().length;
 }
 
+/**
+ * Express middleware factory for requiring device locks on destructive operations
+ * @param {Object} options - Middleware options
+ * @param {string} options.operationPrefix - Prefix for operation name (e.g., 'fastboot', 'flash')
+ * @returns {Function} Express middleware function
+ */
+export function createRequireDeviceLockMiddleware(options = {}) {
+  const { operationPrefix = 'api' } = options;
+  
+  return async function requireDeviceLock(req, res, next) {
+    const deviceSerial = req.body?.serial || req.body?.deviceSerial || req.params?.serial;
+    
+    if (!deviceSerial) {
+      // Operations that don't need a device lock can proceed
+      return next();
+    }
+
+    try {
+      // Build operation name: strip common API prefixes, then apply operationPrefix
+      const cleanPath = req.path
+        .replace(/^\/api\/v1\//, '')  // Strip /api/v1/
+        .replace(/^\/api\//, '')       // Strip /api/
+        .replace(/^\/v1\//, '')        // Strip /v1/
+        .replace(/^\//, '')            // Strip leading slash
+        .replace(/\//g, '_');          // Replace remaining slashes with underscores
+      const operation = `${operationPrefix}_${cleanPath}`;
+      const lockResult = await acquireDeviceLock(deviceSerial, operation);
+
+      if (!lockResult.acquired) {
+        // Use the envelope middleware's sendDeviceLocked helper if available,
+        // otherwise fall back to properly-enveloped manual response
+        if (typeof res.sendDeviceLocked === 'function') {
+          return res.sendDeviceLocked(
+            lockResult.reason || 'Device is locked by another operation',
+            {
+              lockedBy: lockResult.lockedBy,
+              retryAfter: Math.floor(LOCK_TIMEOUT / 1000)
+            }
+          );
+        }
+        
+        // Fallback with proper meta field for API consistency
+        return res.status(423).json({
+          ok: false,
+          error: {
+            code: 'DEVICE_LOCKED',
+            message: lockResult.reason || 'Device is locked by another operation',
+            details: {
+              lockedBy: lockResult.lockedBy,
+              retryAfter: Math.floor(LOCK_TIMEOUT / 1000)
+            }
+          },
+          meta: {
+            ts: new Date().toISOString(),
+            correlationId: req.correlationId || req.headers['x-correlation-id'] || `${Date.now()}-lock`,
+            apiVersion: 'v1'
+          }
+        });
+      }
+
+      // Store lockId for cleanup
+      req.deviceLockId = lockResult.lockId;
+      req.deviceSerial = deviceSerial;
+
+      // Release lock when response finishes (success or error)
+      const originalEnd = res.end;
+      res.end = function(...args) {
+        releaseDeviceLock(deviceSerial, lockResult.lockId);
+        originalEnd.apply(this, args);
+      };
+
+      next();
+    } catch (error) {
+      console.error('[requireDeviceLock] Error acquiring lock:', error);
+      next(error);
+    }
+  };
+}

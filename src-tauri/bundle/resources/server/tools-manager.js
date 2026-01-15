@@ -7,11 +7,12 @@
  * 3. Downloadable/installable on demand
  */
 
-import { execSync } from 'child_process';
+import { execSync, spawnSync } from 'child_process';
 import { existsSync, statSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import os from 'os';
+import { commandExistsInPath as checkCommandInPath } from './utils/safe-exec.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -136,18 +137,10 @@ function toolExists(path) {
 
 /**
  * Check if a command exists in PATH
+ * Uses the safe helper from utils/safe-exec.js to avoid console windows
  */
 function commandExistsInPath(command) {
-  try {
-    if (IS_WINDOWS) {
-      execSync(`where ${command}`, { stdio: 'ignore', timeout: 2000 });
-    } else {
-      execSync(`command -v ${command}`, { stdio: 'ignore', timeout: 2000 });
-    }
-    return true;
-  } catch {
-    return false;
-  }
+  return checkCommandInPath(command);
 }
 
 /**
@@ -210,7 +203,12 @@ export function getToolInfo(toolName) {
       const fullCommand = path.includes('/') || path.includes('\\') 
         ? `"${path}" ${tool.versionCommand}` 
         : `${path} ${tool.versionCommand}`;
-      version = execSync(fullCommand, { encoding: 'utf-8', timeout: 5000 }).trim();
+      version = execSync(fullCommand, { 
+        encoding: 'utf-8', 
+        timeout: 5000,
+        windowsHide: true,
+        stdio: ['ignore', 'pipe', 'pipe']
+      }).trim();
     } catch {
       // Version check failed, ignore
     }
@@ -260,6 +258,8 @@ export function executeTool(toolName, args = [], options = {}) {
     encoding: 'utf-8',
     timeout: 300000, // 5 minutes default
     maxBuffer: 50 * 1024 * 1024, // 50MB
+    windowsHide: true,
+    stdio: ['ignore', 'pipe', 'pipe'],
     ...options
   };
   

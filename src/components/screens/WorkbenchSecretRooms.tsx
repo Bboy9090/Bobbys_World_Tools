@@ -8,7 +8,17 @@ import React, { useState, useEffect } from 'react';
 import { TrapdoorEntryGate } from '../trapdoor/TrapdoorEntryGate';
 import { TrapdoorRoomNavigation, type SecretRoomId } from '../trapdoor/TrapdoorRoomNavigation';
 import { TrapdoorUnlockChamber } from '../trapdoor/TrapdoorUnlockChamber';
+import { TrapdoorFlashForge } from '../trapdoor/TrapdoorFlashForge';
+import { TrapdoorJailbreakSanctum } from '../trapdoor/TrapdoorJailbreakSanctum';
+import { TrapdoorRootVault } from '../trapdoor/TrapdoorRootVault';
+import { TrapdoorBypassLaboratory } from '../trapdoor/TrapdoorBypassLaboratory';
+import { TrapdoorWorkflowEngine } from '../trapdoor/TrapdoorWorkflowEngine';
 import { TrapdoorShadowArchive } from '../trapdoor/TrapdoorShadowArchive';
+import { TrapdoorToolArsenal } from '../trapdoor/TrapdoorToolArsenal';
+import { TrapdoorSonicCodex } from '../trapdoor/TrapdoorSonicCodex';
+import { TrapdoorGhostCodex } from '../trapdoor/TrapdoorGhostCodex';
+import { TrapdoorPandoraCodex } from '../trapdoor/TrapdoorPandoraCodex';
+import { RoomTransition } from '../trapdoor/RoomTransition';
 import { useApp } from '@/lib/app-context';
 
 interface TrapdoorDevice {
@@ -23,6 +33,8 @@ export function WorkbenchSecretRooms() {
   const [passcode, setPasscode] = useState<string | null>(null);
   const [activeRoom, setActiveRoom] = useState<SecretRoomId | null>(null);
   const [devices, setDevices] = useState<TrapdoorDevice[]>([]);
+  const [showTransition, setShowTransition] = useState(false);
+  const [transitioningTo, setTransitioningTo] = useState<SecretRoomId | null>(null);
 
   // Fetch devices when unlocked
   useEffect(() => {
@@ -69,6 +81,19 @@ export function WorkbenchSecretRooms() {
     setActiveRoom('unlock-chamber');
   };
 
+  const handleRoomChange = (roomId: SecretRoomId) => {
+    setTransitioningTo(roomId);
+    setShowTransition(true);
+  };
+
+  const handleTransitionComplete = () => {
+    if (transitioningTo) {
+      setActiveRoom(transitioningTo);
+      setTransitioningTo(null);
+    }
+    setShowTransition(false);
+  };
+
   const handleCancel = () => {
     setPasscode(null);
     setActiveRoom(null);
@@ -79,12 +104,35 @@ export function WorkbenchSecretRooms() {
     return <TrapdoorEntryGate onUnlock={handleUnlock} onCancel={handleCancel} />;
   }
 
+  // Show transition if needed
+  if (showTransition && transitioningTo) {
+    const roomNames: Record<SecretRoomId, string> = {
+      'unlock-chamber': 'Unlock Chamber',
+      'flash-forge': 'Flash Forge',
+      'jailbreak-sanctum': 'Jailbreak Sanctum',
+      'root-vault': 'Root Vault',
+      'bypass-laboratory': 'Bypass Laboratory',
+      'workflow-engine': 'Workflow Engine',
+      'shadow-archive': 'Shadow Archive',
+      'sonic-codex': 'Sonic Codex',
+      'ghost-codex': 'Ghost Codex',
+      'pandora-codex': 'Pandora Codex',
+    };
+    
+    return (
+      <RoomTransition
+        roomName={roomNames[transitioningTo] || 'Secret Room'}
+        onComplete={handleTransitionComplete}
+      />
+    );
+  }
+
   // Show rooms interface
   return (
     <div className="h-full flex bg-basement-concrete">
       <TrapdoorRoomNavigation
         activeRoom={activeRoom || undefined}
-        onSelectRoom={setActiveRoom}
+        onSelectRoom={handleRoomChange}
       />
       
       <div className="flex-1 overflow-hidden">
@@ -94,15 +142,44 @@ export function WorkbenchSecretRooms() {
             devices={devices}
           />
         )}
+        {activeRoom === 'flash-forge' && (
+          <TrapdoorFlashForge
+            passcode={passcode}
+            devices={devices}
+          />
+        )}
+        {activeRoom === 'jailbreak-sanctum' && (
+          <TrapdoorJailbreakSanctum passcode={passcode} />
+        )}
+        {activeRoom === 'root-vault' && (
+          <TrapdoorRootVault
+            passcode={passcode}
+            devices={devices}
+          />
+        )}
+        {activeRoom === 'bypass-laboratory' && (
+          <TrapdoorBypassLaboratory
+            passcode={passcode}
+            devices={devices}
+          />
+        )}
+        {activeRoom === 'workflow-engine' && (
+          <TrapdoorWorkflowEngine passcode={passcode} />
+        )}
         {activeRoom === 'shadow-archive' && (
           <TrapdoorShadowArchive passcode={passcode} />
         )}
-        {activeRoom && activeRoom !== 'unlock-chamber' && activeRoom !== 'shadow-archive' && (
-          <div className="h-full flex items-center justify-center text-ink-muted">
-            <p className="text-sm font-mono">
-              {activeRoom} — Coming soon
-            </p>
-          </div>
+        {activeRoom === 'tool-arsenal' && (
+          <TrapdoorToolArsenal passcode={passcode} />
+        )}
+        {activeRoom === 'sonic-codex' && (
+          <TrapdoorSonicCodex passcode={passcode} />
+        )}
+        {activeRoom === 'ghost-codex' && (
+          <TrapdoorGhostCodex passcode={passcode} />
+        )}
+        {activeRoom === 'pandora-codex' && (
+          <TrapdoorPandoraCodex passcode={passcode} />
         )}
         {!activeRoom && (
           <div className="h-full flex items-center justify-center text-ink-muted">

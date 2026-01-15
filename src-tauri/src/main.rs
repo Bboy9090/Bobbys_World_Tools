@@ -14,6 +14,16 @@ use std::env;
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicU64, Ordering};
 
+mod python_backend;
+mod py_client;
+mod fastapi_backend;
+use python_backend::{launch_python_backend, shutdown_python_backend};
+use py_client::PyWorkerClient;
+use fastapi_backend::{launch_fastapi_backend, shutdown_fastapi_backend};
+
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -236,6 +246,11 @@ fn emit_device_event(app_handle: &AppHandle, event: DeviceHotplugEvent) {
 }
 
 fn run_command_capture_lines(mut cmd: Command) -> Result<Vec<String>, String> {
+    // Hide console window on Windows
+    #[cfg(target_os = "windows")]
+    {
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
     let output = cmd.output().map_err(|e| format!("Failed to spawn: {e}"))?;
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
@@ -252,21 +267,29 @@ fn run_command_capture_lines(mut cmd: Command) -> Result<Vec<String>, String> {
 }
 
 fn fastboot_exists() -> bool {
-    Command::new("fastboot")
-        .arg("--version")
+    let mut cmd = Command::new("fastboot");
+    cmd.arg("--version")
         .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
+        .stderr(Stdio::null());
+    #[cfg(target_os = "windows")]
+    {
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
+    cmd.status()
         .map(|s| s.success())
         .unwrap_or(false)
 }
 
 fn adb_exists() -> bool {
-    Command::new("adb")
-        .arg("version")
+    let mut cmd = Command::new("adb");
+    cmd.arg("version")
         .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
+        .stderr(Stdio::null());
+    #[cfg(target_os = "windows")]
+    {
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
+    cmd.status()
         .map(|s| s.success())
         .unwrap_or(false)
 }
@@ -274,6 +297,10 @@ fn adb_exists() -> bool {
 fn adb_list_serials() -> Vec<String> {
     let mut cmd = Command::new("adb");
     cmd.args(["devices"]);
+    #[cfg(target_os = "windows")]
+    {
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
     let lines = match run_command_capture_lines(cmd) {
         Ok(l) => l,
         Err(_) => return vec![],
@@ -301,6 +328,10 @@ fn adb_list_serials() -> Vec<String> {
 fn fastboot_list_serials() -> Vec<String> {
     let mut cmd = Command::new("fastboot");
     cmd.args(["devices"]);
+    #[cfg(target_os = "windows")]
+    {
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
     let lines = match run_command_capture_lines(cmd) {
         Ok(l) => l,
         Err(_) => return vec![],
@@ -326,6 +357,9 @@ struct AppState {
     flash_history: Mutex<Vec<FlashHistoryEntry>>,
     job_counter: AtomicU64,
     device_monitor_started: Mutex<bool>,
+    py_client: Mutex<Option<PyWorkerClient>>,
+    py_backend_port: Mutex<Option<u16>>,
+    fastapi_backend: Mutex<Option<Child>>,
 }
 
 fn env_var_truthy(name: &str) -> bool {
@@ -336,8 +370,9 @@ fn env_var_truthy(name: &str) -> bool {
 }
 
 fn should_start_node_backend() -> bool {
-    // Production default: AUTO-START backend for complete standalone experience
-    // Set BW_DISABLE_NODE_BACKEND=1 to disable backend (use in-process Tauri only)
+    // ALWAYS AUTO-START backend for complete standalone experience
+    // Backend is required for full functionality
+    // Set BW_DISABLE_NODE_BACKEND=1 to disable (not recommended)
     !env_var_truthy("BW_DISABLE_NODE_BACKEND")
 }
 
@@ -555,6 +590,10 @@ fn flash_start(app_handle: AppHandle, state: tauri::State<'_, AppState>, config:
             push_log("[tauri-fastboot] fastboot -w");
             let mut cmd = Command::new("fastboot");
             cmd.arg("-s").arg(&config.deviceSerial).arg("-w");
+            #[cfg(target_os = "windows")]
+            {
+                cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+            }
             match cmd.output() {
                 Ok(out) => {
                     let combined = format!("{}{}", String::from_utf8_lossy(&out.stdout), String::from_utf8_lossy(&out.stderr));
@@ -603,6 +642,10 @@ fn flash_start(app_handle: AppHandle, state: tauri::State<'_, AppState>, config:
             let mut cmd = Command::new("fastboot");
             cmd.arg("-s").arg(&config.deviceSerial);
             cmd.arg("flash").arg(&p.name).arg(&p.imagePath);
+            #[cfg(target_os = "windows")]
+            {
+                cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+            }
 
             match cmd.output() {
                 Ok(out) => {
@@ -651,6 +694,10 @@ fn flash_start(app_handle: AppHandle, state: tauri::State<'_, AppState>, config:
             push_log("[tauri-fastboot] fastboot reboot");
             let mut cmd = Command::new("fastboot");
             cmd.arg("-s").arg(&config.deviceSerial).arg("reboot");
+            #[cfg(target_os = "windows")]
+            {
+                cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+            }
             let _ = cmd.output().map(|out| {
                 let combined = format!("{}{}", String::from_utf8_lossy(&out.stdout), String::from_utf8_lossy(&out.stderr));
                 for line in combined.lines() {
@@ -941,7 +988,13 @@ fn find_node_executable(app_handle: &AppHandle) -> Option<PathBuf> {
     println!("[Tauri] Bundled Node.js not found, trying system Node.js...");
     
     // Try to find Node.js in system PATH
-    if let Ok(output) = Command::new("node").arg("--version").output() {
+    let mut node_cmd = Command::new("node");
+    node_cmd.arg("--version");
+    #[cfg(target_os = "windows")]
+    {
+        node_cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
+    if let Ok(output) = node_cmd.output() {
         if output.status.success() {
             println!("[Tauri] Found system Node.js in PATH");
             return Some(PathBuf::from("node"));
@@ -1068,12 +1121,20 @@ fn start_backend_server(app_handle: &AppHandle) -> Result<Child, std::io::Error>
     
     let server_path = resource_dir.join("server").join("index.js");
     
-    println!("[Tauri] Server path: {:?}", server_path);
+    // Convert paths to string, stripping Windows long path prefix if present
+    let server_path_str = server_path.to_string_lossy().to_string()
+        .trim_start_matches(r"\\?\")
+        .to_string();
+    let resource_dir_str = resource_dir.to_string_lossy().to_string()
+        .trim_start_matches(r"\\?\")
+        .to_string();
+    
+    println!("[Tauri] Server path: {}", server_path_str);
     
     if !server_path.exists() {
         return Err(std::io::Error::new(
             std::io::ErrorKind::NotFound,
-            format!("Server files not found at {:?}", server_path)
+            format!("Server files not found at {}", server_path_str)
         ));
     }
     
@@ -1085,11 +1146,19 @@ fn start_backend_server(app_handle: &AppHandle) -> Result<Child, std::io::Error>
     std::fs::create_dir_all(&log_dir).ok();
     
     // Start the Node.js server with log directory environment variable
+    // Working directory must be server folder for relative imports to work
+    let server_dir_str = format!("{}/server", resource_dir_str.replace("\\", "/"));
     let mut cmd = Command::new(&node_exe);
-    cmd.arg(&server_path)
-        .current_dir(resource_dir.join("server"))
+    cmd.arg(&server_path_str)
+        .current_dir(&server_dir_str)
         .env("PORT", port.to_string())
         .env("BW_LOG_DIR", log_dir.to_string_lossy().to_string());
+    
+    // Hide console window on Windows
+    #[cfg(target_os = "windows")]
+    {
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
     
     // In production, redirect stdout/stderr to log file
     // In development, inherit for debugging
@@ -1173,6 +1242,9 @@ fn main() {
         flash_history: Mutex::new(vec![]),
         job_counter: AtomicU64::new(0),
         device_monitor_started: Mutex::new(false),
+        py_client: Mutex::new(None),
+        py_backend_port: Mutex::new(None),
+        fastapi_backend: Mutex::new(None),
     };
 
     tauri::Builder::default()
@@ -1183,6 +1255,60 @@ fn main() {
 
             // Start in-process device monitor (Tauri events)
             start_device_monitor_once(&handle, state.clone());
+
+            // Launch Python backend service (legacy)
+            if let Ok(resource_dir) = handle.path().resource_dir() {
+                match launch_python_backend(&resource_dir) {
+                    Ok(port) => {
+                        println!("[Tauri] Python backend launched on port {}", port);
+                        
+                        // Create Python client and verify health
+                        let client = PyWorkerClient::new(port);
+                        let state_for_client = state.clone();
+                        
+                        // Spawn async task to check health
+                        tokio::spawn(async move {
+                            // Wait a moment for Python to start
+                            tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
+                            
+                            match client.health().await {
+                                Ok(health) => {
+                                    println!("[Tauri] Python backend healthy: {} (uptime: {}ms)", 
+                                        health.version, health.uptime_ms);
+                                    
+                                    // Store client and port in state
+                                    if let Ok(mut py_client_guard) = state_for_client.py_client.lock() {
+                                        *py_client_guard = Some(client);
+                                    }
+                                    if let Ok(mut port_guard) = state_for_client.py_backend_port.lock() {
+                                        *port_guard = Some(port);
+                                    }
+                                }
+                                Err(e) => {
+                                    eprintln!("[Tauri] Python backend health check failed: {}", e);
+                                    eprintln!("[Tauri] Python backend may not be fully ready");
+                                }
+                            }
+                        });
+                    }
+                    Err(e) => {
+                        eprintln!("[Tauri] Failed to launch Python backend: {}", e);
+                        eprintln!("[Tauri] Python backend is optional - continuing without it");
+                    }
+                }
+            }
+            
+            // Launch FastAPI backend (Secret Rooms)
+            match launch_fastapi_backend(&handle) {
+                Ok(child) => {
+                    println!("[Tauri] FastAPI backend started successfully");
+                    // Store in state if needed
+                }
+                Err(e) => {
+                    eprintln!("[Tauri] Failed to start FastAPI backend: {}", e);
+                    eprintln!("[Tauri] FastAPI backend is optional - continuing without it");
+                }
+            }
 
             // Start legacy Node backend only when explicitly enabled.
             if should_start_node_backend() {
@@ -1208,8 +1334,17 @@ fn main() {
         })
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { .. } = event {
-                // Clean shutdown: stop backend when the app is actually closing.
+                // Clean shutdown: stop backends when the app is actually closing.
                 stop_backend_server(&window.app_handle());
+                shutdown_python_backend();
+                
+                // Shutdown FastAPI backend
+                let state = window.app_handle().state::<AppState>();
+                let fastapi_child = {
+                    let mut guard = state.fastapi_backend.lock().unwrap();
+                    guard.take()
+                };
+                shutdown_fastapi_backend(fastapi_child);
             }
         })
         .invoke_handler(tauri::generate_handler![

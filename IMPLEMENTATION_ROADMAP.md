@@ -1,422 +1,235 @@
-# 🚀 Bobby's Workshop — Production Implementation Roadmap
+# 🗺️ Secret Rooms Implementation Roadmap
 
-**Goal:** Transform from development setup to production-ready one-click install with embedded backend.
-
----
-
-## Current State Analysis
-
-### ✅ What Already Works
-
-1. **Tauri Integration:**
-   - Tauri initialized and configured
-   - Backend lifecycle management in Rust (`start_backend_server`, `stop_backend_server`)
-   - Frontend builds to `dist/`
-   - Icons configured
-
-2. **Backend:**
-   - Express server in `server/index.js`
-   - Backend attempts to start from resource directory
-   - Port management (currently fixed at 3001)
-
-3. **Build System:**
-   - `npm run build` builds frontend
-   - `npm run tauri:build` builds Tauri app
-   - Platform-specific build targets defined
-
-### ❌ What's Missing
-
-1. **Backend Bundling:**
-   - Still requires Node.js installed separately
-   - Server code not bundled in Tauri resources
-   - `node_modules` not included
-
-2. **Standalone Execution:**
-   - User must install Node.js manually
-   - Backend doesn't auto-start reliably
-   - No health check before frontend connects
-
-3. **Production Polish:**
-   - No installer (.exe/.dmg/.AppImage)
-   - No desktop shortcuts (relies on Tauri bundle)
-   - No structured logging to user directory
-   - No backend status UI indicator
+**Based on**: `SONIC_CODEX_MASTER_PLAN.md`  
+**Current Status**: See `SECRET_ROOMS_IMPLEMENTATION_STATUS.md`
 
 ---
 
-## Implementation Strategy: Two-Phase Approach
+## 🎯 Quick Start Guide
 
-### Phase 1: Quick Win — Bundle Node.js + Server (1-2 days)
+### Phase 1: Get Core Features Working (Week 1-2)
 
-**Objective:** Get it working with minimal changes.
-
-**Steps:**
-
-1. **Update Tauri config to include Node.js:**
-   ```json
-   // src-tauri/tauri.conf.json
-   {
-     "tauri": {
-       "bundle": {
-         "resources": [
-           "nodejs/**/*",
-           "server/**/*"
-         ]
-       }
-     }
-   }
-   ```
-
-2. **Update Rust code to use bundled Node.js:**
-   ```rust
-   // src-tauri/src/main.rs
-   fn find_bundled_node() -> Option<PathBuf> {
-       let resource_dir = app_handle.path_resolver().resource_dir()?;
-       let node_exe = resource_dir.join("nodejs").join("node");
-       // Platform-specific: .exe on Windows, no extension on Unix
-       #[cfg(target_os = "windows")]
-       let node_exe = node_exe.with_extension("exe");
-       if node_exe.exists() {
-           Some(node_exe)
-       } else {
-           None
-       }
-   }
-   ```
-
-3. **Script to bundle Node.js:**
+#### Day 1-2: Sonic Codex Foundation
+1. ✅ **Setup Complete**: FastAPI backend structure exists
+2. 🔄 **Next**: Implement actual Whisper transcription
    ```bash
-   # scripts/bundle-nodejs.sh
-   # Downloads Node.js for current platform and extracts to src-tauri/bundle/resources/nodejs/
+   pip install faster-whisper
    ```
+   - Update `backend/modules/sonic/transcription/whisper_engine.py` with real model loading
+   - Test with sample audio file
 
-4. **Copy server to resources:**
+3. 🔄 **Next**: Create Wizard Flow UI
+   - Build `src/components/trapdoor/sonic/WizardFlow.tsx`
+   - Implement step-by-step flow (Import → Metadata → Enhance → Transcribe → Review → Export)
+
+#### Day 3-4: URL Extraction
+4. 🔄 **Next**: Add yt-dlp integration
    ```bash
-   # scripts/bundle-server.sh
-   cp -r server src-tauri/bundle/resources/
-   cd src-tauri/bundle/resources/server && npm install --production
+   pip install yt-dlp
    ```
+   - Update `backend/modules/sonic/extractor.py` to use yt-dlp
+   - Create `URLPull.tsx` component
 
-**Pros:**
-- ✅ Fast to implement
-- ✅ No code changes needed
-- ✅ Works immediately
+#### Day 5-7: Job Management
+5. 🔄 **Next**: Build Job Library screen
+   - Create `JobLibrary.tsx` with grid/list view
+   - Add search and filter functionality
+   - Connect to `/api/v1/trapdoor/sonic/jobs` endpoint
 
-**Cons:**
-- ❌ Large bundle size (~100MB+ with Node.js)
-- ❌ Still requires Node.js runtime
+6. 🔄 **Next**: Build Job Details screen
+   - Create `JobDetails.tsx` with audio player
+   - Add transcript viewer with click-to-jump
+   - Implement export buttons
 
-### Phase 2: Optimize — Compile Backend to Executable (3-5 days)
+---
 
-**Objective:** Smaller bundle, faster startup.
+### Phase 2: Enhancement & Polish (Week 3-4)
 
-**Steps:**
-
-1. **Use `pkg` to create executable:**
+#### Week 3: Audio Enhancement
+7. 🔄 **Next**: Complete noise reduction
    ```bash
-   npm install -g pkg
-   pkg server/index.js --targets node18-win-x64,node18-macos-x64,node18-linux-x64 --output-path dist/backend
+   pip install noisereduce librosa
+   ```
+   - Update `preprocess.py` with full noise reduction
+   - Add RMS normalization
+
+8. 🔄 **Next**: Add Wavesurfer.js waveform
+   ```bash
+   npm install wavesurfer.js
+   ```
+   - Create `Waveform.tsx` component
+   - Integrate with audio player
+
+9. 🔄 **Next**: Add spectrogram visualization
+   - Create `Spectrogram.tsx` component
+   - Use Canvas or WebGL for rendering
+
+#### Week 4: Advanced Features
+10. 🔄 **Next**: Speaker diarization
+    ```bash
+    pip install pyannote.audio
+    ```
+    - Configure HuggingFace token
+    - Update `diarization.py` with real implementation
+
+11. 🔄 **Next**: WebSocket heartbeat
+    - Add auto-reconnect logic
+    - Implement resume in-flight jobs
+
+---
+
+### Phase 3: Ghost Codex Completion (Week 5)
+
+12. 🔄 **Next**: Complete canary tokens
+    - Implement HTML beacon in `canary.py`
+    - Create `CanaryDashboard.tsx` component
+
+13. 🔄 **Next**: Folder sweep
+    - Add recursive folder processing to `shredder.py`
+
+---
+
+### Phase 4: Pandora Codex Chain-Breaker (Week 6)
+
+14. 🔄 **Next**: Apple device detection
+    - Add VID/PID constants to `detector.py`
+    - Implement DFU mode identification
+
+15. 🔄 **Next**: Chain-Breaker UI
+    - Create all UI components (DevicePulse, ExploitSelector, ConsoleLog, SafetyInterlock)
+    - Build `ChainBreakerDashboard.tsx`
+    - Apply Night-Ops theme
+
+---
+
+## 🚀 Immediate Action Items
+
+### This Week
+
+1. **Install missing Python dependencies**:
+   ```bash
+   pip install faster-whisper yt-dlp noisereduce librosa webrtcvad
    ```
 
-2. **Update Rust to use executable:**
-   ```rust
-   let backend_exe = resource_dir.join("backend");
-   #[cfg(target_os = "windows")]
-   let backend_exe = backend_exe.with_extension("exe");
-   
-   Command::new(&backend_exe)
-       .arg("--port")
-       .arg("0")
-       .arg("--host")
-       .arg("127.0.0.1")
-       .spawn()?;
-   ```
+2. **Implement Whisper transcription**:
+   - Edit `backend/modules/sonic/transcription/whisper_engine.py`
+   - Load Whisper-Large-v3 model
+   - Test with sample audio
 
-3. **Backend accepts CLI args:**
-   ```javascript
-   // server/index.js
-   const args = process.argv.slice(2);
-   const portArg = args.indexOf('--port');
-   const port = portArg !== -1 ? parseInt(args[portArg + 1]) || 3001 : 3001;
-   ```
+3. **Create Wizard Flow component**:
+   - Start with `src/components/trapdoor/sonic/WizardFlow.tsx`
+   - Use Zustand for state management
+   - Implement 6-step flow
 
-**Pros:**
-- ✅ Smaller bundle (~30-50MB)
-- ✅ Faster startup
-- ✅ Single executable
-
-**Cons:**
-- ❌ More complex build process
-- ❌ Native modules may not bundle correctly
+4. **Add URL extraction**:
+   - Update `extractor.py` to use yt-dlp
+   - Create `URLPull.tsx` component
 
 ---
 
-## Recommended Implementation: Phase 1 First
+## 📦 Dependencies Checklist
 
-**Why:** Get it working quickly, optimize later.
+### Python (requirements.txt)
+- [x] fastapi, uvicorn
+- [x] pyaudio, soundfile, numpy, scipy
+- [x] openai-whisper
+- [x] Pillow
+- [x] pyusb
+- [ ] faster-whisper ⚠️ **NEEDS INSTALL**
+- [ ] yt-dlp ⚠️ **NEEDS INSTALL**
+- [ ] noisereduce ⚠️ **NEEDS INSTALL**
+- [ ] librosa ⚠️ **NEEDS INSTALL**
+- [ ] webrtcvad ⚠️ **NEEDS INSTALL**
+- [ ] pyannote.audio (optional, requires HuggingFace token)
 
-### Step-by-Step: Phase 1 Implementation
+### Node.js (package.json)
+- [ ] wavesurfer.js ⚠️ **NEEDS INSTALL** (for waveform visualization)
 
-#### Step 1: Create Bundle Scripts
-
-**`scripts/bundle-nodejs.js`** (Node.js script to download and extract Node.js)
-
-**`scripts/bundle-server.sh`** (Bash script to copy server code)
-
-**`scripts/prepare-bundle.sh`** (Master script that runs both)
-
-#### Step 2: Update Build Process
-
-```json
-// package.json
-{
-  "scripts": {
-    "bundle:nodejs": "node scripts/bundle-nodejs.js",
-    "bundle:server": "bash scripts/bundle-server.sh",
-    "prepare:bundle": "npm run bundle:nodejs && npm run bundle:server",
-    "tauri:build": "npm run build && npm run prepare:bundle && cargo tauri build"
-  }
-}
-```
-
-#### Step 3: Update Rust Code
-
-Update `start_backend_server` to:
-1. Try bundled Node.js first
-2. Fall back to system Node.js (for development)
-3. Use bundled server path
-
-#### Step 4: Test on All Platforms
-
-- Windows: `.exe` installer
-- macOS: `.app` + `.dmg`
-- Linux: `.AppImage`
+### System Dependencies
+- [ ] FFmpeg (for audio/video processing)
+- [ ] PortAudio (for PyAudio)
+- [ ] LibUSB (for PyUSB)
 
 ---
 
-## Phase 3: Production Polish (2-3 days)
+## 🧪 Testing Strategy
 
-### 1. Installer Configuration
+### Unit Tests
+- [ ] Audio enhancement functions
+- [ ] File naming logic
+- [ ] Manifest generation
 
-**Tauri already handles this**, but verify:
-- ✅ Desktop icons created
-- ✅ Start menu entries (Windows/macOS)
-- ✅ File associations (if needed)
+### Integration Tests
+- [ ] Full pipeline: Upload → Enhance → Transcribe → Export
+- [ ] WebSocket reconnection
+- [ ] Job state transitions
 
-### 2. Logging Infrastructure
-
-**Add structured logging:**
-
-```rust
-// src-tauri/src/main.rs
-use std::path::PathBuf;
-
-fn get_log_dir() -> PathBuf {
-    #[cfg(target_os = "windows")]
-    {
-        dirs::data_local_dir()
-            .unwrap()
-            .join("BobbysWorkshop")
-            .join("logs")
-    }
-    #[cfg(target_os = "macos")]
-    {
-        dirs::home_dir()
-            .unwrap()
-            .join("Library")
-            .join("Logs")
-            .join("BobbysWorkshop")
-    }
-    #[cfg(target_os = "linux")]
-    {
-        dirs::data_local_dir()
-            .unwrap()
-            .join("bobbys-workshop")
-            .join("logs")
-    }
-}
-```
-
-**Backend logging:**
-```javascript
-// server/index.js
-import fs from 'fs';
-import path from 'path';
-
-const logDir = process.env.BW_LOG_DIR || getLogDir(); // From Tauri
-const logFile = path.join(logDir, 'backend.log');
-
-const logger = {
-  info: (msg) => {
-    const line = `[${new Date().toISOString()}] INFO: ${msg}\n`;
-    fs.appendFileSync(logFile, line);
-    console.log(line.trim());
-  },
-  error: (msg) => {
-    const line = `[${new Date().toISOString()}] ERROR: ${msg}\n`;
-    fs.appendFileSync(logFile, line);
-    console.error(line.trim());
-  }
-};
-```
-
-### 3. Backend Status UI
-
-**Frontend component:**
-
-```typescript
-// src/components/BackendStatus.tsx
-import { useEffect, useState } from 'react';
-import { invoke } from '@tauri-apps/api/core';
-
-export function BackendStatus() {
-  const [status, setStatus] = useState<'connected' | 'disconnected' | 'checking'>('checking');
-  const [port, setPort] = useState<number | null>(null);
-
-  useEffect(() => {
-    const checkHealth = async () => {
-      try {
-        const backendPort = await invoke<number>('get_backend_port');
-        setPort(backendPort);
-        
-        const response = await fetch(`http://127.0.0.1:${backendPort}/api/health`);
-        setStatus(response.ok ? 'connected' : 'disconnected');
-      } catch {
-        setStatus('disconnected');
-      }
-    };
-
-    checkHealth();
-    const interval = setInterval(checkHealth, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
-  return (
-    <div className="flex items-center gap-2">
-      <div className={`w-2 h-2 rounded-full ${status === 'connected' ? 'bg-green-500' : 'bg-red-500'}`} />
-      <span className="text-sm">
-        Backend: {status === 'connected' ? `Connected (${port})` : 'Disconnected'}
-      </span>
-    </div>
-  );
-}
-```
-
-### 4. CI/CD Pipeline
-
-**`.github/workflows/build-release.yml`:**
-
-```yaml
-name: Build and Release
-
-on:
-  push:
-    tags:
-      - 'v*'
-
-jobs:
-  build:
-    strategy:
-      matrix:
-        include:
-          - platform: 'windows-latest'
-            target: 'x86_64-pc-windows-msvc'
-          - platform: 'macos-latest'
-            target: 'x86_64-apple-darwin'
-          - platform: 'ubuntu-latest'
-            target: 'x86_64-unknown-linux-gnu'
-
-    runs-on: ${{ matrix.platform }}
-    
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-      
-      - name: Install dependencies
-        run: |
-          npm ci
-          cd server && npm ci
-      
-      - name: Bundle Node.js and server
-        run: npm run prepare:bundle
-      
-      - name: Build frontend
-        run: npm run build
-      
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.target }}
-      
-      - name: Build Tauri
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          projectPath: .
-          tagName: ${{ github.ref_name }}
-          releaseName: 'Bobby\'s Workshop ${{ github.ref_name }}'
-          releaseBody: 'See the assets to download and install this version.'
-          releaseDraft: true
-          releasePrerelease: false
-          args: --target ${{ matrix.target }}
-```
+### E2E Tests
+- [ ] Complete wizard flow
+- [ ] Job library navigation
+- [ ] Export package download
 
 ---
 
-## Final Validation Checklist
+## 📝 Documentation Tasks
 
-### Fresh Machine Test (Each Platform)
-
-- [ ] Download installer from GitHub Releases
-- [ ] Run installer (one-click)
-- [ ] Verify desktop icon created
-- [ ] Double-click app icon
-- [ ] Verify app opens
-- [ ] Verify backend starts (check logs)
-- [ ] Verify frontend connects (no connection errors)
-- [ ] Test basic functionality (device scan, diagnostics)
-- [ ] Close app
-- [ ] Verify backend stops (no orphaned processes)
-- [ ] Reopen app
-- [ ] Verify clean restart (backend starts again)
-
-### Production Readiness
-
-- [ ] No console windows flashing
-- [ ] No Node.js installation required
-- [ ] Works offline (local services only)
-- [ ] Logs accessible in user directory
-- [ ] Backend status visible in UI
-- [ ] Professional installer experience
-- [ ] All features functional
+- [ ] API documentation (OpenAPI/Swagger)
+- [ ] User guide for each Secret Room
+- [ ] Developer setup guide
+- [ ] Troubleshooting guide
+- [ ] Performance optimization notes
 
 ---
 
-## Timeline Estimate
+## 🎨 UI/UX Polish Tasks
 
-- **Phase 1 (Bundle Node.js):** 1-2 days
-- **Phase 2 (Compile to executable):** 3-5 days (future)
-- **Phase 3 (Polish):** 2-3 days
-- **Testing:** 1-2 days
-
-**Total for Phase 1 + 3:** 4-7 days to production-ready
+- [ ] Loading states for all async operations
+- [ ] Error handling and user-friendly messages
+- [ ] Responsive design for mobile
+- [ ] Dark mode consistency
+- [ ] Animation transitions
+- [ ] Accessibility (ARIA labels, keyboard navigation)
 
 ---
 
-## Success Criteria
+## 🔒 Security Tasks
 
-✅ User downloads installer  
-✅ Clicks Install  
-✅ Gets desktop icon  
-✅ Double-click opens app  
-✅ Backend starts automatically  
-✅ Frontend connects to backend  
-✅ No terminal, no npm, no node install  
-✅ Works offline  
-✅ Logs + health check built in  
+- [ ] Phoenix Key authentication implementation
+- [ ] MAC address lock for Pandora Codex
+- [ ] Rate limiting on API endpoints
+- [ ] File upload size limits
+- [ ] Input sanitization
 
-**When all checked → Production ready** 🎉
+---
 
+## 📊 Progress Tracking
+
+**Use this checklist to track weekly progress:**
+
+### Week 1 Goals
+- [ ] Whisper transcription working
+- [ ] Wizard Flow UI complete
+- [ ] URL extraction functional
+- [ ] Job Library screen done
+
+### Week 2 Goals
+- [ ] Job Details screen complete
+- [ ] Waveform visualization working
+- [ ] Noise reduction enhanced
+- [ ] WebSocket heartbeat stable
+
+### Week 3 Goals
+- [ ] Speaker diarization working
+- [ ] Spectrogram visualization
+- [ ] Canary tokens complete
+- [ ] Ghost Codex polished
+
+### Week 4 Goals
+- [ ] Chain-Breaker UI complete
+- [ ] DFU detection working
+- [ ] All tests passing
+- [ ] Documentation updated
+
+---
+
+**Remember**: Start with core functionality, then add polish. Don't try to implement everything at once!

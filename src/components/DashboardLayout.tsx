@@ -29,6 +29,7 @@ import {
     Workflow,
     Lock,
     Settings,
+    FileText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -41,6 +42,8 @@ import { WorkbenchSecurity } from './screens/WorkbenchSecurity';
 import { WorkbenchMonitoring } from './screens/WorkbenchMonitoring';
 import { WorkbenchFirmware } from './screens/WorkbenchFirmware';
 import { WorkbenchWorkflows } from './screens/WorkbenchWorkflows';
+import { WorkbenchCases } from './screens/WorkbenchCases';
+import { useBackendHealth } from '@/hooks/use-backend-health';
 import { WorkbenchSecretRooms } from './screens/WorkbenchSecretRooms';
 import { WorkbenchSettings } from './screens/WorkbenchSettings';
 
@@ -49,10 +52,12 @@ export function DashboardLayout() {
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const { backendAvailable } = useApp();
     const { showGreeting, dismiss } = useBugsGreeting({ enabled: true });
+    const backendHealth = useBackendHealth();
 
     const navItems = [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { id: 'devices', label: 'Devices', icon: Smartphone },
+        { id: 'cases', label: 'Cases', icon: FileText },
         { id: 'flashing', label: 'Flashing', icon: Flashlight },
         { id: 'ios', label: 'iOS', icon: Apple },
         { id: 'security', label: 'Security', icon: Shield },
@@ -95,6 +100,16 @@ export function DashboardLayout() {
                 
                 <div className="flex items-center gap-3">
                     <BackendStatusIndicator />
+                    {backendHealth.status === 'booting' && (
+                        <div className="text-xs font-mono text-ink-muted animate-pulse">
+                            Initializing...
+                        </div>
+                    )}
+                    {backendHealth.status === 'failed' && (
+                        <div className="text-xs font-mono text-state-danger">
+                            Backend Error
+                        </div>
+                    )}
                     <div className="text-xs font-mono text-ink-muted">
                         v3.0.0
                     </div>
@@ -146,6 +161,9 @@ export function DashboardLayout() {
                                 </TabsContent>
                                 <TabsContent value="devices" className="mt-0">
                                     <WorkbenchDevices />
+                                </TabsContent>
+                                <TabsContent value="cases" className="mt-0">
+                                    <WorkbenchCases />
                                 </TabsContent>
                                 <TabsContent value="flashing" className="mt-0">
                                     <WorkbenchFlashing />
