@@ -12,9 +12,10 @@ import { Input } from '../ui/input';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Badge } from '../ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import { Smartphone, AlertTriangle, Loader2, Download, Upload, Key, Shield, Archive, RefreshCw } from 'lucide-react';
+import { Smartphone, AlertTriangle, Loader2, Download, Upload, Key, Shield, Archive, RefreshCw, Search, Info, BookOpen, CheckCircle } from 'lucide-react';
 import { RiskButton, RiskLevel } from '../unified';
 import { toast } from 'sonner';
+import { DFUInstructionsGuide } from './DFUInstructionsGuide';
 
 interface JailbreakSanctumPanelProps {
   deviceUDID?: string;
@@ -22,6 +23,18 @@ interface JailbreakSanctumPanelProps {
 
 type JailbreakMethod = 'checkra1n' | 'palera1n' | 'lockra1n' | 'odyssey' | 'unc0ver' | 'taurine';
 type Operation = 'dfu_mode' | 'jailbreak' | 'shsh_save' | 'shsh_restore' | 'futurerestore' | 'backup_manipulate';
+
+interface IOSDevice {
+  serial: string;
+  udid: string;
+  type: string;
+  connection: string;
+  status: string;
+  mode?: string;
+  model?: string;
+  ios_version?: string;
+  chip?: string;
+}
 
 export const JailbreakSanctumPanel: React.FC<JailbreakSanctumPanelProps> = ({ deviceUDID: initialDeviceUDID }) => {
   const [deviceUDID, setDeviceUDID] = useState(initialDeviceUDID || '');
@@ -31,14 +44,21 @@ export const JailbreakSanctumPanel: React.FC<JailbreakSanctumPanelProps> = ({ de
   const [isLoading, setIsLoading] = useState(false);
   const [confirmation, setConfirmation] = useState('');
   const [error, setError] = useState<string | null>(null);
+  
+  // Compliance: User-initiated device scanning
+  const [devices, setDevices] = useState<IOSDevice[]>([]);
+  const [selectedDevice, setSelectedDevice] = useState<IOSDevice | null>(null);
+  const [isScanning, setIsScanning] = useState(false);
+  const [deviceInfo, setDeviceInfo] = useState<any>(null);
+  const [showDFUInstructions, setShowDFUInstructions] = useState(false);
 
   const operations = [
     {
       id: 'dfu_mode' as Operation,
-      name: 'DFU Mode Automation',
-      description: 'Enter/exit DFU mode automatically',
-      riskLevel: 'medium' as RiskLevel,
-      confirmationText: 'ENTER',
+      name: 'DFU Mode Detection',
+      description: 'Detect DFU mode (user must manually enter DFU mode)',
+      riskLevel: 'low' as RiskLevel,
+      confirmationText: 'DETECT',
       icon: RefreshCw,
     },
     {
@@ -91,6 +111,111 @@ export const JailbreakSanctumPanel: React.FC<JailbreakSanctumPanelProps> = ({ de
     { id: 'unc0ver' as JailbreakMethod, name: 'unc0ver', description: 'A12-A15 devices (iOS 11-14)', chip: 'A12-A15' },
     { id: 'taurine' as JailbreakMethod, name: 'Taurine', description: 'A12-A15 devices (iOS 14)', chip: 'A12-A15' },
   ];
+
+  // Compliance: User-initiated device scanning (no auto-scan)
+  const handleScanDevices = async () => {
+    setIsScanning(true);
+    setError(null);
+    setDevices([]);
+    setSelectedDevice(null);
+    
+    try {
+      const passcode = localStorage.getItem('trapdoor-passcode') || localStorage.getItem('bobbysWorkshop.secretRoomPasscode') || '';
+      const response = await fetch('/api/v1/trapdoor/pandora/devices?user_initiated=true', {
+        headers: {
+          'X-Secret-Room-Passcode': passcode
+        }
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Device scan failed');
+      }
+      
+      if (data.ok && data.data) {
+        const deviceList = data.data.devices || [];
+        setDevices(deviceList);
+        
+        if (deviceList.length === 0) {
+          toast.info('No iOS devices detected. Connect a device via USB and try again.');
+        } else {
+          toast.success(`Found ${deviceList.length} device(s)`);
+        }
+      }
+    } catch (err: any) {
+      setError(err.message || 'Device scan failed');
+      toast.error(err.message || 'Device scan failed');
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
+  // Compliance: Get device information (read-only)
+  const handleGetDeviceInfo = async (udid: string) => {
+    setIsLoading(true);
+    try {
+      const passcode = localStorage.getItem('trapdoor-passcode') || localStorage.getItem('bobbysWorkshop.secretRoomPasscode') || '';
+      // Note: This would need a new endpoint for device info
+      // For now, use the device data from scan
+      const device = devices.find(d => d.udid === udid);
+      if (device) {
+        setDeviceInfo(device);
+        setDeviceUDID(udid);
+        setSelectedDevice(device);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to get device info');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Compliance: DFU detection (user-initiated)
+  const handleDFUDetect = async () => {
+    if (!deviceUDID) {
+      toast.error('Device UDID required');
+      return;
+    }
+    
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const passcode = localStorage.getItem('trapdoor-passcode') || localStorage.getItem('bobbysWorkshop.secretRoomPasscode') || '';
+      const response = await fetch('/api/v1/trapdoor/pandora/dfu/detect', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Secret-Room-Passcode': passcode,
+        },
+        body: JSON.stringify({
+          deviceSerial: deviceUDID,
+          user_initiated: true
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'DFU detection failed');
+      }
+      
+      if (data.ok && data.data) {
+        if (data.data.dfuMode) {
+          toast.success('DFU mode detected');
+        } else {
+          toast.info('DFU mode not detected. Follow instructions to enter DFU mode.');
+          setShowDFUInstructions(true);
+        }
+      }
+    } catch (err: any) {
+      setError(err.message || 'DFU detection failed');
+      toast.error(err.message || 'DFU detection failed');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleExecute = async (op: typeof operations[0]) => {
     if (!deviceUDID) {
@@ -181,17 +306,143 @@ export const JailbreakSanctumPanel: React.FC<JailbreakSanctumPanelProps> = ({ de
           </Alert>
 
           <div className="space-y-4">
+            {/* Compliance: User-initiated device scanning */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-gray-300">
+                  Device Detection
+                </label>
+                <Button
+                  onClick={handleScanDevices}
+                  disabled={isScanning}
+                  variant="outline"
+                  size="sm"
+                  className="bg-[#0B0F14] border-[#2FD3FF]/50 text-[#2FD3FF] hover:bg-[#2FD3FF]/10"
+                >
+                  {isScanning ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Scanning...
+                    </>
+                  ) : (
+                    <>
+                      <Search className="mr-2 h-4 w-4" />
+                      Scan for Devices
+                    </>
+                  )}
+                </Button>
+              </div>
+              
+              {devices.length > 0 && (
+                <div className="space-y-2">
+                  {devices.map((device) => (
+                    <Card
+                      key={device.udid}
+                      className={`bg-[#0B0F14] border-2 cursor-pointer transition-all ${
+                        selectedDevice?.udid === device.udid
+                          ? 'border-[#2FD3FF] bg-[#2FD3FF]/10'
+                          : 'border-[#2FD3FF]/20 hover:border-[#2FD3FF]/50'
+                      }`}
+                      onClick={() => handleGetDeviceInfo(device.udid)}
+                    >
+                      <CardContent className="p-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Smartphone className="h-4 w-4 text-[#2FD3FF]" />
+                            <div>
+                              <div className="text-sm font-medium text-white">
+                                {device.model || 'iOS Device'}
+                              </div>
+                              <div className="text-xs text-gray-400">
+                                {device.udid.substring(0, 20)}...
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {device.chip && (
+                              <Badge variant="outline" className="text-xs">
+                                {device.chip}
+                              </Badge>
+                            )}
+                            {device.mode && (
+                              <Badge variant={device.mode === 'dfu' ? 'destructive' : 'default'} className="text-xs">
+                                {device.mode.toUpperCase()}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                        {device.ios_version && (
+                          <div className="mt-2 text-xs text-gray-400">
+                            iOS {device.ios_version}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+              
+              {selectedDevice && (
+                <Alert className="bg-[#0B0F14] border-[#2FD3FF]/50">
+                  <Info className="h-4 w-4 text-[#2FD3FF]" />
+                  <AlertDescription className="text-gray-300 text-sm">
+                    <strong>Selected Device:</strong> {selectedDevice.model || 'Unknown'} ({selectedDevice.chip || 'Unknown Chip'})
+                    {selectedDevice.ios_version && ` - iOS ${selectedDevice.ios_version}`}
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
+
             <div>
               <label className="text-sm font-medium text-gray-300 mb-2 block">
-                Device UDID
+                Device UDID {selectedDevice && '(Auto-filled)'}
               </label>
               <Input
                 value={deviceUDID}
                 onChange={(e) => setDeviceUDID(e.target.value)}
-                placeholder="00008030-001A..."
+                placeholder="00008030-001A... or scan for devices above"
                 className="bg-[#0B0F14] border-[#2FD3FF]/50 text-white"
               />
             </div>
+
+            {/* Compliance: DFU Mode Detection */}
+            {operation === 'dfu_mode' && (
+              <div className="space-y-3 pt-4 border-t border-[#2FD3FF]/20">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-300 mb-1">DFU Mode Detection</h4>
+                    <p className="text-xs text-gray-400">
+                      Compliance: Detection only. You must manually enter DFU mode.
+                    </p>
+                  </div>
+                  <Button
+                    onClick={handleDFUDetect}
+                    disabled={isLoading || !deviceUDID}
+                    variant="outline"
+                    size="sm"
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Detecting...
+                      </>
+                    ) : (
+                      <>
+                        <Search className="mr-2 h-4 w-4" />
+                        Detect DFU
+                      </>
+                    )}
+                  </Button>
+                </div>
+                
+                {showDFUInstructions && (
+                  <DFUInstructionsGuide
+                    deviceModel={selectedDevice?.model}
+                    chip={selectedDevice?.chip}
+                  />
+                )}
+              </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {operations.map((op) => {

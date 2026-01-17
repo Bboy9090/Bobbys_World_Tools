@@ -103,18 +103,29 @@ pub fn launch_fastapi_backend(app_handle: &AppHandle) -> Result<Child, Error> {
         }
     };
     
-    // Find backend directory
-    let backend_dir = resource_dir
+    // Find backend directory (FastAPI backend)
+    let mut backend_dir = resource_dir
         .join("python")
-        .join("runtime")
-        .join("python-embedded")
-        .join("backend");
+        .join("fastapi_backend");
     
+    // Fallback to old path for compatibility
     if !backend_dir.exists() {
-        return Err(Error::new(
-            std::io::ErrorKind::NotFound,
-            format!("Backend directory not found: {:?}", backend_dir)
-        ));
+        let old_backend_dir = resource_dir
+            .join("python")
+            .join("runtime")
+            .join("python-embedded")
+            .join("backend");
+        if old_backend_dir.exists() {
+            // Use old path if new path doesn't exist
+            backend_dir = old_backend_dir;
+        } else {
+            return Err(Error::new(
+                std::io::ErrorKind::NotFound,
+                format!("FastAPI backend directory not found. Expected: {:?} or {:?}", 
+                    resource_dir.join("python").join("fastapi_backend"),
+                    old_backend_dir)
+            ));
+        }
     }
     
     // Port for FastAPI
@@ -143,10 +154,10 @@ pub fn launch_fastapi_backend(app_handle: &AppHandle) -> Result<Child, Error> {
     );
     cmd.env("PYTHONPATH", pythonpath);
     
-    // Run uvicorn
+    // Run uvicorn (main.py is in fastapi_backend directory)
     cmd.arg("-m")
         .arg("uvicorn")
-        .arg("backend.main:app")
+        .arg("main:app")
         .arg("--host")
         .arg("127.0.0.1")
         .arg("--port")

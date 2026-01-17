@@ -30,6 +30,15 @@ export default defineConfig({
     // Ensure relative paths work with file:// protocol
     assetsDir: 'assets',
     rollupOptions: {
+      external: [
+        // Tauri APIs are only available at runtime, not during build
+        '@tauri-apps/api/core',
+        '@tauri-apps/api/tauri',
+        '@tauri-apps/api/window',
+        '@tauri-apps/api/fs',
+        '@tauri-apps/api/path',
+        '@tauri-apps/api/shell'
+      ],
       output: {
         // Use relative paths for all assets
         format: 'es'

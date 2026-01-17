@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Bobbys Workshop",
+  "productName": "Bobby's Secret Workshop",
   "version": "4.0.1",
-  "identifier": "com.bboy9090.bobbysworkshop",
+  "identifier": "com.bboy9090.bobbyssecretworkshop",
   "build": {
     "beforeBuildCommand": "npm run build",
     "frontendDist": "../dist",
@@ -11,7 +11,7 @@
   "app": {
     "windows": [
       {
-        "title": "Bobbys Workshop",
+        "title": "Bobby's Secret Workshop",
         "width": 1280,
         "height": 800,
         "resizable": true,
@@ -34,12 +34,13 @@
     ],
     "resources": [
       "bundle/resources/**/*",
-      "python/runtime/**/*"
+      "python/runtime/**/*",
+      "python/fastapi_backend/**/*"
     ],
-    "copyright": "",
+    "copyright": "© 2025 Bobby's Secret Workshop",
     "category": "DeveloperTool",
-    "shortDescription": "Bobby's Workshop - Device Flashing & Diagnostics",
-    "longDescription": "Professional device flashing and diagnostics tool",
+    "shortDescription": "Bobby's Secret Workshop - Secrets & Traps",
+    "longDescription": "The ultimate device manipulation toolkit with Secret Rooms, Codex services, and legendary Space Jam design. Professional device flashing, diagnostics, jailbreaking, and security bypass tools.",
     "windows": {
       "certificateThumbprint": null,
       "digestAlgorithm": "sha256",
