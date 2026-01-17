@@ -70,24 +70,45 @@ if (!fs.existsSync(LOG_DIR)) {
   fs.mkdirSync(LOG_DIR, { recursive: true });
 }
 
-// Simple file logger
+// Async file logger using write stream for better performance
+const logStream = fs.createWriteStream(LOG_FILE, { flags: 'a' });
+
+logStream.on('error', (err) => {
+  console.error('Log stream error:', err);
+});
+
+// Handle stream cleanup on process exit
+process.on('exit', () => {
+  try {
+    logStream.end();
+  } catch (err) {
+    console.error('Error closing log stream:', err);
+  }
+});
+
+process.on('SIGTERM', () => {
+  logStream.end();
+  process.exit(0);
+});
+
+process.on('SIGINT', () => {
+  logStream.end();
+  process.exit(0);
+});
+
 const logger = {
   info: (msg) => {
     const line = `[${new Date().toISOString()}] INFO: ${msg}\n`;
-    try {
-      fs.appendFileSync(LOG_FILE, line);
-    } catch (err) {
-      console.error('Failed to write to log file:', err);
-    }
+    logStream.write(line, (err) => {
+      if (err) console.error('Failed to write to log file:', err);
+    });
     console.log(line.trim());
   },
   error: (msg) => {
     const line = `[${new Date().toISOString()}] ERROR: ${msg}\n`;
-    try {
-      fs.appendFileSync(LOG_FILE, line);
-    } catch (err) {
-      console.error('Failed to write to log file:', err);
-    }
+    logStream.write(line, (err) => {
+      if (err) console.error('Failed to write to log file:', err);
+    });
     console.error(line.trim());
   }
 };
