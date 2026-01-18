@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Bobby's Secret Workshop",
-  "version": "4.0.1",
-  "identifier": "com.bboy9090.bobbyssecretworkshop",
+  "productName": "Phoenix Forge",
+  "version": "5.0.0",
+  "identifier": "com.phoenixforge.app",
   "build": {
     "beforeBuildCommand": "npm run build",
     "frontendDist": "../dist",
@@ -11,11 +11,13 @@
   "app": {
     "windows": [
       {
-        "title": "Bobby's Secret Workshop",
-        "width": 1280,
-        "height": 800,
+        "title": "Phoenix Forge - Device Repair Platform",
+        "width": 1400,
+        "height": 900,
         "resizable": true,
-        "fullscreen": false
+        "fullscreen": false,
+        "decorations": true,
+        "transparent": false
       }
     ],
     "security": {
@@ -37,10 +39,10 @@
       "python/runtime/**/*",
       "python/fastapi_backend/**/*"
     ],
-    "copyright": "© 2025 Bobby's Secret Workshop",
+    "copyright": "© 2026 Phoenix Forge",
     "category": "DeveloperTool",
-    "shortDescription": "Bobby's Secret Workshop - Secrets & Traps",
-    "longDescription": "The ultimate device manipulation toolkit with Secret Rooms, Codex services, and legendary Space Jam design. Professional device flashing, diagnostics, jailbreaking, and security bypass tools.",
+    "shortDescription": "Rise from the Ashes. Every Device Reborn.",
+    "longDescription": "Phoenix Forge is a legendary device repair and management platform designed for professional repair shops. Features include device flashing, diagnostics, firmware management, and advanced repair workflows with a stunning modern UI.",
     "windows": {
       "certificateThumbprint": null,
       "digestAlgorithm": "sha256",

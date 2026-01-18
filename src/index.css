@@ -1,4 +1,5 @@
 @import './styles/design-tokens.css';
+@import './styles/phoenix-forge-theme.css';
 @import 'tailwindcss';
 @import "tw-animate-css";
 @import './styles/workshop-vibe.css';
@@ -27,41 +28,41 @@
 }
 
 :root {
-  /* Space Jam Theme Colors */
-  --background: #0D0D0D;
-  --foreground: #FFFFFF;
+  /* PHOENIX FORGE Theme Colors */
+  --background: var(--phoenix-forge-base, #0F0F1A);
+  --foreground: var(--phoenix-ink-primary, #F1F5F9);
 
-  --card: #1A1A1A;
-  --card-foreground: #E8E8E8;
-  --popover: #1A1A1A;
-  --popover-foreground: #E8E8E8;
+  --card: var(--phoenix-forge-surface, #14142B);
+  --card-foreground: var(--phoenix-ink-primary, #F1F5F9);
+  --popover: var(--phoenix-forge-elevated, #1A1A38);
+  --popover-foreground: var(--phoenix-ink-primary, #F1F5F9);
 
-  --primary: #6B2C91;
+  --primary: var(--phoenix-fire-core, #FF4D00);
   --primary-foreground: #FFFFFF;
-  --secondary: #2C2C2C;
-  --secondary-foreground: #E8E8E8;
+  --secondary: var(--phoenix-forge-surface, #14142B);
+  --secondary-foreground: var(--phoenix-ink-secondary, #94A3B8);
 
-  --muted: #2C2C2C;
-  --muted-foreground: #B0B0B0;
+  --muted: var(--phoenix-forge-elevated, #1A1A38);
+  --muted-foreground: var(--phoenix-ink-muted, #64748B);
 
-  --accent: #FF6B35;
-  --accent-foreground: #FFFFFF;
+  --accent: var(--phoenix-gold-core, #FFD700);
+  --accent-foreground: var(--phoenix-void-black, #050508);
 
-  --destructive: #E11D48;
+  --destructive: var(--phoenix-danger-core, #F43F5E);
   --destructive-foreground: #FFFFFF;
 
-  --success: #22C55E;
-  --warning: #FFD700;
+  --success: var(--phoenix-success-core, #10B981);
+  --warning: var(--phoenix-warning-core, #F59E0B);
 
-  --border: #2A2A2A;
-  --input: #2C2C2C;
-  --ring: #6B2C91;
+  --border: rgba(255, 255, 255, 0.08);
+  --input: var(--phoenix-forge-deep, #0A0A12);
+  --ring: var(--phoenix-fire-core, #FF4D00);
 
-  --radius: 0.75rem;
+  --radius: 0.5rem;
 
-  --font-mono: 'Space Mono', 'Courier New', monospace;
-  --font-display: 'Bebas Neue', 'Impact', sans-serif;
-  --font-sans: 'Outfit', 'Arial', sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+  --font-display: 'Orbitron', 'Rajdhani', 'Inter', sans-serif;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 @theme {

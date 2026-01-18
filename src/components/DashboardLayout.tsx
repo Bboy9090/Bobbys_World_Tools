@@ -1,17 +1,17 @@
 /**
- * DashboardLayout - Main application layout
+ * PHOENIX FORGE - Main Dashboard Layout
  * 
- * Migrated to new design system:
- * - Design tokens (midnight-room, workbench-steel, etc.)
- * - "What's up, doc?" greeting
- * - WorkbenchSystemStatus
- * - New navigation structure
+ * "Rise from the Ashes. Every Device Reborn."
+ * 
+ * Legendary device repair platform featuring:
+ * - Modern glassmorphism UI
+ * - Phoenix fire/gold/violet aesthetic
+ * - Professional yet powerful design
  */
 
 import { useState } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
 import { DeviceSidebar } from "./DeviceSidebar";
 import { BackendStatusIndicator } from "./BackendStatusIndicator";
 import { WorkbenchSystemStatus } from "./workbench/WorkbenchSystemStatus";
@@ -21,7 +21,7 @@ import { useBugsGreeting } from "@/hooks/useBugsGreeting";
 import { 
     LayoutDashboard,
     Smartphone,
-    Flashlight,
+    Zap,
     Apple,
     Shield,
     Activity,
@@ -30,10 +30,9 @@ import {
     Lock,
     Settings,
     FileText,
+    Flame,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { SpaceJamHeader } from './space-jam/SpaceJamHeader';
-import { SpaceJamNav } from './space-jam/SpaceJamNav';
 
 // Screen imports
 import { WorkbenchDashboard } from './screens/WorkbenchDashboard';
@@ -60,30 +59,35 @@ export function DashboardLayout() {
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { id: 'devices', label: 'Devices', icon: Smartphone },
         { id: 'cases', label: 'Cases', icon: FileText },
-        { id: 'flashing', label: 'Flashing', icon: Flashlight },
+        { id: 'flashing', label: 'Flash Forge', icon: Zap },
         { id: 'ios', label: 'iOS', icon: Apple },
         { id: 'security', label: 'Security', icon: Shield },
         { id: 'monitoring', label: 'Monitoring', icon: Activity },
         { id: 'firmware', label: 'Firmware', icon: Package },
         { id: 'workflows', label: 'Workflows', icon: Workflow },
-        { id: 'secret-rooms', label: 'Secret Rooms', icon: Lock, locked: true },
+        { id: 'secret-rooms', label: 'The Forge', icon: Flame, special: true },
         { id: 'settings', label: 'Settings', icon: Settings },
     ];
 
     return (
-        <div className="h-screen flex flex-col bg-trap-house">
-            {/* Header - Space Jam Style */}
-            <header className="h-16 border-b-2 border-space-jam bg-gradient-space-jam flex items-center px-6 gap-4 glow-purple">
+        <div className="h-screen flex flex-col bg-forge-deep">
+            {/* Header - Phoenix Forge Style */}
+            <header className="h-16 border-b border-white/10 bg-forge-surface/80 backdrop-blur-xl flex items-center px-6 gap-4">
                 <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl border-2 border-jordan bg-hare-jordan-red flex items-center justify-center animate-bounce-jordan shadow-jordan">
-                        <span className="text-legendary font-display font-black text-xl">🐰</span>
+                    {/* Phoenix Logo */}
+                    <div className="relative">
+                        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-phoenix-fire-core via-phoenix-gold-core to-phoenix-fire-bright flex items-center justify-center shadow-lg glow-fire">
+                            <Flame className="w-6 h-6 text-white drop-shadow-lg" />
+                        </div>
+                        {/* Ember particles */}
+                        <div className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-phoenix-gold-core animate-pulse" />
                     </div>
                     <div>
-                        <h1 className="text-2xl font-black text-space-jam font-display tracking-wider animate-graffiti">
-                            HARE JORDAN'S PLAYGROUND
+                        <h1 className="text-xl font-bold tracking-tight">
+                            <span className="text-fire">PHOENIX FORGE</span>
                         </h1>
-                        <p className="text-sm text-legendary font-display tracking-wide">
-                            NYC TRAP HOUSE WORKSHOP • SPACE JAM LEGENDARY
+                        <p className="text-xs text-phoenix-ink-muted font-medium tracking-wide">
+                            Rise from the Ashes. Every Device Reborn.
                         </p>
                     </div>
                 </div>
@@ -92,7 +96,7 @@ export function DashboardLayout() {
                 
                 {/* Greeting - Only show once per session */}
                 {showGreeting && (
-                    <div className="px-4 py-2 bg-trap-walls border-2 border-neon-cyan rounded-lg glow-cyan animate-graffiti">
+                    <div className="px-4 py-2 bg-forge-glass backdrop-blur-md border border-white/10 rounded-lg">
                         <OrnamentBugsGreeting 
                             variant={backendAvailable ? 'devices' : 'warning'}
                             onDismiss={dismiss}
@@ -102,20 +106,23 @@ export function DashboardLayout() {
                     </div>
                 )}
                 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-4">
                     <BackendStatusIndicator />
                     {backendHealth.status === 'booting' && (
-                        <div className="text-xs font-mono text-ink-muted animate-pulse">
-                            Initializing...
+                        <div className="flex items-center gap-2 text-xs font-medium text-phoenix-ink-muted">
+                            <div className="w-2 h-2 rounded-full bg-phoenix-warning-core animate-pulse" />
+                            <span>Initializing...</span>
                         </div>
                     )}
                     {backendHealth.status === 'failed' && (
-                        <div className="text-xs font-mono text-state-danger">
-                            Backend Error
+                        <div className="flex items-center gap-2 text-xs font-medium text-phoenix-danger-core">
+                            <div className="w-2 h-2 rounded-full bg-phoenix-danger-core" />
+                            <span>Backend Error</span>
                         </div>
                     )}
-                    <div className="text-xs font-mono text-ink-muted">
-                        v3.0.0
+                    <div className="h-6 w-px bg-white/10" />
+                    <div className="px-2 py-1 rounded-md bg-forge-elevated text-xs font-mono text-phoenix-ink-secondary">
+                        v5.0.0
                     </div>
                 </div>
             </header>
@@ -127,9 +134,9 @@ export function DashboardLayout() {
                 {/* Main Content */}
                 <main className="flex-1 flex flex-col overflow-hidden min-h-0">
                     <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
-                        {/* Navigation Tabs - Space Jam Style */}
-                        <div className="border-b-2 border-space-jam bg-trap-walls">
-                            <TabsList className="h-14 bg-transparent w-full justify-start rounded-none border-0 px-4 gap-2 overflow-x-auto">
+                        {/* Navigation Tabs - Phoenix Style */}
+                        <div className="border-b border-white/10 bg-forge-surface/50 backdrop-blur-sm">
+                            <TabsList className="h-12 bg-transparent w-full justify-start rounded-none border-0 px-4 gap-1 overflow-x-auto">
                                 {navItems.map((item) => {
                                     const Icon = item.icon;
                                     const isActive = activeTab === item.id;
@@ -139,28 +146,30 @@ export function DashboardLayout() {
                                             key={item.id}
                                             value={item.id}
                                             className={cn(
-                                                "gap-2 px-5 h-12 rounded-xl transition-all duration-300 font-display font-bold text-sm tracking-wide uppercase",
+                                                "gap-2 px-4 h-9 rounded-lg transition-all duration-200 font-medium text-sm",
                                                 isActive
-                                                    ? "btn-space-jam text-legendary shadow-playground"
-                                                    : item.locked
-                                                    ? "bg-trap-basement border-2 border-trap-border text-ink-muted opacity-50 cursor-not-allowed"
-                                                    : "bg-trap-walls border-2 border-trap-border text-ink-primary hover:border-neon-cyan hover:text-graffiti hover:glow-cyan"
+                                                    ? item.special 
+                                                        ? "bg-gradient-to-r from-phoenix-fire-core to-phoenix-gold-core text-white shadow-lg glow-fire"
+                                                        : "bg-phoenix-fire-core/20 text-phoenix-fire-bright border border-phoenix-fire-core/30"
+                                                    : item.special
+                                                    ? "bg-forge-elevated/50 border border-phoenix-fire-core/20 text-phoenix-fire-glow hover:bg-phoenix-fire-core/10 hover:border-phoenix-fire-core/40"
+                                                    : "bg-transparent text-phoenix-ink-secondary hover:text-phoenix-ink-primary hover:bg-white/5"
                                             )}
                                         >
-                                            <Icon className={cn("w-5 h-5", isActive && "animate-bounce")} />
+                                            <Icon className={cn(
+                                                "w-4 h-4",
+                                                isActive && item.special && "animate-pulse"
+                                            )} />
                                             <span>{item.label}</span>
-                                            {item.locked && (
-                                                <Lock className="w-4 h-4" />
-                                            )}
                                         </TabsTrigger>
                                     );
                                 })}
                             </TabsList>
                         </div>
 
-                        {/* Content Area - Playground Style */}
-                        <ScrollArea className="flex-1 min-h-0 bg-playground">
-                            <div className="p-8 min-h-0 bg-gradient-playground">
+                        {/* Content Area */}
+                        <ScrollArea className="flex-1 min-h-0 bg-forge-deep">
+                            <div className="p-6 min-h-0">
                                 <TabsContent value="dashboard" className="mt-0">
                                     <WorkbenchDashboard />
                                 </TabsContent>

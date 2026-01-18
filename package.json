@@ -1,7 +1,7 @@
 {
-    "name": "bobbys-workshop",
+    "name": "phoenix-forge",
     "private": true,
-    "version": "4.0.1",
+    "version": "5.0.0",
     "type": "module",
     "main": "electron/main.cjs",
     "scripts": {
