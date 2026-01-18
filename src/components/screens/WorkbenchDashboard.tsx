@@ -1,8 +1,10 @@
 /**
  * PHOENIX FORGE - Dashboard
  * 
- * Command center overview with legendary statistics,
- * quick actions, and real-time system monitoring.
+ * Command center overview with real-time statistics,
+ * quick actions, and system monitoring.
+ * 
+ * NO MOCKS - All data comes from real API endpoints.
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -15,14 +17,21 @@ import { Badge } from '../ui/badge';
 import { 
   Smartphone, 
   Zap, 
-  Shield, 
   Activity, 
   Flame,
   CheckCircle,
-  AlertTriangle,
   Clock,
   TrendingUp,
+  Loader2,
 } from 'lucide-react';
+
+interface DashboardStats {
+  devicesRepaired: number | null;
+  activeDevices: number;
+  successRate: number | null;
+  avgRepairTime: string | null;
+  loading: boolean;
+}
 
 export function WorkbenchDashboard() {
   const { backendAvailable } = useApp();
@@ -36,12 +45,13 @@ export function WorkbenchDashboard() {
     },
   ]);
 
-  // Mock statistics (would come from backend in production)
-  const [stats] = useState({
-    devicesRepaired: 1247,
-    activeDevices: 3,
-    successRate: 98.7,
-    avgRepairTime: '12m',
+  // Real statistics from API - no mock data
+  const [stats, setStats] = useState<DashboardStats>({
+    devicesRepaired: null,
+    activeDevices: 0,
+    successRate: null,
+    avgRepairTime: null,
+    loading: true,
   });
 
   // Add log entry helper
@@ -57,6 +67,90 @@ export function WorkbenchDashboard() {
       return [...prev, newLog].slice(-50);
     });
   }, []);
+
+  // Fetch real statistics from API
+  useEffect(() => {
+    if (!backendAvailable) {
+      setStats(prev => ({ ...prev, loading: false }));
+      return;
+    }
+
+    let cancelled = false;
+
+    async function fetchStats() {
+      try {
+        // Fetch active devices count
+        const devicesResponse = await fetch('/api/v1/adb/devices');
+        const devicesData = await devicesResponse.json();
+        
+        if (cancelled) return;
+
+        const activeDevices = devicesData.ok && devicesData.data?.devices 
+          ? devicesData.data.devices.length 
+          : 0;
+
+        // Fetch repair statistics from API (if available)
+        let repairStats = { total: null, successRate: null, avgTime: null };
+        try {
+          const statsResponse = await fetch('/api/v1/stats/repairs');
+          if (statsResponse.ok) {
+            const statsData = await statsResponse.json();
+            if (statsData.ok && statsData.data) {
+              repairStats = {
+                total: statsData.data.totalRepairs ?? null,
+                successRate: statsData.data.successRate ?? null,
+                avgTime: statsData.data.avgRepairTime ?? null,
+              };
+            }
+          }
+        } catch {
+          // Stats endpoint may not exist - that's okay, show null
+        }
+
+        // Fetch from cases API as fallback for completed repairs
+        if (repairStats.total === null) {
+          try {
+            const casesResponse = await fetch('/api/v1/cases?status=completed');
+            if (casesResponse.ok) {
+              const casesData = await casesResponse.json();
+              if (casesData.ok && casesData.data?.cases) {
+                repairStats.total = casesData.data.cases.length;
+              }
+            }
+          } catch {
+            // Cases endpoint may not exist
+          }
+        }
+
+        if (cancelled) return;
+
+        setStats({
+          devicesRepaired: repairStats.total,
+          activeDevices,
+          successRate: repairStats.successRate,
+          avgRepairTime: repairStats.avgTime,
+          loading: false,
+        });
+
+        addLog('info', `[STATS] Dashboard updated: ${activeDevices} active device(s)`);
+
+      } catch (error) {
+        if (cancelled) return;
+        console.error('[Dashboard] Failed to fetch stats:', error);
+        setStats(prev => ({ ...prev, loading: false }));
+      }
+    }
+
+    fetchStats();
+
+    // Refresh stats every 30 seconds
+    const interval = setInterval(fetchStats, 30000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [backendAvailable, addLog]);
 
   // Log backend status on mount
   useEffect(() => {
@@ -86,8 +180,12 @@ export function WorkbenchDashboard() {
         data.data.devices.forEach((d: { serial: string; state: string }) => {
           addLog('debug', `  → ${d.serial} (${d.state})`);
         });
+        
+        // Update active devices count
+        setStats(prev => ({ ...prev, activeDevices: count }));
       } else {
         addLog('info', '[SCAN] No devices detected');
+        setStats(prev => ({ ...prev, activeDevices: 0 }));
       }
     } catch (error) {
       addLog('error', `[SCAN] Detection failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -107,6 +205,13 @@ export function WorkbenchDashboard() {
     window.location.reload();
   }, [addLog]);
 
+  // Format display value - show loading or actual value
+  const formatStatValue = (value: number | string | null, suffix = ''): string => {
+    if (stats.loading) return '...';
+    if (value === null) return '--';
+    return `${value}${suffix}`;
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -122,21 +227,25 @@ export function WorkbenchDashboard() {
         </div>
         
         <div className="flex items-center gap-3">
+          {stats.loading && (
+            <Badge variant="secondary" className="gap-1.5">
+              <Loader2 className="w-3 h-3 animate-spin" />
+              Loading
+            </Badge>
+          )}
           <Badge variant={backendAvailable ? 'success' : 'warning'}>
             {backendAvailable ? 'Forge Online' : 'Limited Mode'}
           </Badge>
         </div>
       </div>
 
-      {/* Legendary Stats Grid */}
+      {/* Real Stats Grid - Data from API */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          title="Devices Reborn"
-          value={stats.devicesRepaired.toLocaleString()}
+          title="Repairs Completed"
+          value={formatStatValue(stats.devicesRepaired)}
           icon={CheckCircle}
-          trend="up"
-          trendValue="12%"
-          description="Total repairs completed"
+          description={stats.devicesRepaired !== null ? "From case records" : "No data available"}
           variant="phoenix"
         />
         
@@ -150,19 +259,17 @@ export function WorkbenchDashboard() {
         
         <StatCard
           title="Success Rate"
-          value={`${stats.successRate}%`}
+          value={formatStatValue(stats.successRate, '%')}
           icon={TrendingUp}
-          trend="up"
-          trendValue="2.3%"
-          description="Repair success ratio"
+          description={stats.successRate !== null ? "Calculated from records" : "No data available"}
           variant="success"
         />
         
         <StatCard
           title="Avg Repair Time"
-          value={stats.avgRepairTime}
+          value={formatStatValue(stats.avgRepairTime)}
           icon={Clock}
-          description="Per device average"
+          description={stats.avgRepairTime !== null ? "Per device average" : "No data available"}
           variant="default"
         />
       </div>
